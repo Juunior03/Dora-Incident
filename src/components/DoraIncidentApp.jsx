@@ -699,6 +699,42 @@ export default function DoraIncidentApp() {
       return name.charAt(0).toUpperCase();
   };
 
+  const animations = {
+      initial: { opacity: 0, y: 10 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, y: -10 },
+  };
+
+  const getFilteredSteps = (draft) => {
+      const steps = [
+        { label: 'Identity', step: 0, shouldShow: !draft.skipIdentity },
+        { label: 'Contacts', step: 1, shouldShow: !draft.skipContacts },
+        { label: 'Incident', step: 2, shouldShow: true },
+        { label: 'Review', step: 3, shouldShow: true },
+      ];
+      return steps.filter(step => step.shouldShow);
+  };
+
+  const getStepItemClasses = (currentStep, stepIndex) => {
+      const baseClasses = "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all";
+      const activeClasses = currentStep === stepIndex ? "bg-indigo-50 dark:bg-indigo-900/30" : "hover:bg-gray-100/50 dark:hover:bg-gray-800/50";
+      return `${baseClasses} ${activeClasses}`;
+  };
+
+  const getStepIndicatorClasses = (currentStep, stepIndex, index) => {
+      const isCompleted = stepIndex < currentStep;
+      const isActive = currentStep === stepIndex;
+      const baseClasses = "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium";
+
+      if (isCompleted) {
+        return `${baseClasses} bg-green-400 text-white`;
+      } else if (isActive) {
+        return `${baseClasses} bg-indigo-500 text-white`;
+      } else {
+        return `${baseClasses} bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300`;
+      }
+  };
+
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
 
@@ -1240,27 +1276,30 @@ function toggleArrayValue(path, value) {
       <main className="max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
           {view === 'report' ? (
-            <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-12 gap-6">
+            <motion.div
+                key="form"
+                initial={animations.initial}
+                animate={animations.animate}
+                exit={animations.exit}
+                className="grid grid-cols-12 gap-6"
+            >
               <aside className="col-span-3">
                 <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
                   <h3 className="font-medium mb-4">Progress</h3>
-                  <div className="space-y-2">
-                      {[
-                        !draft.skipIdentity && { label: 'Identity', step: 0 },
-                        !draft.skipContacts && { label: 'Contacts', step: 1 },
-                        { label: 'Incident', step: 2 },
-                        { label: 'Review', step: 3 }
-                      ].filter(Boolean).map(({ label, step: stepIndex }, i) => (
+                    <div className="space-y-2">
+                      {getFilteredSteps(draft).map(({ label, step: stepIndex }, i) => (
                         <div
                           key={i}
-                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${step === stepIndex ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}
+                          className={getStepItemClasses(step, stepIndex)}
                           onClick={() => setStep(stepIndex)}
                         >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${stepIndex < step ? 'bg-green-400 text-white' : step === stepIndex ? 'bg-indigo-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>{i + 1}</div>
+                          <div className={getStepIndicatorClasses(step, stepIndex, i)}>
+                            {i + 1}
+                          </div>
                           <div className="text-sm">{label}</div>
                         </div>
                       ))}
-                 </div>
+                    </div>
 
                   <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs">
                     <p className="font-medium mb-1">Tip</p>
@@ -1269,7 +1308,7 @@ function toggleArrayValue(path, value) {
 
                   <div className="mt-4 flex flex-col gap-2">
                       {/* <button className="px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow text-sm hover:bg-gray-50 transition-colors" onClick={downloadCurrent}>Download JSON</button> */}
-                    {role !== 'validateur' && (
+                    {role !== 'validateur' && draft.status !== 'validated' && (
                         <button
                           className="px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm hover:bg-red-100 transition-colors"
                           onClick={clearDraft}
@@ -3192,4 +3231,3 @@ function toggleArrayValue(path, value) {
       trigger: PropTypes.bool.isRequired, // ou .bool si la prop est optionnelle
   };
 }
-
