@@ -687,7 +687,17 @@ export default function DoraIncidentApp() {
       showFilters: false
   });
 
+  const getButtonClasses = (currentView, targetView) => {
+      const baseClasses = "px-3 py-2 rounded-xl transition-all";
+      const activeClasses = "bg-white/90 dark:bg-white/10 shadow";
+      const inactiveClasses = "bg-transparent hover:bg-white/50 dark:hover:bg-white/5";
+      return `${baseClasses} ${currentView === targetView ? activeClasses : inactiveClasses}`;
+  };
 
+  const getUserInitials = (user) => {
+      const name = user.displayName || user.email;
+      return name.charAt(0).toUpperCase();
+  };
 
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
@@ -1181,13 +1191,11 @@ function toggleArrayValue(path, value) {
         <div className="flex items-center gap-3">
           {role === 'saisisseur' && (
               <button
-                onClick={() => setView('report')}
-                className={`px-3 py-2 rounded-xl transition-all ${
-                  view === 'report' ? 'bg-white/90 dark:bg-white/10 shadow' : 'bg-transparent hover:bg-white/50 dark:hover:bg-white/5'
-                }`}
-              >
-                Report
-              </button>
+                  onClick={() => setView('report')}
+                  className={getButtonClasses(view, 'report')}
+                >
+                  Report
+                </button>
           )}
           <button onClick={() => setView('dashboard')} className={`px-3 py-2 rounded-xl transition-all ${view === 'dashboard' ? 'bg-white/90 dark:bg-white/10 shadow' : 'bg-transparent hover:bg-white/50 dark:hover:bg-white/5'}`}>Dashboard</button>
           {user && (
@@ -1197,7 +1205,7 @@ function toggleArrayValue(path, value) {
                   className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                   onClick={() => setShowUserMenu(!showUserMenu)}
                 >
-                  {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                  {getUserInitials(user)}
                 </button>
 
                 {/* Menu Popup */}
