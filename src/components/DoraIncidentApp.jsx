@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Tooltip } from "react-tooltip";
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import PropTypes from 'prop-types';
 
 const nowISO = () => new Date().toISOString()
 
@@ -56,15 +56,15 @@ const nowISO = () => new Date().toISOString()
         const id = setInterval(() => {
           t += 1
           ctx.clearRect(0, 0, canvas.width, canvas.height)
-          pieces.forEach(p => {
-            p.x += p.vx
-            p.y += p.vy
-            p.vy += 0.2
-            ctx.beginPath()
-            ctx.fillStyle = p.color
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-            ctx.fill()
-          })
+          for (const p of pieces) {
+              p.x += p.vx;
+              p.y += p.vy;
+              p.vy += 0.2;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+              ctx.fillStyle = p.color;
+              ctx.fill();
+          }
           if (t > 80) {
             clearInterval(id)
             canvas.remove()
@@ -297,72 +297,53 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
   { value: "insufficient_or_failure_of_software_testing", label: "Insufficient or failure of software testing" }
 ];
 
+    /**
+     * Valide tous les champs d'un rapport et retourne une liste d'erreurs.
+     * @param {Object} report - Le rapport à valider.
+     * @returns {Array} Liste des messages d'erreur.
+     */
     function validateReportFields(report) {
       const errors = [];
 
-      // Champs obligatoires quel que soit le type de rapport
-      if (!report.incidentSubmission) {
-        errors.push("Type of report is required");
+      // Validations communes à tous les types de rapports
+      validateCommonFields(report, errors);
+
+      // Validations spécifiques aux rapports intermédiaires et finaux
+      if (report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") {
+        validateIntermediateAndFinalReportFields(report, errors);
       }
-      if (!report.reportCurrency) {
-        errors.push("Report currency is required");
+
+      // Validations spécifiques aux rapports finaux
+      if (report.incidentSubmission === "final_report") {
+        validateFinalReportFields(report, errors);
       }
-      // Submitting Entity
-      if (!report.submittingEntity?.name) {
-        errors.push("Submitting entity name is required");
-      }
-      if (!report.submittingEntity?.code) {
-        errors.push("Submitting entity code is required");
-      }
-      if (!report.submittingEntity?.affectedEntityType?.length) {
-        errors.push("Affected entity type is required");
-      }
-      // Contacts
-      if (!report.primaryContact?.name) {
-        errors.push("Primary contact name is required");
-      }
-      if (!report.primaryContact?.email) {
-        errors.push("Primary contact email is required");
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(report.primaryContact.email)) {
-        errors.push("Primary contact email must be valid");
-      }
-      if (!report.primaryContact?.phone) {
-        errors.push("Primary contact phone is required");
-      }
-      if (!report.secondaryContact?.name) {
-        errors.push("Secondary contact name is required");
-      }
-      if (!report.secondaryContact?.email) {
-        errors.push("Secondary contact email is required");
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(report.secondaryContact.email)) {
-        errors.push("Secondary contact email must be valid");
-      }
-      if (!report.secondaryContact?.phone) {
-        errors.push("Secondary contact phone is required");
-      }
-      // Incident
-      if (!report.incident?.financialEntityCode) {
-        errors.push("Incident Reference code is required");
-      }
-      if (!report.incident?.detectionDateTime) {
-        errors.push("Incident detection date and time are required");
-      } else if (isNaN(new Date(report.incident.detectionDateTime).getTime())) {
-        errors.push("Incident detection date and time must be valid");
-      }
-      if (!report.incident?.classificationDateTime) {
-        errors.push("Incident classification date and time are required");
-      } else if (isNaN(new Date(report.incident.classificationDateTime).getTime())) {
-        errors.push("Incident classification date and time must be valid");
-      }
-      if (!report.incident?.incidentDescription) {
-        errors.push("Incident description is required");
-      }
-      if (!report.incident?.classificationTypes?.[0]?.classificationCriterion?.length) {
-        errors.push("At least one classification criterion is required");
-      }
-      if (!report.incident?.incidentDiscovery) {
-        errors.push("Incident discovery is required");
-      }
+
+      return errors;
+    }
+
+    // Valide les champs obligatoires pour tous les rapports
+    function validateCommonFields(report, errors) {
+      const commonFields = [
+        { path: ['incidentSubmission'], message: "Type of report is required" },
+        { path: ['reportCurrency'], message: "Report currency is required" },
+        { path: ['submittingEntity', 'name'], message: "Submitting entity name is required" },
+        { path: ['submittingEntity', 'code'], message: "Submitting entity code is required" },
+        { path: ['submittingEntity', 'affectedEntityType'], check: (value) => value?.length, message: "Affected entity type is required" },
+        { path: ['primaryContact', 'name'], message: "Primary contact name is required" },
+        { path: ['primaryContact', 'email'], message: "Primary contact email is required" },
+        { path: ['primaryContact', 'phone'], message: "Primary contact phone is required" },
+        { path: ['secondaryContact', 'name'], message: "Secondary contact name is required" },
+        { path: ['secondaryContact', 'email'], message: "Secondary contact email is required" },
+        { path: ['secondaryContact', 'phone'], message: "Secondary contact phone is required" },
+        { path: ['incident', 'financialEntityCode'], message: "Incident Reference code is required" },
+        { path: ['incident', 'detectionDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident detection date and time must be valid" },
+        { path: ['incident', 'classificationDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident classification date and time must be valid" },
+        { path: ['incident', 'incidentDescription'], message: "Incident description is required" },
+        { path: ['incident', 'classificationTypes', 0, 'classificationCriterion'], check: (value) => value?.length, message: "At least one classification criterion is required" },
+        { path: ['incident', 'incidentDiscovery'], message: "Incident discovery is required" },
+      ];
+
+      validateFields(report, commonFields, errors);
 
       // Validation spécifique pour "countryCodeMaterialityThresholds" si "geographical_spread" est sélectionné
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
@@ -371,74 +352,38 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
 
-      // Validations spécifiques pour les rapports intermédiaires et finaux
-      if (report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") {
-        if (!report.incident?.incidentOccurrenceDateTime) {
-          errors.push("Incident occurrence date and time are required for intermediate and final reports");
-        } else if (isNaN(new Date(report.incident.incidentOccurrenceDateTime).getTime())) {
-          errors.push("Incident occurrence date and time must be valid");
-        }
-
-        // Vérification des champs obligatoires pour les clients affectés
-        if (report.impactAssessment?.affectedAssets?.affectedClients?.number === undefined || report.impactAssessment?.affectedAssets?.affectedClients?.number === null) {
-          errors.push("Number of affected clients is required for intermediate and final reports");
-        }
-
-        if (report.impactAssessment?.affectedAssets?.affectedClients?.percentage === undefined || report.impactAssessment?.affectedAssets?.affectedClients?.percentage === null) {
-          errors.push("Percentage of affected clients is required for intermediate and final reports");
-        }
-
-        // Vérification des champs obligatoires pour les contreparties financières affectées
-        if (report.impactAssessment?.affectedAssets?.affectedFinancialCounterparts?.number === undefined || report.impactAssessment?.affectedAssets?.affectedFinancialCounterparts?.number === null) {
-          errors.push("Number of affected financial counterparts is required for intermediate and final reports");
-        }
-
-        if (report.impactAssessment?.affectedAssets?.affectedFinancialCounterparts?.percentage === undefined || report.impactAssessment?.affectedAssets?.affectedFinancialCounterparts?.percentage === null) {
-          errors.push("Percentage of affected financial counterparts is required for intermediate and final reports");
-        }
-
-        if (!report.impactAssessment?.affectedAssets?.numbersActualEstimate?.length) {
-          errors.push("Information whether the values are actual or estimates is required for intermediate and final reports");
-        }
-
-        if (!report.incident?.incidentDuration) {
-          errors.push("Incident duration is required for intermediate and final reports");
-        }
-
-        if (!report.impactAssessment?.criticalServicesAffected) {
-          errors.push("Critical services affected is required for intermediate and final reports");
-          }
-
-        if (!report.incident?.incidentType?.incidentClassification?.length) {
-          errors.push("Incident classification is required for intermediate and final reports");
-        }
-
-        if (!report.impactAssessment?.affectedFunctionalAreas) {
-            errors.push("Affected functional areas are required for intermediate and final reports");
-        }
-
-         if (!report.impactAssessment?.isAffectedInfrastructureComponents) {
-            errors.push("Information about whether infrastructure components are affected is required for intermediate and final reports");
-         }
-
-         if (!report.impactAssessment?.isImpactOnFinancialInterest) {
-            errors.push("Information about impact on financial interest is required for intermediate and final reports");
-         }
-
-         if (!report.reportingToOtherAuthorities?.length) {
-            errors.push("Information about reporting to other authorities is required for intermediate and final reports");
-         }
-
-         if (report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === undefined ||
-              report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === null) {
-            errors.push("Information about temporary actions/measures for recovery is required for intermediate and final reports");
-         }
-
+      // Validation des emails
+      if (report.primaryContact?.email && !isValidEmail(report.primaryContact.email)) {
+        errors.push("Primary contact email must be valid");
       }
+      if (report.secondaryContact?.email && !isValidEmail(report.secondaryContact.email)) {
+        errors.push("Secondary contact email must be valid");
+      }
+    }
 
-      // Validation pour "reputationalImpactType" et "reputationalImpactDescription" si "reputational_impact" est sélectionné et si le rapport est intermédiaire ou final
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-          report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("reputational_impact")) {
+    // Valide les champs spécifiques aux rapports intermédiaires et finaux
+    function validateIntermediateAndFinalReportFields(report, errors) {
+      const intermediateAndFinalFields = [
+        { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
+        { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'number'], message: "Number of affected clients is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'percentage'], message: "Percentage of affected clients is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'number'], message: "Number of affected financial counterparts is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'percentage'], message: "Percentage of affected financial counterparts is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'affectedAssets', 'numbersActualEstimate'], check: (value) => value?.length, message: "Information whether the values are actual or estimates is required for intermediate and final reports" },
+        { path: ['incident', 'incidentDuration'], message: "Incident duration is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'criticalServicesAffected'], message: "Critical services affected is required for intermediate and final reports" },
+        { path: ['incident', 'incidentType', 'incidentClassification'], check: (value) => value?.length, message: "Incident classification is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'affectedFunctionalAreas'], message: "Affected functional areas are required for intermediate and final reports" },
+        { path: ['impactAssessment', 'isAffectedInfrastructureComponents'], message: "Information about whether infrastructure components are affected is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'isImpactOnFinancialInterest'], message: "Information about impact on financial interest is required for intermediate and final reports" },
+        { path: ['reportingToOtherAuthorities'], check: (value) => value?.length, message: "Information about reporting to other authorities is required for intermediate and final reports" },
+        { path: ['impactAssessment', 'serviceImpact', 'isTemporaryActionsMeasuresForRecovery'], message: "Information about temporary actions/measures for recovery is required for intermediate and final reports" },
+      ];
+
+      validateFields(report, intermediateAndFinalFields, errors);
+
+      // Validations spécifiques pour "reputationalImpactType" et "reputationalImpactDescription" si "reputational_impact" est sélectionné
+      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("reputational_impact")) {
         if (!report.incident?.classificationTypes?.[0]?.reputationalImpactType?.length) {
           errors.push("Reputational impact type is required when 'Reputational impact' is selected for intermediate and final reports");
         }
@@ -447,119 +392,104 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
 
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
+      // Validations spécifiques pour "duration_and_service_downtime"
+      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
         if (!report.informationDurationServiceDowntimeActualOrEstimate) {
-            errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
-          }
-      }
-
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-         report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
-          if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactType?.length) {
-            errors.push("At least one type of impact in the member states is required when 'Geographical spread' is selected for intermediate and final reports");
-          }
-          if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactTypeDescription) {
-            errors.push("Description of the impact and severity in each affected member state is required when 'Geographical spread' is selected for intermediate and final reports");
-          }
-      }
-
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("data_losses")) {
-          if (!report.incident?.classificationTypes?.[0]?.dataLosseMaterialityThresholds?.length) {
-            errors.push("At least one type of data loss is required when 'Data losses' is selected for intermediate and final reports");
-          }
-          if (!report.incident?.classificationTypes?.[0]?.dataLossesDescription) {
-            errors.push("Description of the data losses is required when 'Data losses' is selected for intermediate and final reports");
-          }
-      }
-
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.incident?.incidentType?.incidentClassification?.includes("other")) {
-          if (!report.incident?.incidentType?.otherIncidentClassification) {
-            errors.push("Other incident classification is required when 'Other' is selected for intermediate and final reports");
-          }
-      }
-
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-          report.incident?.incidentType?.incidentClassification?.includes("cybersecurity-related")) {
-        if (!report.incident?.incidentType?.threatTechniques?.length) {
-          errors.push("Threat techniques are required when 'Cybersecurity-related' is selected for intermediate and final reports");
+          errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
         }
       }
 
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.incident?.incidentType?.threatTechniques?.includes("other")) {
-          if (!report.incident?.incidentType?.otherThreatTechniques) {
-            errors.push("Other threat techniques description is required when 'Other' is selected in threat techniques for intermediate and final reports");
-          }
+      // Validations spécifiques pour "geographical_spread"
+      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
+        if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactType?.length) {
+          errors.push("At least one type of impact in the member states is required when 'Geographical spread' is selected for intermediate and final reports");
+        }
+        if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactTypeDescription) {
+          errors.push("Description of the impact and severity in each affected member state is required when 'Geographical spread' is selected for intermediate and final reports");
+        }
       }
 
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true) {
-          if (!report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery) {
-            errors.push("Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports");
-          }
+      // Validations spécifiques pour "data_losses"
+      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("data_losses")) {
+        if (!report.incident?.classificationTypes?.[0]?.dataLosseMaterialityThresholds?.length) {
+          errors.push("At least one type of data loss is required when 'Data losses' is selected for intermediate and final reports");
+        }
+        if (!report.incident?.classificationTypes?.[0]?.dataLossesDescription) {
+          errors.push("Description of the data losses is required when 'Data losses' is selected for intermediate and final reports");
+        }
       }
 
-      if ((report.incidentSubmission === "intermediate_report" || report.incidentSubmission === "final_report") &&
-            report.incident?.incidentType?.incidentClassification?.includes("cybersecurity-related")) {
-          if (!report.incident?.incidentType?.indicatorsOfCompromise) {
-            errors.push("Indicators of compromise are required when 'Cybersecurity-related' is selected for intermediate and final reports");
-          }
+      // Validations spécifiques pour "cybersecurity-related"
+      if (report.incident?.incidentType?.incidentClassification?.includes("cybersecurity-related")) {
+        if (!report.incident?.incidentType?.threatTechniques?.length) {
+          errors.push("Threat techniques are required when 'Cybersecurity-related' is selected for intermediate and final reports");
+        }
+        if (!report.incident?.incidentType?.indicatorsOfCompromise) {
+          errors.push("Indicators of compromise are required when 'Cybersecurity-related' is selected for intermediate and final reports");
+        }
       }
 
-       if (report.incidentSubmission === "final_report" &&
-           report.incident?.rootCausesDetailedClassification?.some(value => value.includes("other"))) {
-          if (!report.incident?.rootCausesOther) {
-            errors.push("Other types of root causes description is required when 'Other' is selected in detailed classification for final reports");
-          }
-       }
-
-
-      if (report.incidentSubmission === "final_report") {
-          if (!report.incident?.rootCauseHLClassification?.length) {
-            errors.push("High-level classification of root cause is required for final reports");
-          }
-
-          if (!report.incident?.rootCausesDetailedClassification?.length) {
-            errors.push("Detailed classification of root causes is required for final reports");
-          }
-
-          if (!report.incident?.rootCausesAdditionalClassification?.length) {
-            errors.push("Additional classification of root causes is required for final reports");
-          }
-
-          if (!report.incident?.rootCausesInformation) {
-            errors.push("Information about the root causes of the incident is required for final reports");
-          }
-
-          if (!report.incident?.incidentResolutionSummary) {
-            errors.push("Incident resolution summary is required for final reports");
-          }
-
-          if (!report.incident?.rootCauseAddressingDateTime) {
-            errors.push("Date and time when the incident root cause was addressed is required for final reports");
-          }
-
-          if (!report.incident?.incidentResolutionDateTime) {
-            errors.push("Date and time when the incident was resolved is required for final reports");
-          }
-
-          if (!report.incident?.incidentResolutionVsPlannedImplementation) {
-            errors.push("Reason for the difference between permanent resolution date and initially planned implementation date is required for final reports");
-          }
-
-          if (!report.incident?.classificationTypes?.[0]?.economicImpactMaterialityThreshold) {
-            errors.push("Materiality threshold for the classification criterion 'Economic Impact' is required for final reports");
-          }
-
-          if (report.incident?.grossAmountIndirectDirectCosts === undefined || report.incident?.grossAmountIndirectDirectCosts === null) {
-            errors.push("Amount of gross direct and indirect costs and losses is required for final reports");
-          }
+      // Validations spécifiques pour "other" dans les techniques de menace
+      if (report.incident?.incidentType?.threatTechniques?.includes("other")) {
+        if (!report.incident?.incidentType?.otherThreatTechniques) {
+          errors.push("Other threat techniques description is required when 'Other' is selected in threat techniques for intermediate and final reports");
+        }
       }
 
-      return errors;
+      // Validations spécifiques pour "isTemporaryActionsMeasuresForRecovery"
+      if (report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true) {
+        if (!report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery) {
+          errors.push("Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports");
+        }
+      }
+    }
+
+    // Valide les champs spécifiques aux rapports finaux
+    function validateFinalReportFields(report, errors) {
+      const finalReportFields = [
+        { path: ['incident', 'rootCauseHLClassification'], check: (value) => value?.length, message: "High-level classification of root cause is required for final reports" },
+        { path: ['incident', 'rootCausesDetailedClassification'], check: (value) => value?.length, message: "Detailed classification of root causes is required for final reports" },
+        { path: ['incident', 'rootCausesAdditionalClassification'], check: (value) => value?.length, message: "Additional classification of root causes is required for final reports" },
+        { path: ['incident', 'rootCausesInformation'], message: "Information about the root causes of the incident is required for final reports" },
+        { path: ['incident', 'incidentResolutionSummary'], message: "Incident resolution summary is required for final reports" },
+        { path: ['incident', 'rootCauseAddressingDateTime'], message: "Date and time when the incident root cause was addressed is required for final reports" },
+        { path: ['incident', 'incidentResolutionDateTime'], message: "Date and time when the incident was resolved is required for final reports" },
+        { path: ['incident', 'incidentResolutionVsPlannedImplementation'], message: "Reason for the difference between permanent resolution date and initially planned implementation date is required for final reports" },
+        { path: ['incident', 'classificationTypes', 0, 'economicImpactMaterialityThreshold'], message: "Materiality threshold for the classification criterion 'Economic Impact' is required for final reports" },
+        { path: ['incident', 'grossAmountIndirectDirectCosts'], message: "Amount of gross direct and indirect costs and losses is required for final reports" },
+      ];
+
+      validateFields(report, finalReportFields, errors);
+
+      // Validations spécifiques pour "other" dans la classification détaillée des causes racines
+      if (report.incident?.rootCausesDetailedClassification?.some(value => value.includes("other"))) {
+        if (!report.incident?.rootCausesOther) {
+          errors.push("Other types of root causes description is required when 'Other' is selected in detailed classification for final reports");
+        }
+      }
+
+      // Validations spécifiques pour "other" dans la classification des incidents
+      if (report.incident?.incidentType?.incidentClassification?.includes("other")) {
+        if (!report.incident?.incidentType?.otherIncidentClassification) {
+          errors.push("Other incident classification is required when 'Other' is selected for intermediate and final reports");
+        }
+      }
+    }
+
+    // Valide une liste de champs selon des règles données
+    function validateFields(report, fields, errors) {
+      fields.forEach(({ path, check, message }) => {
+        const value = path.reduce((obj, key) => obj?.[key], report);
+        const isValid = check ? check(value) : value;
+        if (!isValid) {
+          errors.push(message);
+        }
+      });
+    }
+
+    // Valide le format d'un email
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
     function emptyDraft(incidentId = null) {
@@ -3191,4 +3121,8 @@ function toggleArrayValue(path, value) {
       </footer>
     </div>
   )
+  ConfettiCanvas.propTypes = {
+      trigger: PropTypes.bool.isRequired, // ou .bool si la prop est optionnelle
+  };
 }
+
