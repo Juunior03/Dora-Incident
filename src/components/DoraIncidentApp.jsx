@@ -1313,7 +1313,7 @@ function toggleArrayValue(path, value) {
                           className="px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm hover:bg-red-100 transition-colors"
                           onClick={clearDraft}
                         >
-                          Clear Draft
+                          Clear draft
                         </button>
                       )}
                   </div>
