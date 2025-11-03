@@ -361,9 +361,28 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       }
     }
 
-    // Valide les champs spécifiques aux rapports intermédiaires et finaux
+    /**
+     * Valide les champs spécifiques aux rapports intermédiaires et finaux.
+     */
     function validateIntermediateAndFinalReportFields(report, errors) {
-      const intermediateAndFinalFields = [
+      // Validations de base pour les champs obligatoires
+      validateRequiredFieldsForIntermediateAndFinalReports(report, errors);
+
+      // Validations conditionnelles basées sur les critères de classification
+      validateConditionalFieldsByClassification(report, errors);
+
+      // Validations spécifiques aux incidents de type "cybersecurity-related"
+      validateCybersecurityRelatedFields(report, errors);
+
+      // Validations spécifiques aux actions temporaires de récupération
+      validateTemporaryRecoveryActions(report, errors);
+    }
+
+    /**
+     * Valide les champs obligatoires pour les rapports intermédiaires et finaux.
+     */
+    function validateRequiredFieldsForIntermediateAndFinalReports(report, errors) {
+      const fields = [
         { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'number'], message: "Number of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'percentage'], message: "Percentage of affected clients is required for intermediate and final reports" },
@@ -380,9 +399,14 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         { path: ['impactAssessment', 'serviceImpact', 'isTemporaryActionsMeasuresForRecovery'], message: "Information about temporary actions/measures for recovery is required for intermediate and final reports" },
       ];
 
-      validateFields(report, intermediateAndFinalFields, errors);
+      validateFields(report, fields, errors);
+    }
 
-      // Validations spécifiques pour "reputationalImpactType" et "reputationalImpactDescription" si "reputational_impact" est sélectionné
+    /**
+     * Valide les champs conditionnels basés sur les critères de classification.
+     */
+    function validateConditionalFieldsByClassification(report, errors) {
+      // Validation pour "reputational_impact"
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("reputational_impact")) {
         if (!report.incident?.classificationTypes?.[0]?.reputationalImpactType?.length) {
           errors.push("Reputational impact type is required when 'Reputational impact' is selected for intermediate and final reports");
@@ -392,14 +416,14 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
 
-      // Validations spécifiques pour "duration_and_service_downtime"
+      // Validation pour "duration_and_service_downtime"
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
         if (!report.informationDurationServiceDowntimeActualOrEstimate) {
           errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
         }
       }
 
-      // Validations spécifiques pour "geographical_spread"
+      // Validation pour "geographical_spread"
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
         if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactType?.length) {
           errors.push("At least one type of impact in the member states is required when 'Geographical spread' is selected for intermediate and final reports");
@@ -409,7 +433,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
 
-      // Validations spécifiques pour "data_losses"
+      // Validation pour "data_losses"
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("data_losses")) {
         if (!report.incident?.classificationTypes?.[0]?.dataLosseMaterialityThresholds?.length) {
           errors.push("At least one type of data loss is required when 'Data losses' is selected for intermediate and final reports");
@@ -418,8 +442,12 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           errors.push("Description of the data losses is required when 'Data losses' is selected for intermediate and final reports");
         }
       }
+    }
 
-      // Validations spécifiques pour "cybersecurity-related"
+    /**
+     * Valide les champs spécifiques aux incidents de type "cybersecurity-related".
+     */
+    function validateCybersecurityRelatedFields(report, errors) {
       if (report.incident?.incidentType?.incidentClassification?.includes("cybersecurity-related")) {
         if (!report.incident?.incidentType?.threatTechniques?.length) {
           errors.push("Threat techniques are required when 'Cybersecurity-related' is selected for intermediate and final reports");
@@ -429,14 +457,18 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
 
-      // Validations spécifiques pour "other" dans les techniques de menace
+      // Validation pour "other" dans les techniques de menace
       if (report.incident?.incidentType?.threatTechniques?.includes("other")) {
         if (!report.incident?.incidentType?.otherThreatTechniques) {
           errors.push("Other threat techniques description is required when 'Other' is selected in threat techniques for intermediate and final reports");
         }
       }
+    }
 
-      // Validations spécifiques pour "isTemporaryActionsMeasuresForRecovery"
+    /**
+     * Valide les champs spécifiques aux actions temporaires de récupération.
+     */
+    function validateTemporaryRecoveryActions(report, errors) {
       if (report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true) {
         if (!report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery) {
           errors.push("Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports");
