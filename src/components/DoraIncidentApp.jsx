@@ -336,8 +336,8 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         { path: ['secondaryContact', 'email'], message: "Secondary contact email is required" },
         { path: ['secondaryContact', 'phone'], message: "Secondary contact phone is required" },
         { path: ['incident', 'financialEntityCode'], message: "Incident Reference code is required" },
-        { path: ['incident', 'detectionDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident detection date and time must be valid" },
-        { path: ['incident', 'classificationDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident classification date and time must be valid" },
+        { path: ['incident', 'detectionDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident detection date and time must be valid" },
+        { path: ['incident', 'classificationDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident classification date and time must be valid" },
         { path: ['incident', 'incidentDescription'], message: "Incident description is required" },
         { path: ['incident', 'classificationTypes', 0, 'classificationCriterion'], check: (value) => value?.length, message: "At least one classification criterion is required" },
         { path: ['incident', 'incidentDiscovery'], message: "Incident discovery is required" },
@@ -364,7 +364,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
     // Valide les champs spécifiques aux rapports intermédiaires et finaux
     function validateIntermediateAndFinalReportFields(report, errors) {
       const intermediateAndFinalFields = [
-        { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
+        { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'number'], message: "Number of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'percentage'], message: "Percentage of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'number'], message: "Number of affected financial counterparts is required for intermediate and final reports" },
