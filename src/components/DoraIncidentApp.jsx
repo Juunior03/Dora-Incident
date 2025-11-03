@@ -1300,24 +1300,24 @@ export default function DoraIncidentApp() {
               <aside className="col-span-3">
                 <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
                   <h3 className="font-medium mb-4">Progress</h3>
-                    <div className="space-y-2" role="list">
+                    <ul className="space-y-2 list-none p-0 m-0">
                       {getFilteredSteps(draft).map(({ label, step: stepIndex }, index) => (
-                        <button
-                          type="button"
-                          key={`step-${stepIndex}`}
-                          className={`${getStepItemClasses(step, stepIndex)} w-full text-left`}
-                          onClick={() => setStep(stepIndex)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStep(stepIndex); }}
-                          role="listitem"
-                          tabIndex={0}
-                        >
-                          <div className={getStepIndicatorClasses(step, stepIndex, index)}>
-                            {index + 1}
-                          </div>
-                          <div className="text-sm">{label}</div>
-                        </button>
+                        <li key={`step-${stepIndex}`}>
+                          <button
+                            type="button"
+                            className={`${getStepItemClasses(step, stepIndex)} w-full text-left`}
+                            onClick={() => setStep(stepIndex)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStep(stepIndex); }}
+                            tabIndex={0}
+                          >
+                            <div className={getStepIndicatorClasses(step, stepIndex, index)}>
+                              {index + 1}
+                            </div>
+                            <div className="text-sm">{label}</div>
+                          </button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
 
                   <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs">
                     <p className="font-medium mb-1">Tip</p>
@@ -1345,45 +1345,6 @@ export default function DoraIncidentApp() {
 
                       <h2 className="text-2xl font-semibold mb-2">Identity</h2>
                       <p className="text-sm opacity-70 mb-6">Who is filing and which entity is affected?</p>
-
-                    {/*
-
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium mb-1">Select Incident (optional)</label>
-                      <select
-                        value={draft.incidentId || ""}
-                        onChange={(e) => {
-                          const selectedIncidentId = e.target.value;
-                          if (selectedIncidentId) {
-                            // Trouver le dernier rapport pour cet incidentId
-                            const previousReports = reports.filter(r => r.incidentId === selectedIncidentId);
-                            if (previousReports.length > 0) {
-                              const latestPreviousReport = previousReports.reduce((latest, current) =>
-                                new Date(latest.savedAt) > new Date(current.savedAt) ? latest : current
-                              );
-                              // Créer un nouveau draft basé sur le rapport précédent
-                              setDraft({
-                                ...emptyDraft(selectedIncidentId),
-                                ...latestPreviousReport,
-                                id: `dora_${Date.now()}`, // Nouveau ID unique
-                                incidentSubmission: draft.incidentSubmission, // Garder le type de rapport actuel
-                              });
-                            }
-                          } else if (role !== 'validateur') {
-                            // Réinitialiser à un nouveau draft uniquement si l'utilisateur n'est pas un validateur
-                            setDraft(emptyDraft());
-                          }
-                        }}
-                        className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800"
-                        disabled={role === 'validateur'}
-                      >
-                        {role !== 'validateur' && <option value="">Create new incident</option>}
-                        {Array.from(new Set(reports.map(r => r.incidentId))).map(id => (
-                          <option key={id} value={id}>{id}</option>
-                        ))}
-                      </select>
-                    </div>
-                    */}
 
                       <div className="space-y-4">
                         <div className="mt-6 grid grid-cols-2 gap-4">
