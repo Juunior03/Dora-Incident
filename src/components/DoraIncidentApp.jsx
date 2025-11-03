@@ -1151,62 +1151,74 @@ export default function DoraIncidentApp() {
     function applyIncidentFilters(incidents) {
       return Object.entries(incidents)
         .filter(([financialEntityCode, incident]) => {
-          // Filtre par terme de recherche (sur le code ou la description de l'incident)
-          if (filters.searchTerm && !(
-            financialEntityCode.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-            incident.description.toLowerCase().includes(filters.searchTerm.toLowerCase())
-          )) {
-            return false;
-          }
-
-          // Filtre par statut de l'incident
-          if (filters.incidentStatus === 'open' && incident.isClosed) {
-            return false;
-          }
-          if (filters.incidentStatus === 'closed' && !incident.isClosed) {
-            return false;
-          }
-
-          // Filtre par type de rapport (au moins un rapport de l'incident doit correspondre)
-          if (filters.incidentSubmission) {
-            const hasMatchingReport = incident.reports.some(r => r.incidentSubmission === filters.incidentSubmission);
-            if (!hasMatchingReport) {
-              return false;
-            }
-          }
-
-          // Filtre par critères de classification (au moins un rapport de l'incident doit correspondre)
-          if (filters.classificationCriterion.length > 0) {
-            const hasMatchingClassification = incident.reports.some(r => {
-              const reportCriteria = r.incident?.classificationTypes?.[0]?.classificationCriterion || [];
-              return filters.classificationCriterion.some(criterion => reportCriteria.includes(criterion));
-            });
-            if (!hasMatchingClassification) {
-              return false;
-            }
-          }
-
-          // Filtre par plage de dates (au moins un rapport de l'incident doit correspondre)
-          if (filters.dateRange.start || filters.dateRange.end) {
-            const startDate = filters.dateRange.start ? new Date(filters.dateRange.start) : new Date(0);
-            const endDate = filters.dateRange.end ? new Date(filters.dateRange.end) : new Date();
-
-            const hasReportInDateRange = incident.reports.some(r => {
-              const reportDate = new Date(r.savedAt);
-              return reportDate >= startDate && reportDate <= endDate;
-            });
-
-            if (!hasReportInDateRange) {
-              return false;
-            }
-          }
-
-          return true;
+          return (
+            filterBySearchTerm(financialEntityCode, incident) &&
+            filterByIncidentStatus(incident) &&
+            filterByIncidentSubmission(incident) &&
+            filterByClassificationCriterion(incident) &&
+            filterByDateRange(incident)
+          );
         })
         .reduce((obj, [key, value]) => {
           obj[key] = value;
           return obj;
         }, {});
+    }
+
+    function filterBySearchTerm(financialEntityCode, incident) {
+      if (!filters.searchTerm) {
+        return true;
+      }
+      const searchTerm = filters.searchTerm.toLowerCase();
+      return (
+        financialEntityCode.toLowerCase().includes(searchTerm) ||
+        incident.description.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    function filterByIncidentStatus(incident) {
+      if (!filters.incidentStatus) {
+        return true;
+      }
+      if (filters.incidentStatus === 'open' && incident.isClosed) {
+        return false;
+      }
+      if (filters.incidentStatus === 'closed' && !incident.isClosed) {
+        return false;
+      }
+      return true;
+    }
+
+    function filterByIncidentSubmission(incident) {
+      if (!filters.incidentSubmission) {
+        return true;
+      }
+      const hasMatchingReport = incident.reports.some(r => r.incidentSubmission === filters.incidentSubmission);
+      return hasMatchingReport;
+    }
+
+    function filterByClassificationCriterion(incident) {
+      if (filters.classificationCriterion.length === 0) {
+        return true;
+      }
+      const hasMatchingClassification = incident.reports.some(r => {
+        const reportCriteria = r.incident?.classificationTypes?.[0]?.classificationCriterion || [];
+        return filters.classificationCriterion.some(criterion => reportCriteria.includes(criterion));
+      });
+      return hasMatchingClassification;
+    }
+
+    function filterByDateRange(incident) {
+      if (!filters.dateRange.start && !filters.dateRange.end) {
+        return true;
+      }
+      const startDate = filters.dateRange.start ? new Date(filters.dateRange.start) : new Date(0);
+      const endDate = filters.dateRange.end ? new Date(filters.dateRange.end) : new Date();
+      const hasReportInDateRange = incident.reports.some(r => {
+        const reportDate = new Date(r.savedAt);
+        return reportDate >= startDate && reportDate <= endDate;
+      });
+      return hasReportInDateRange;
     }
 
   return (
