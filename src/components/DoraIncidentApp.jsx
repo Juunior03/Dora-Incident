@@ -740,8 +740,6 @@ export default function DoraIncidentApp() {
       return status === 'validated' || (role === 'validateur' && status === 'draft');
   };
 
-
-  const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
 
     useEffect(() => {
@@ -777,59 +775,68 @@ export default function DoraIncidentApp() {
       };
     }, [showUserMenu]);
 
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    function updateDraft(path, value) {
+      setDraft(prev => {
+        const next = structuredClone(prev);
+        const parts = path.split('.');
+        let cur = next;
 
-  function updateDraft(path, value) {
-    setDraft(prev => {
-      const next = JSON.parse(JSON.stringify(prev))
-      const parts = path.split('.')
-      let cur = next
-      for (let i = 0; i < parts.length - 1; i++) {
-        const p = parts[i]
-        if (!(p in cur)) cur[p] = {}
-        cur = cur[p]
-      }
-      cur[parts[parts.length - 1]] = value
-      return next
-    })
-  }
+        for (let i = 0; i < parts.length - 1; i++) {
+          const p = parts[i];
+          if (!(p in cur)) cur[p] = {};
+          cur = cur[p];
+        }
 
-function toggleArrayValue(path, value) {
-  setDraft(prev => {
-    const next = JSON.parse(JSON.stringify(prev));
-    const parts = path.split('.');
-    let cur = next;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-      const p = parts[i];
-      if (!(p in cur)) cur[p] = {};
-      cur = cur[p];
+        cur[parts[parts.length - 1]] = value;
+        return next;
+      });
     }
 
-    const field = parts[parts.length - 1];
-    if (!cur[field]) cur[field] = [];
+    function toggleArrayValue(path, value) {
+      setDraft(prev => {
+        const next = structuredClone(prev);
+        const parts = path.split('.');
+        let cur = next;
 
-    if (cur[field].includes(value)) {
-      cur[field] = cur[field].filter(v => v !== value);
-      // Si on décoche "geographical_spread", vider countryCodeMaterialityThresholds
+        for (let i = 0; i < parts.length - 1; i++) {
+          const p = parts[i];
+          if (!(p in cur)) cur[p] = {};
+          cur = cur[p];
+        }
+
+        const field = parts[parts.length - 1];
+        if (!cur[field]) cur[field] = [];
+
+        toggleValueInArray(cur, field, value);
+        handleGeographicalSpread(path, value, next);
+
+        return next;
+      });
+    }
+
+    function toggleValueInArray(obj, field, value) {
+      if (obj[field].includes(value)) {
+        obj[field] = obj[field].filter(v => v !== value);
+      } else {
+        obj[field].push(value);
+      }
+    }
+
+    function handleGeographicalSpread(path, value, draft) {
       if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
         const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
         const thresholdParts = thresholdPath.split('.');
-        let thresholdCur = next;
+        let thresholdCur = draft;
+
         for (let i = 0; i < thresholdParts.length - 1; i++) {
           const p = thresholdParts[i];
           if (!(p in thresholdCur)) thresholdCur[p] = {};
           thresholdCur = thresholdCur[p];
         }
+
         thresholdCur[thresholdParts[thresholdParts.length - 1]] = [];
       }
-    } else {
-      cur[field].push(value);
     }
-
-    return next;
-  });
-}
 
   function addAffectedEntity() {
     setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
