@@ -402,11 +402,19 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       validateFields(report, fields, errors);
     }
 
-    /**
-     * Valide les champs conditionnels basés sur les critères de classification.
-     */
+
+    //Valide les champs conditionnels basés sur les critères de classification.
     function validateConditionalFieldsByClassification(report, errors) {
-      // Validation pour "reputational_impact"
+      validateReputationalImpactFields(report, errors);
+      validateDurationAndServiceDowntimeFields(report, errors);
+      validateGeographicalSpreadFields(report, errors);
+      validateDataLossesFields(report, errors);
+    }
+
+    /**
+     * Valide les champs spécifiques au critère "reputational_impact".
+     */
+    function validateReputationalImpactFields(report, errors) {
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("reputational_impact")) {
         if (!report.incident?.classificationTypes?.[0]?.reputationalImpactType?.length) {
           errors.push("Reputational impact type is required when 'Reputational impact' is selected for intermediate and final reports");
@@ -415,15 +423,23 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           errors.push("Reputational impact description is required when 'Reputational impact' is selected for intermediate and final reports");
         }
       }
+    }
 
-      // Validation pour "duration_and_service_downtime"
+    /**
+     * Valide les champs spécifiques au critère "duration_and_service_downtime".
+     */
+    function validateDurationAndServiceDowntimeFields(report, errors) {
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
         if (!report.informationDurationServiceDowntimeActualOrEstimate) {
           errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
         }
       }
+    }
 
-      // Validation pour "geographical_spread"
+    /**
+     * Valide les champs spécifiques au critère "geographical_spread".
+     */
+    function validateGeographicalSpreadFields(report, errors) {
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
         if (!report.incident?.classificationTypes?.[0]?.memberStatesImpactType?.length) {
           errors.push("At least one type of impact in the member states is required when 'Geographical spread' is selected for intermediate and final reports");
@@ -432,8 +448,12 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           errors.push("Description of the impact and severity in each affected member state is required when 'Geographical spread' is selected for intermediate and final reports");
         }
       }
+    }
 
-      // Validation pour "data_losses"
+    /**
+     * Valide les champs spécifiques au critère "data_losses".
+     */
+    function validateDataLossesFields(report, errors) {
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("data_losses")) {
         if (!report.incident?.classificationTypes?.[0]?.dataLosseMaterialityThresholds?.length) {
           errors.push("At least one type of data loss is required when 'Data losses' is selected for intermediate and final reports");
@@ -443,6 +463,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
     }
+
 
     /**
      * Valide les champs spécifiques aux incidents de type "cybersecurity-related".
