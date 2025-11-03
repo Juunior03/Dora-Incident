@@ -550,7 +550,6 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    // Définir les fonctions à la portée externe
     function toggleValueInArray(obj, field, value) {
       if (obj[field].includes(value)) {
         obj[field] = obj[field].filter(v => v !== value);
@@ -597,7 +596,33 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       });
     }
 
+    // Fonction pour regrouper les rapports par incident
+    function groupReportsByIncident(reports) {
+      const incidents = {};
 
+      reports.forEach(report => {
+        const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
+
+        if (!incidents[financialEntityCode]) {
+          incidents[financialEntityCode] = {
+            financialEntityCode: financialEntityCode,
+            reports: [],
+            isClosed: false,
+            description: report.incident?.incidentDescription || '',
+            date: report.savedAt || report.created_at
+          };
+        }
+
+        incidents[financialEntityCode].reports.push(report);
+
+        // Vérifiez si un rapport final existe pour marquer l'incident comme fermé
+        if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
+          incidents[financialEntityCode].isClosed = true;
+        }
+      });
+
+      return incidents;
+    }
 
     function emptyDraft(incidentId = null) {
         console.log('--- Dans emptyDraft ---');
@@ -1066,15 +1091,6 @@ export default function DoraIncidentApp() {
       setStep(2);
     }
 
-    function isValidTransition(currentType, newType) {
-      const validTransitions = {
-        initial_notification: ["intermediate_report"],
-        intermediate_report: ["intermediate_report", "final_report"],
-        final_report: [], // Aucun rapport après le final
-      };
-      return validTransitions[currentType]?.includes(newType);
-    }
-
     async function loadReportIntoDraft(reportId) {
       const { data, error } = await supabase
         .from('reports')
@@ -1136,35 +1152,6 @@ export default function DoraIncidentApp() {
         return acc;
       }, {})
     };
-
-
-    // Fonction pour regrouper les rapports par incident
-    function groupReportsByIncident(reports) {
-      const incidents = {};
-
-      reports.forEach(report => {
-        const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
-
-        if (!incidents[financialEntityCode]) {
-          incidents[financialEntityCode] = {
-            financialEntityCode: financialEntityCode,
-            reports: [],
-            isClosed: false,
-            description: report.incident?.incidentDescription || '',
-            date: report.savedAt || report.created_at
-          };
-        }
-
-        incidents[financialEntityCode].reports.push(report);
-
-        // Vérifiez si un rapport final existe pour marquer l'incident comme fermé
-        if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
-          incidents[financialEntityCode].isClosed = true;
-        }
-      });
-
-      return incidents;
-    }
 
     // Fonction pour appliquer les filtres aux incidents
     function applyIncidentFilters(incidents) {
