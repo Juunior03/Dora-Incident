@@ -791,6 +791,7 @@ export default function DoraIncidentApp() {
       });
     }
 
+    // Définir les fonctions à la portée externe
     function toggleValueInArray(obj, field, value) {
       if (obj[field].includes(value)) {
         obj[field] = obj[field].filter(v => v !== value);
@@ -811,7 +812,7 @@ export default function DoraIncidentApp() {
           thresholdCur = thresholdCur[p];
         }
 
-        thresholdCur[thresholdParts[thresholdParts.length - 1]] = [];
+        thresholdCur[thresholdParts.at(-1)] = [];
       }
     }
 
@@ -827,7 +828,7 @@ export default function DoraIncidentApp() {
           cur = cur[p];
         }
 
-        const field = parts[parts.length - 1];
+        const field = parts.at(-1);
         if (!cur[field]) cur[field] = [];
 
         toggleValueInArray(cur, field, value);
@@ -836,6 +837,7 @@ export default function DoraIncidentApp() {
         return next;
       });
     }
+
 
   function addAffectedEntity() {
     setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
