@@ -1300,18 +1300,22 @@ export default function DoraIncidentApp() {
               <aside className="col-span-3">
                 <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
                   <h3 className="font-medium mb-4">Progress</h3>
-                    <div className="space-y-2">
-                      {getFilteredSteps(draft).map(({ label, step: stepIndex }, i) => (
-                        <div
-                          key={i}
-                          className={getStepItemClasses(step, stepIndex)}
+                    <div className="space-y-2" role="list">
+                      {getFilteredSteps(draft).map(({ label, step: stepIndex }, index) => (
+                        <button
+                          type="button"
+                          key={`step-${stepIndex}`}
+                          className={`${getStepItemClasses(step, stepIndex)} w-full text-left`}
                           onClick={() => setStep(stepIndex)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setStep(stepIndex); }}
+                          role="listitem"
+                          tabIndex={0}
                         >
-                          <div className={getStepIndicatorClasses(step, stepIndex, i)}>
-                            {i + 1}
+                          <div className={getStepIndicatorClasses(step, stepIndex, index)}>
+                            {index + 1}
                           </div>
                           <div className="text-sm">{label}</div>
-                        </div>
+                        </button>
                       ))}
                     </div>
 
