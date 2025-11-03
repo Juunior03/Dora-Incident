@@ -529,16 +529,22 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       }
     }
 
-    // Valide une liste de champs selon des règles données
+    /**
+     * Valide une liste de champs selon des règles données.
+     * @param {Object} report - Le rapport à valider.
+     * @param {Array} fields - Liste des règles de validation.
+     * @param {Array} errors - Liste des erreurs à remplir.
+     */
     function validateFields(report, fields, errors) {
-      fields.forEach(({ path, check, message }) => {
+      for (const { path, check, message } of fields) {
         const value = path.reduce((obj, key) => obj?.[key], report);
         const isValid = check ? check(value) : value;
         if (!isValid) {
           errors.push(message);
         }
-      });
+      }
     }
+
 
     // Valide le format d'un email
     function isValidEmail(email) {
