@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext.jsx'
-import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import PropTypes from 'prop-types';
 
@@ -792,28 +791,6 @@ export default function DoraIncidentApp() {
       });
     }
 
-    function toggleArrayValue(path, value) {
-      setDraft(prev => {
-        const next = structuredClone(prev);
-        const parts = path.split('.');
-        let cur = next;
-
-        for (let i = 0; i < parts.length - 1; i++) {
-          const p = parts[i];
-          if (!(p in cur)) cur[p] = {};
-          cur = cur[p];
-        }
-
-        const field = parts[parts.length - 1];
-        if (!cur[field]) cur[field] = [];
-
-        toggleValueInArray(cur, field, value);
-        handleGeographicalSpread(path, value, next);
-
-        return next;
-      });
-    }
-
     function toggleValueInArray(obj, field, value) {
       if (obj[field].includes(value)) {
         obj[field] = obj[field].filter(v => v !== value);
@@ -836,6 +813,28 @@ export default function DoraIncidentApp() {
 
         thresholdCur[thresholdParts[thresholdParts.length - 1]] = [];
       }
+    }
+
+    function toggleArrayValue(path, value) {
+      setDraft(prev => {
+        const next = structuredClone(prev);
+        const parts = path.split('.');
+        let cur = next;
+
+        for (let i = 0; i < parts.length - 1; i++) {
+          const p = parts[i];
+          if (!(p in cur)) cur[p] = {};
+          cur = cur[p];
+        }
+
+        const field = parts[parts.length - 1];
+        if (!cur[field]) cur[field] = [];
+
+        toggleValueInArray(cur, field, value);
+        handleGeographicalSpread(path, value, next);
+
+        return next;
+      });
     }
 
   function addAffectedEntity() {
