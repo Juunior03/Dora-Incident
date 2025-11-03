@@ -599,10 +599,8 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
     // Fonction pour regrouper les rapports par incident
     function groupReportsByIncident(reports) {
       const incidents = {};
-
-      reports.forEach(report => {
+      for (const report of reports) {
         const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
-
         if (!incidents[financialEntityCode]) {
           incidents[financialEntityCode] = {
             financialEntityCode: financialEntityCode,
@@ -612,15 +610,11 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
             date: report.savedAt || report.created_at
           };
         }
-
         incidents[financialEntityCode].reports.push(report);
-
-        // Vérifiez si un rapport final existe pour marquer l'incident comme fermé
         if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
           incidents[financialEntityCode].isClosed = true;
         }
-      });
-
+      }
       return incidents;
     }
 
