@@ -550,6 +550,55 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
+    // Définir les fonctions à la portée externe
+    function toggleValueInArray(obj, field, value) {
+      if (obj[field].includes(value)) {
+        obj[field] = obj[field].filter(v => v !== value);
+      } else {
+        obj[field].push(value);
+      }
+    }
+
+    function handleGeographicalSpread(path, value, draft) {
+      if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
+        const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
+        const thresholdParts = thresholdPath.split('.');
+        let thresholdCur = draft;
+
+        for (let i = 0; i < thresholdParts.length - 1; i++) {
+          const p = thresholdParts[i];
+          if (!(p in thresholdCur)) thresholdCur[p] = {};
+          thresholdCur = thresholdCur[p];
+        }
+
+        thresholdCur[thresholdParts.at(-1)] = [];
+      }
+    }
+
+    function toggleArrayValue(path, value) {
+      setDraft(prev => {
+        const next = structuredClone(prev);
+        const parts = path.split('.');
+        let cur = next;
+
+        for (let i = 0; i < parts.length - 1; i++) {
+          const p = parts[i];
+          if (!(p in cur)) cur[p] = {};
+          cur = cur[p];
+        }
+
+        const field = parts.at(-1);
+        if (!cur[field]) cur[field] = [];
+
+        toggleValueInArray(cur, field, value);
+        handleGeographicalSpread(path, value, next);
+
+        return next;
+      });
+    }
+
+
+
     function emptyDraft(incidentId = null) {
         console.log('--- Dans emptyDraft ---');
         console.log('incidentId:', incidentId);
@@ -790,54 +839,6 @@ export default function DoraIncidentApp() {
         return next;
       });
     }
-
-    // Définir les fonctions à la portée externe
-    function toggleValueInArray(obj, field, value) {
-      if (obj[field].includes(value)) {
-        obj[field] = obj[field].filter(v => v !== value);
-      } else {
-        obj[field].push(value);
-      }
-    }
-
-    function handleGeographicalSpread(path, value, draft) {
-      if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
-        const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
-        const thresholdParts = thresholdPath.split('.');
-        let thresholdCur = draft;
-
-        for (let i = 0; i < thresholdParts.length - 1; i++) {
-          const p = thresholdParts[i];
-          if (!(p in thresholdCur)) thresholdCur[p] = {};
-          thresholdCur = thresholdCur[p];
-        }
-
-        thresholdCur[thresholdParts.at(-1)] = [];
-      }
-    }
-
-    function toggleArrayValue(path, value) {
-      setDraft(prev => {
-        const next = structuredClone(prev);
-        const parts = path.split('.');
-        let cur = next;
-
-        for (let i = 0; i < parts.length - 1; i++) {
-          const p = parts[i];
-          if (!(p in cur)) cur[p] = {};
-          cur = cur[p];
-        }
-
-        const field = parts.at(-1);
-        if (!cur[field]) cur[field] = [];
-
-        toggleValueInArray(cur, field, value);
-        handleGeographicalSpread(path, value, next);
-
-        return next;
-      });
-    }
-
 
   function addAffectedEntity() {
     setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
