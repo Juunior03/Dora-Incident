@@ -623,8 +623,8 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           incidentResolutionVsPlannedImplementation: '',
           assessmentOfRiskToCriticalFunctions: '',
           informationRelevantToResolutionAuthorities: '',
-          financialRecoveriesAmount: 0.0,
-          grossAmountIndirectDirectCosts: 0.0,
+          financialRecoveriesAmount: 0,
+          grossAmountIndirectDirectCosts: 0,
           recurringNonMajorIncidentsDescription: '',
           recurringIncidentDate: '',
 
@@ -642,15 +642,15 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           affectedAssets: {
             affectedClients: {
               number: 0,
-              percentage: 0.00,
+              percentage: 0,
             },
             affectedFinancialCounterparts: {
               number: 0,
-              percentage: 0.00,
+              percentage: 0,
             },
             affectedTransactions: {
               number: 0,
-              percentage: 0.00,
+              percentage: 0,
             },
             valueOfAffectedTransactions: 0,
             numbersActualEstimate: [],
