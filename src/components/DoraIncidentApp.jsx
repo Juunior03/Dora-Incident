@@ -677,6 +677,7 @@ export default function DoraIncidentApp() {
   const [groupedIncidents, setGroupedIncidents] = useState({});
   const [filteredIncidents, setFilteredIncidents] = useState({});
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const isReportView = view === 'report';
 
   const [filters, setFilters] = useState({
       searchTerm: '',
@@ -734,6 +735,11 @@ export default function DoraIncidentApp() {
         return `${baseClasses} bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300`;
       }
   };
+
+  const isFieldDisabled = (role, status) => {
+      return status === 'validated' || (role === 'validateur' && status === 'draft');
+  };
+
 
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
@@ -1233,7 +1239,13 @@ function toggleArrayValue(path, value) {
                   Report
                 </button>
           )}
-          <button onClick={() => setView('dashboard')} className={`px-3 py-2 rounded-xl transition-all ${view === 'dashboard' ? 'bg-white/90 dark:bg-white/10 shadow' : 'bg-transparent hover:bg-white/50 dark:hover:bg-white/5'}`}>Dashboard</button>
+          <button
+              onClick={() => setView('dashboard')}
+              className={getButtonClasses(view, 'dashboard')}
+          >
+            Dashboard
+          </button>
+
           {user && (
               <div className="relative">
                 {/* Bouton Avatar avec initiales */}
@@ -1275,14 +1287,14 @@ function toggleArrayValue(path, value) {
 
       <main className="max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
-          {view === 'report' ? (
+          {isReportView && (
             <motion.div
                 key="form"
                 initial={animations.initial}
                 animate={animations.animate}
                 exit={animations.exit}
                 className="grid grid-cols-12 gap-6"
-            >
+              >
               <aside className="col-span-3">
                 <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
                   <h3 className="font-medium mb-4">Progress</h3>
@@ -1371,7 +1383,7 @@ function toggleArrayValue(path, value) {
                         <div className="mt-6 grid grid-cols-2 gap-4">
                           <div >
                             <label className="block text-sm font-medium mb-1">Type of report</label>
-                            <select value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}>
+                            <select value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="initial_notification">Initial Notification</option>
                               <option value="intermediate_report">Intermediate Report</option>
                               <option value="final_report">Final Report</option>
@@ -1379,7 +1391,7 @@ function toggleArrayValue(path, value) {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-1">Report currency</label>
-                            <select value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}>
+                            <select value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="EUR">EUR</option>
                               <option value="BGN">BGN</option>
                               <option value="CZK">CZK</option>
@@ -1398,8 +1410,8 @@ function toggleArrayValue(path, value) {
                         <div className="border-t dark:border-gray-700 pt-4">
                           <h4 className="text-sm font-medium mb-3">Submitting Entity</h4>
                           <div className="grid grid-cols-2 gap-2">
-                            <input placeholder="Name" value={draft.submittingEntity.name} onChange={e => updateDraft('submittingEntity.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
-                            <input placeholder="Identification Code" value={draft.submittingEntity.code} onChange={e => updateDraft('submittingEntity.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')} />
+                            <input placeholder="Name" value={draft.submittingEntity.name} onChange={e => updateDraft('submittingEntity.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
+                            <input placeholder="Identification Code" value={draft.submittingEntity.code} onChange={e => updateDraft('submittingEntity.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)} />
                           </div>
 
                           <div className="mt-6">
@@ -1416,9 +1428,9 @@ function toggleArrayValue(path, value) {
                           </div>
 
                           <div className="grid grid-cols-3 gap-2">
-                            <input placeholder="Name" value={draft.ultimateParentUndertaking.name} onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
-                            <input placeholder="Identification Code" value={draft.ultimateParentUndertaking.code} onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
-                            <input placeholder="LEI Code" value={draft.ultimateParentUndertaking.LEI} onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                            <input placeholder="Name" value={draft.ultimateParentUndertaking.name} onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
+                            <input placeholder="Identification Code" value={draft.ultimateParentUndertaking.code} onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
+                            <input placeholder="LEI Code" value={draft.ultimateParentUndertaking.LEI} onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
                           </div>
 
@@ -1427,7 +1439,7 @@ function toggleArrayValue(path, value) {
                             <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                               {ENTITY_TYPES.map(type => (
                                 <label key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                  <input type="checkbox" checked={draft.submittingEntity.affectedEntityType?.includes(type.value)} onChange={() => toggleArrayValue('submittingEntity.affectedEntityType', type.value)} className="rounded" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                                  <input type="checkbox" checked={draft.submittingEntity.affectedEntityType?.includes(type.value)} onChange={() => toggleArrayValue('submittingEntity.affectedEntityType', type.value)} className="rounded" disabled={isFieldDisabled(role, draft.status)}/>
                                   <span>{type.label}</span>
                                 </label>
                               ))}
@@ -1456,22 +1468,22 @@ function toggleArrayValue(path, value) {
                                 <input placeholder="Name" value={ae.name} onChange={e=>{
                                   const val = e.target.value
                                   setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].name = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
                                 <input placeholder="Identification Code" value={ae.code} onChange={e=>{
                                   const val = e.target.value
                                   setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].code = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
                                 <input placeholder="LEI Code" value={ae.LEI} onChange={e=>{
                                   const val = e.target.value
                                   setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].LEI = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
-                                <button onClick={()=>removeAffectedEntity(idx)} className="px-3 rounded-lg bg-red-50 text-red-700" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}>Remove</button>
+                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
+                                <button onClick={()=>removeAffectedEntity(idx)} className="px-3 rounded-lg bg-red-50 text-red-700" disabled={isFieldDisabled(role, draft.status)}>Remove</button>
                               </div>
                             </div>
                           ))}
                         </div>
                         <div className="mt-2">
-                          <button onClick={addAffectedEntity} className="px-3 py-2 rounded-lg bg-indigo-500 text-white" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}>Add affected entity</button>
+                          <button onClick={addAffectedEntity} className="px-3 py-2 rounded-lg bg-indigo-500 text-white" disabled={isFieldDisabled(role, draft.status)}>Add affected entity</button>
                         </div>
                       </div>
 
@@ -1491,22 +1503,22 @@ function toggleArrayValue(path, value) {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-sm font-medium">Primary Contact Name</label>
-                            <input value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                            <input value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
                           <div>
                             <label className="text-sm font-medium">Secondary Contact Name</label>
-                            <input value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                            <input value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-sm font-medium">Primary Contact Email</label>
-                            <input type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                            <input type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
                           <div>
                             <label className="text-sm font-medium">Secondary Contact Email</label>
-                            <input type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                            <input type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
                         </div>
 
@@ -1532,7 +1544,7 @@ function toggleArrayValue(path, value) {
                                 draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 ?
                                 'border-red-500 dark:border-red-400' : ''
                               }`}
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                               required
                             />
                             {draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 && (
@@ -1561,7 +1573,7 @@ function toggleArrayValue(path, value) {
                                 draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 10 ?
                                 'border-red-500 dark:border-red-400' : ''
                               }`}
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 && (
                               <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
@@ -1590,7 +1602,7 @@ function toggleArrayValue(path, value) {
                                 value={draft.incident.financialEntityCode}
                                 onChange={e => updateDraft('incident.financialEntityCode', e.target.value)}
                                 className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                                 />
                           </div>
                       </div>
@@ -1604,12 +1616,12 @@ function toggleArrayValue(path, value) {
                                  value={draft.incident.detectionDateTime}
                                  onChange={e => updateDraft('incident.detectionDateTime', e.target.value)}
                                  className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                 disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                 disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                           <div>
                             <label className="text-sm font-medium">Classification Date/Time</label>
-                            <input type="datetime-local" value={draft.incident.classificationDateTime} onChange={e => updateDraft('incident.classificationDateTime', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')} />
+                            <input type="datetime-local" value={draft.incident.classificationDateTime} onChange={e => updateDraft('incident.classificationDateTime', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)} />
                           </div>
                         </div>
                         </div>
@@ -1618,7 +1630,7 @@ function toggleArrayValue(path, value) {
                       <div className="space-y-4">
                         <div>
                           <label className="text-sm font-medium">Incident Description</label>
-                          <textarea value={draft.incident.incidentDescription} onChange={e => updateDraft('incident.incidentDescription', e.target.value)} rows={3} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                          <textarea value={draft.incident.incidentDescription} onChange={e => updateDraft('incident.incidentDescription', e.target.value)} rows={3} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
 
@@ -1628,7 +1640,7 @@ function toggleArrayValue(path, value) {
                           <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {CLASSIFICATION_CRITERIA.map(criteria => (
                               <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">
-                                <input type="checkbox" checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)} onChange={() => toggleArrayValue('incident.classificationTypes.0.classificationCriterion', criteria.value)} className="rounded" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}/>
+                                <input type="checkbox" checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)} onChange={() => toggleArrayValue('incident.classificationTypes.0.classificationCriterion', criteria.value)} className="rounded" disabled={isFieldDisabled(role, draft.status)}/>
                                 <span>{criteria.label}</span>
                               </label>
                             ))}
@@ -1653,7 +1665,7 @@ function toggleArrayValue(path, value) {
                                         : [...currentThresholds, country.value];
                                       updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', updatedThresholds);
                                     }}
-                                    className="rounded" disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                    className="rounded" disabled={isFieldDisabled(role, draft.status)}
                                   />
                                   {country.label}
                                 </label>
@@ -1668,7 +1680,7 @@ function toggleArrayValue(path, value) {
                             value={draft.incident.incidentDiscovery}
                             onChange={e => updateDraft('incident.incidentDiscovery', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           >
                             <option value="">Select an option</option>
                             {INCIDENT_DISCOVERY_OPTIONS.map(option => (
@@ -1698,7 +1710,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.originatesFromThirdPartyProvider', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -1709,7 +1721,7 @@ function toggleArrayValue(path, value) {
                             checked={draft.incident.isBusinessContinuityActivated}
                             onChange={e => updateDraft('incident.isBusinessContinuityActivated', e.target.checked)}
                             className="rounded w-5 h-5"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                           <label htmlFor="isBusinessContinuityActivated" className="text-sm font-medium">
                             Activation of business continuity plan, if activated</label>
@@ -1735,7 +1747,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.otherInformation', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -1781,7 +1793,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.competentAuthorityCode', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="Enter the unique reference code"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                       </div>
 
@@ -1794,7 +1806,7 @@ function toggleArrayValue(path, value) {
                                 value={draft.incident.incidentOccurrenceDateTime}
                                 onChange={e => updateDraft('incident.incidentOccurrenceDateTime', e.target.value)}
                                 className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                               />
                             </div>
                             <div>
@@ -1804,7 +1816,7 @@ function toggleArrayValue(path, value) {
                                 value={draft.impactAssessment.serviceImpact.serviceRestorationDateTime}
                                 onChange={e => updateDraft('impactAssessment.serviceImpact.serviceRestorationDateTime', e.target.value)}
                                 className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                               />
                             </div>
                           </div>
@@ -1821,7 +1833,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedClients.number}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.number', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                         <div>
@@ -1832,7 +1844,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedClients.percentage}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.percentage', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </div>
@@ -1846,7 +1858,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.number}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.number', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                         <div>
@@ -1857,7 +1869,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -1869,7 +1881,7 @@ function toggleArrayValue(path, value) {
                                 checked={draft.impactAssessment.hasImpactOnRelevantClients}
                                 onChange={e => updateDraft('impactAssessment.hasImpactOnRelevantClients', e.target.checked)}
                                 className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                               />
                               <label htmlFor="hasImpactOnRelevantClients" className="text-sm font-medium">
                                 Impact on relevant clients or financial counterparts
@@ -1887,7 +1899,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedTransactions.number}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedTransactions.number', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                         <div>
@@ -1898,7 +1910,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.affectedTransactions.percentage}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedTransactions.percentage', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </div>
@@ -1912,7 +1924,7 @@ function toggleArrayValue(path, value) {
                             value={draft.impactAssessment.affectedAssets.valueOfAffectedTransactions}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.valueOfAffectedTransactions', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </div>
@@ -1937,7 +1949,7 @@ function toggleArrayValue(path, value) {
                                 updateDraft('impactAssessment.affectedAssets.numbersActualEstimate', updatedValues);
                               }}
                               className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             <span>{option.label}</span>
                           </label>
@@ -1964,7 +1976,7 @@ function toggleArrayValue(path, value) {
                                   updateDraft('incident.classificationTypes.0.reputationalImpactType', updatedValues);
                                 }}
                                 className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                               />
                               <span>{option.label}</span>
                             </label>
@@ -1990,7 +2002,7 @@ function toggleArrayValue(path, value) {
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="Include details such as media coverage, client complaints, regulatory impact, etc"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -2025,7 +2037,7 @@ function toggleArrayValue(path, value) {
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -2055,7 +2067,7 @@ function toggleArrayValue(path, value) {
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </div>
@@ -2070,7 +2082,7 @@ function toggleArrayValue(path, value) {
                           value={draft.informationDurationServiceDowntimeActualOrEstimate}
                           onChange={(e) => updateDraft('informationDurationServiceDowntimeActualOrEstimate', e.target.value)}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                         >
                           <option value="">Select an option</option>
                           {DURATION_SERVICE_DOWNTIME_OPTIONS.map((option) => (
@@ -2101,7 +2113,7 @@ function toggleArrayValue(path, value) {
                                     updateDraft('incident.classificationTypes.0.memberStatesImpactType', updatedValues);
                                   }}
                                   className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                  disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                  disabled={isFieldDisabled(role, draft.status)}
                                 />
                                 <span>{option.label}</span>
                               </label>
@@ -2118,7 +2130,7 @@ function toggleArrayValue(path, value) {
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="Décrivez l'impact et la gravité de l'incident dans chaque État membre affecté"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </>
@@ -2142,7 +2154,7 @@ function toggleArrayValue(path, value) {
                                     updateDraft('incident.classificationTypes.0.dataLosseMaterialityThresholds', updatedValues);
                                   }}
                                   className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                  disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                  disabled={isFieldDisabled(role, draft.status)}
                                 />
                                 <span>{option.label}</span>
                               </label>
@@ -2159,7 +2171,7 @@ function toggleArrayValue(path, value) {
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="Décrivez l'impact sur la disponibilité, l'authenticité, l'intégrité et la confidentialité des données critiques"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
                       </>
@@ -2175,7 +2187,7 @@ function toggleArrayValue(path, value) {
                         onChange={e => updateDraft('impactAssessment.criticalServicesAffected', e.target.value)}
                         rows={2}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                        disabled={isFieldDisabled(role, draft.status)}
                         placeholder="Décrivez les services critiques affectés, y compris ceux nécessitant une autorisation, une inscription ou une supervision par des autorités compétentes, ainsi que la nature de l'accès malveillant et non autorisé"
                       />
                     </div>
@@ -2211,7 +2223,7 @@ function toggleArrayValue(path, value) {
                                 updateDraft('incident.incidentType.incidentClassification', updatedValues);
                               }}
                               className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             <span>{option.label}</span>
                           </label>
@@ -2231,7 +2243,7 @@ function toggleArrayValue(path, value) {
                           onChange={e => updateDraft('incident.incidentType.otherIncidentClassification', e.target.value)}
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                           placeholder="Please specify the other type of incident."
                         />
                       </div>
@@ -2255,7 +2267,7 @@ function toggleArrayValue(path, value) {
                                   updateDraft('incident.incidentType.threatTechniques', updatedValues);
                                 }}
                                 className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                disabled={isFieldDisabled(role, draft.status)}
                               />
                               <span>{option.label}</span>
                             </label>
@@ -2276,7 +2288,7 @@ function toggleArrayValue(path, value) {
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                           placeholder="Please specify the other threat techniques."
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                         />
                       </div>
                     )}
@@ -2291,7 +2303,7 @@ function toggleArrayValue(path, value) {
                         rows={2}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                         placeholder="Indiquez les zones fonctionnelles et des processus métiers affectés par l'incident, y compris les produits et services."
-                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                        disabled={isFieldDisabled(role, draft.status)}
                       />
                     </div>
 
@@ -2303,7 +2315,7 @@ function toggleArrayValue(path, value) {
                         value={draft.impactAssessment.isAffectedInfrastructureComponents}
                         onChange={e => updateDraft('impactAssessment.isAffectedInfrastructureComponents', e.target.value)}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                        disabled={isFieldDisabled(role, draft.status)}
                       >
                         <option value="">Select an option</option>
                         {IS_AFFECTED_INFRASTRUCTURE_OPTIONS.map(option => (
@@ -2324,7 +2336,7 @@ function toggleArrayValue(path, value) {
                           onChange={e => updateDraft('impactAssessment.affectedInfrastructureComponents', e.target.value)}
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                           placeholder="Describe the affected infrastructure components, including hardware (servers, computers, data centers, etc.) and software (operating systems, applications, databases, etc.)."
                         />
                       </div>
@@ -2338,7 +2350,7 @@ function toggleArrayValue(path, value) {
                         value={draft.impactAssessment.isImpactOnFinancialInterest}
                         onChange={e => updateDraft('impactAssessment.isImpactOnFinancialInterest', e.target.value)}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                        disabled={isFieldDisabled(role, draft.status)}
                       >
                         <option value="">Select an option</option>
                         {IS_IMPACT_ON_FINANCIAL_INTEREST_OPTIONS.map(option => (
@@ -2365,7 +2377,7 @@ function toggleArrayValue(path, value) {
                                 updateDraft('reportingToOtherAuthorities', updatedValues);
                               }}
                               className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             <span>{option.label}</span>
                           </label>
@@ -2384,7 +2396,7 @@ function toggleArrayValue(path, value) {
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                           placeholder="Please specify the other authorities informed about the incident."
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                         />
                       </div>
                     )}
@@ -2396,7 +2408,7 @@ function toggleArrayValue(path, value) {
                           checked={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery || false}
                           onChange={e => updateDraft('impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', e.target.checked)}
                           className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                         />
                         Have Temporary Actions/Measures Been Taken or Planned to Recover from the Incident?
                       </label>
@@ -2412,7 +2424,7 @@ function toggleArrayValue(path, value) {
                           onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                           placeholder="Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc."
                         />
                       </div>
@@ -2428,7 +2440,7 @@ function toggleArrayValue(path, value) {
                           onChange={e => updateDraft('incident.incidentType.indicatorsOfCompromise', e.target.value)}
                           rows={2}
                           className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                          disabled={isFieldDisabled(role, draft.status)}
                           placeholder="Provide indicators of compromise such as IP addresses, URLs, domains, file hashes, malware data, network activity data, email message data, DNS requests, user account activities, database traffic, etc."
                         />
                       </div>
@@ -2474,7 +2486,7 @@ function toggleArrayValue(path, value) {
                                     updateDraft('incident.rootCauseHLClassification', updatedValues);
                                   }}
                                   className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                  disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                  disabled={isFieldDisabled(role, draft.status)}
                                 />
                                 <span>{option.label}</span>
                               </label>
@@ -2505,7 +2517,7 @@ function toggleArrayValue(path, value) {
                                           updateDraft('incident.rootCausesDetailedClassification', updatedValues);
                                         }}
                                         className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                        disabled={isFieldDisabled(role, draft.status)}
                                       />
                                       <span>{option.label.replace("Malicious actions: ", "")}</span>
                                     </label>
@@ -2532,7 +2544,7 @@ function toggleArrayValue(path, value) {
                                           updateDraft('incident.rootCausesDetailedClassification', updatedValues);
                                         }}
                                         className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                        disabled={isFieldDisabled(role, draft.status)}
                                       />
                                       <span>{option.label.replace("Process failure: ", "")}</span>
                                     </label>
@@ -2559,7 +2571,7 @@ function toggleArrayValue(path, value) {
                                           updateDraft('incident.rootCausesDetailedClassification', updatedValues);
                                         }}
                                         className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                        disabled={isFieldDisabled(role, draft.status)}
                                       />
                                       <span>{option.label.replace("System failure: ", "")}</span>
                                     </label>
@@ -2586,7 +2598,7 @@ function toggleArrayValue(path, value) {
                                           updateDraft('incident.rootCausesDetailedClassification', updatedValues);
                                         }}
                                         className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                        disabled={isFieldDisabled(role, draft.status)}
                                       />
                                       <span>{option.label.replace("Human error: ", "")}</span>
                                     </label>
@@ -2613,7 +2625,7 @@ function toggleArrayValue(path, value) {
                                           updateDraft('incident.rootCausesDetailedClassification', updatedValues);
                                         }}
                                         className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                        disabled={isFieldDisabled(role, draft.status)}
                                       />
                                       <span>{option.label.replace("External event: ", "")}</span>
                                     </label>
@@ -2639,7 +2651,7 @@ function toggleArrayValue(path, value) {
                                     updateDraft('incident.rootCausesAdditionalClassification', updatedValues);
                                   }}
                                   className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                  disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                                  disabled={isFieldDisabled(role, draft.status)}
                                 />
                                 <span>{option.label}</span>
                               </label>
@@ -2658,7 +2670,7 @@ function toggleArrayValue(path, value) {
                               rows={2}
                               className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                               placeholder="Specify other types of root causes if applicable."
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                         )}
@@ -2672,7 +2684,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.rootCausesInformation', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez la séquence des événements qui ont conduit à l'incident et comment l'incident semble avoir une cause racine similaire s'il s'agit d'un incident récurrent"
                           />
                         </div>
@@ -2686,7 +2698,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.incidentResolutionSummary', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez les actions/mesures prises ou planifiées pour résoudre définitivement l'incident et pour prévenir que cet incident ne se reproduise à l'avenir. Incluez les leçons tirées de l'incident et les problèmes potentiels identifiés concernant la robustesse des systèmes informatiques affectés"
                           />
                         </div>
@@ -2701,7 +2713,7 @@ function toggleArrayValue(path, value) {
                               value={draft.incident.rootCauseAddressingDateTime || ''}
                               onChange={e => updateDraft('incident.rootCauseAddressingDateTime', e.target.value)}
                               className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                           <div>
@@ -2713,7 +2725,7 @@ function toggleArrayValue(path, value) {
                               value={draft.incident.incidentResolutionDateTime || ''}
                               onChange={e => updateDraft('incident.incidentResolutionDateTime', e.target.value)}
                               className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                         </div>
@@ -2727,7 +2739,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.incidentResolutionVsPlannedImplementation', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez la raison pour laquelle la date de résolution définitive des incidents diffère de la date de mise en œuvre initialement prévue, le cas échéant"
                           />
                         </div>
@@ -2741,7 +2753,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.assessmentOfRiskToCriticalFunctions', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Indiquez si l'incident représente un risque pour les fonctions critiques au sens de l'article 2, paragraphe 1, point 35, de la directive 2014/59/UE."
                           />
                         </div>
@@ -2755,7 +2767,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.informationRelevantToResolutionAuthorities', e.target.value)}
                             rows={4}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez l'impact de l'incident ICT majeur sur la résolvabilité de l'entité ou du groupe, incluant la continuité opérationnelle, les coûts, les pertes, la position financière et la robustesse des accords contractuels ICT en cas de résolution"
                           />
                         </div>
@@ -2773,7 +2785,7 @@ function toggleArrayValue(path, value) {
                             }}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Détaillez les seuils atteints par l'incident pour le critère 'Impact économique' (articles 7 et 14 du Règlement (UE) 2022/2554)."
                           />
                         </div>
@@ -2798,7 +2810,7 @@ function toggleArrayValue(path, value) {
                               onChange={e => updateDraft('incident.grossAmountIndirectDirectCosts', e.target.value)}
                               className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                               placeholder="Exemple : 50000"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
 
@@ -2821,7 +2833,7 @@ function toggleArrayValue(path, value) {
                               onChange={e => updateDraft('incident.financialRecoveriesAmount', e.target.value)}
                               className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                               placeholder="Exemple : 50000"
-                              disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                         </div>
@@ -2835,7 +2847,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.recurringNonMajorIncidentsDescription', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Indiquer si plusieurs incidents non majeurs sont récurrents et considérés comme un incident majeur, ainsi que le nombre d'occurrences."
                           />
                         </div>
@@ -2850,7 +2862,7 @@ function toggleArrayValue(path, value) {
                             onChange={e => updateDraft('incident.recurringIncidentDate', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="YYYY-MM-DDThh:mm:ssZ"
-                            disabled={draft.status === 'validated' || (role === 'validateur' && draft.status === 'draft')}
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -2931,293 +2943,294 @@ function toggleArrayValue(path, value) {
                 </div>
               </section>
             </motion.div>
-          ) : (
-            <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
-              <h2 className="text-xl font-semibold">Dashboard</h2>
-              <p className="text-sm opacity-70 mb-4">Manage your saved DORA reports</p>
+          )}
+            {!isReportView && (
+                <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
+                  <h2 className="text-xl font-semibold">Dashboard</h2>
+                  <p className="text-sm opacity-70 mb-4">Manage your saved DORA reports</p>
 
-              <div className="grid grid-cols-3 gap-2 mb-6">
-                  {/* Incidents Status */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 col-span-2">
-                      {/* Total Incidents */}
-                  <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
-                    <div className="text-sm">Total Incidents</div>
-                    <div className="text-2xl font-bold">{incidentStats.totalIncidents}</div>
-                  </div>
-                    {/* Closed Incidents */}
-                    <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/30">
-                      <div className="text-sm">Incidents Fermés</div>
-                      <div className="text-2xl font-bold">{incidentStats.closedIncidents}</div>
-                    </div>
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                      {/* Incidents Status */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 col-span-2">
+                          {/* Total Incidents */}
+                      <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                        <div className="text-sm">Total Incidents</div>
+                        <div className="text-2xl font-bold">{incidentStats.totalIncidents}</div>
+                      </div>
+                        {/* Closed Incidents */}
+                        <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/30">
+                          <div className="text-sm">Incidents Fermés</div>
+                          <div className="text-2xl font-bold">{incidentStats.closedIncidents}</div>
+                        </div>
 
-                    {/* Open Incidents */}
-                    <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
-                      <div className="text-sm">Incidents En Cours</div>
-                      <div className="text-2xl font-bold">{incidentStats.openIncidents}</div>
-                    </div>
-                  </div>
-
-                <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                  <div className="text-sm">Actions</div>
-                  <div className="mt-2 flex flex-col gap-2">
-                    <button
-                      onClick={async () => {
-                        const allReports = await fetchReportsFromSupabase();
-                        niceDownload('dora-all-reports.json', allReports.map(r => cleanReportForExport({ ...emptyDraft(r.incidentId), ...r })));
-                      }}
-                      className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors"
-                    >
-                      Export All JSON
-                    </button>
-
-                  </div>
-                </div>
-              </div>
-
-                <div>
-                  {/* Barre de recherche et filtres */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={filters.searchTerm}
-                          onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                          placeholder="Rechercher un incident..."
-                          className="w-full p-2 pl-10 rounded-full border dark:border-gray-600 bg-white dark:bg-gray-800"
-                        />
-                        <div className="absolute left-3 top-2.5 text-gray-400">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
+                        {/* Open Incidents */}
+                        <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+                          <div className="text-sm">Incidents En Cours</div>
+                          <div className="text-2xl font-bold">{incidentStats.openIncidents}</div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setFilters({...filters, showFilters: !filters.showFilters})}
-                        className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors flex items-center gap-2"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
-                        Filtres
-                      </button>
+
+                    <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                      <div className="text-sm">Actions</div>
+                      <div className="mt-2 flex flex-col gap-2">
+                        <button
+                          onClick={async () => {
+                            const allReports = await fetchReportsFromSupabase();
+                            niceDownload('dora-all-reports.json', allReports.map(r => cleanReportForExport({ ...emptyDraft(r.incidentId), ...r })));
+                          }}
+                          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors"
+                        >
+                          Export All JSON
+                        </button>
+
+                      </div>
                     </div>
-                    {/* Filtres avancés (masquables) */}
-                    {filters.showFilters && (
-                      <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {/* Filtre par type de rapport */}
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Type de rapport</label>
-                            <select
-                              value={filters.incidentSubmission}
-                              onChange={(e) => setFilters({...filters, incidentSubmission: e.target.value})}
-                              className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                            >
-                              <option value="">Tous</option>
-                              <option value="initial_notification">Initial Notification</option>
-                              <option value="intermediate_report">Intermediate Report</option>
-                              <option value="final_report">Final Report</option>
-                            </select>
-                          </div>
-                          {/* Filtre par statut de l'incident */}
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Statut de l'incident</label>
-                            <select
-                              value={filters.incidentStatus}
-                              onChange={(e) => setFilters({...filters, incidentStatus: e.target.value})}
-                              className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                            >
-                              <option value="">Tous</option>
-                              <option value="open">Incident en cours</option>
-                              <option value="closed">Incident fermé</option>
-                            </select>
-                          </div>
-                          {/* Filtre par critères de classification */}
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Critères de classification</label>
-                            <div className="max-h-40 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                              {CLASSIFICATION_CRITERIA.map(criteria => (
-                                <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                  <input
-                                    type="checkbox"
-                                    checked={filters.classificationCriterion.includes(criteria.value)}
-                                    onChange={() => {
-                                      const updatedCriteria = filters.classificationCriterion.includes(criteria.value)
-                                        ? filters.classificationCriterion.filter(v => v !== criteria.value)
-                                        : [...filters.classificationCriterion, criteria.value];
-                                      setFilters({...filters, classificationCriterion: updatedCriteria});
-                                    }}
-                                    className="rounded"
-                                  />
-                                  <span>{criteria.label}</span>
-                                </label>
-                              ))}
+                  </div>
+
+                    <div>
+                      {/* Barre de recherche et filtres */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={filters.searchTerm}
+                              onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
+                              placeholder="Rechercher un incident..."
+                              className="w-full p-2 pl-10 rounded-full border dark:border-gray-600 bg-white dark:bg-gray-800"
+                            />
+                            <div className="absolute left-3 top-2.5 text-gray-400">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
                             </div>
                           </div>
-                          {/* Filtre par plage de dates */}
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Plage de dates</label>
-                            <div className="grid grid-cols-1 gap-2">
-                              <input
-                                type="date"
-                                value={filters.dateRange.start}
-                                onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, start: e.target.value}})}
-                                className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                              />
-                              <input
-                                type="date"
-                                value={filters.dateRange.end}
-                                onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, end: e.target.value}})}
-                                className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        {/* Bouton pour réinitialiser les filtres */}
-                        <div className="mt-4 flex justify-end">
                           <button
-                            onClick={() => setFilters({
-                              searchTerm: '',
-                              incidentSubmission: '',
-                              incidentStatus: '',
-                              classificationCriterion: [],
-                              dateRange: { start: '', end: '' },
-                              showFilters: true
-                            })}
-                            className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                            onClick={() => setFilters({...filters, showFilters: !filters.showFilters})}
+                            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors flex items-center gap-2"
                           >
-                            Réinitialiser les filtres
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            Filtres
                           </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Liste des incidents */}
-                  <div>
-                    <h3 className="font-medium mb-3">Incidents</h3>
-                    <div className="space-y-4">
-                      {Object.keys(filteredIncidents).length === 0 && (
-                        <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
-                          {Object.keys(groupedIncidents).length === 0
-                            ? 'Aucun incident trouvé - créez-en un depuis l\'onglet Rapport'
-                            : 'Aucun incident ne correspond à vos critères de recherche'}
-                        </div>
-                      )}
-                      {Object.entries(filteredIncidents).map(([financialEntityCode, incident]) => (
-                        <div key={financialEntityCode} className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                          <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-medium text-lg">
-                              Incident: {financialEntityCode}
-                              {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
-                              {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
-                            </h4>
-                          </div>
-                          <div className="space-y-3">
-                            {/* Filtrer les rapports affichés en fonction du type de rapport sélectionné */}
-                            {incident.reports
-                              .filter(r => !filters.incidentSubmission || r.incidentSubmission === filters.incidentSubmission)
-                              .map(r => (
-                                <div key={r.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700 flex justify-between">
-                                  {/* Première colonne : informations du rapport */}
-                                  <div className="flex-1">
-                                    <div className="text-sm font-medium">
-                                      {r.incidentSubmission?.replace(/_/g, ' ') || '—'}
-                                    </div>
-                                    <div className="text-xs opacity-70 mt-1">
-                                      <strong>Description:</strong> {r.incident?.incidentDescription?.slice(0, 100) || '—'}
-                                    </div>
-                                    <div className="text-xs opacity-60 mt-2">
-                                      Saved: {new Date(r.savedAt).toLocaleString()}
-                                    </div>
-                                  </div>
-                                  {/* Deuxième colonne : commentaires */}
-                                  {r.status !== 'validated' && r.comments && r.comments.length > 0 && (
-                                    <div className="flex-1 ml-4">
-                                      <h4 className="font-medium">Commentaires :</h4>
-                                      <ul className="mt-2 text-sm list-disc pl-4">
-                                        {r.comments.map((comment, index) => (
-                                          <li key={index} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                                            {comment.comment}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {/* Troisième colonne : boutons */}
-                                  <div className="flex flex-col gap-2 ml-4">
-                                    <button
-                                      onClick={() => loadReportIntoDraft(r.id)}
-                                      className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
-                                    >
-                                      {role === 'saisisseur'
-                                        ? (r.status === 'validated' ? 'Open' : 'Update')
-                                        : (r.status === 'validated' ? 'Open' : 'View')}
-                                    </button>
-
-
-
-                                    <button onClick={() => exportReportJSON(r)} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">
-                                      Download
-                                    </button>
-                                    {role === 'validateur' && r.status === 'draft' && (
-                                      <button onClick={() => validateReport(r.id)} className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm">
-                                        Validate
-                                      </button>
-                                    )}
-                                    {role === 'validateur' && r.status !== 'validated' && (
-                                      <button
-                                        onClick={() => {
-                                          const comment = prompt('Ajouter un commentaire:');
-                                          if (comment !== null) {
-                                            addComment(r.id, comment);
-                                          }
+                        {/* Filtres avancés (masquables) */}
+                        {filters.showFilters && (
+                          <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              {/* Filtre par type de rapport */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Type de rapport</label>
+                                <select
+                                  value={filters.incidentSubmission}
+                                  onChange={(e) => setFilters({...filters, incidentSubmission: e.target.value})}
+                                  className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                >
+                                  <option value="">Tous</option>
+                                  <option value="initial_notification">Initial Notification</option>
+                                  <option value="intermediate_report">Intermediate Report</option>
+                                  <option value="final_report">Final Report</option>
+                                </select>
+                              </div>
+                              {/* Filtre par statut de l'incident */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Statut de l'incident</label>
+                                <select
+                                  value={filters.incidentStatus}
+                                  onChange={(e) => setFilters({...filters, incidentStatus: e.target.value})}
+                                  className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                >
+                                  <option value="">Tous</option>
+                                  <option value="open">Incident en cours</option>
+                                  <option value="closed">Incident fermé</option>
+                                </select>
+                              </div>
+                              {/* Filtre par critères de classification */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Critères de classification</label>
+                                <div className="max-h-40 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  {CLASSIFICATION_CRITERIA.map(criteria => (
+                                    <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                      <input
+                                        type="checkbox"
+                                        checked={filters.classificationCriterion.includes(criteria.value)}
+                                        onChange={() => {
+                                          const updatedCriteria = filters.classificationCriterion.includes(criteria.value)
+                                            ? filters.classificationCriterion.filter(v => v !== criteria.value)
+                                            : [...filters.classificationCriterion, criteria.value];
+                                          setFilters({...filters, classificationCriterion: updatedCriteria});
                                         }}
-                                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
-                                      >
-                                        Add Comment
-                                      </button>
-                                    )}
-                                    {role === 'saisisseur' && r.status === 'validated' && (
-                                      <>
-                                        {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
-                                          <button
-                                            onClick={() => continueReport(r.id, 'intermediate_report')}
-                                            className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
-                                          >
-                                            Déclarer un rapport intermédiaire
-                                          </button>
-                                        )}
-                                        {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
-                                          <button
-                                            onClick={() => continueReport(r.id, 'final_report')}
-                                            className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
-                                          >
-                                            Déclarer un rapport final
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+                                        className="rounded"
+                                      />
+                                      <span>{criteria.label}</span>
+                                    </label>
+                                  ))}
                                 </div>
-                              ))}
+                              </div>
+                              {/* Filtre par plage de dates */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Plage de dates</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                  <input
+                                    type="date"
+                                    value={filters.dateRange.start}
+                                    onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, start: e.target.value}})}
+                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                  />
+                                  <input
+                                    type="date"
+                                    value={filters.dateRange.end}
+                                    onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, end: e.target.value}})}
+                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Bouton pour réinitialiser les filtres */}
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                onClick={() => setFilters({
+                                  searchTerm: '',
+                                  incidentSubmission: '',
+                                  incidentStatus: '',
+                                  classificationCriterion: [],
+                                  dateRange: { start: '', end: '' },
+                                  showFilters: true
+                                })}
+                                className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                              >
+                                Réinitialiser les filtres
+                              </button>
+                            </div>
                           </div>
+                        )}
+                      </div>
+
+                      {/* Liste des incidents */}
+                      <div>
+                        <h3 className="font-medium mb-3">Incidents</h3>
+                        <div className="space-y-4">
+                          {Object.keys(filteredIncidents).length === 0 && (
+                            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                              {Object.keys(groupedIncidents).length === 0
+                                ? 'Aucun incident trouvé - créez-en un depuis l\'onglet Rapport'
+                                : 'Aucun incident ne correspond à vos critères de recherche'}
+                            </div>
+                          )}
+                          {Object.entries(filteredIncidents).map(([financialEntityCode, incident]) => (
+                            <div key={financialEntityCode} className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                              <div className="flex justify-between items-center mb-4">
+                                <h4 className="font-medium text-lg">
+                                  Incident: {financialEntityCode}
+                                  {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
+                                  {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
+                                </h4>
+                              </div>
+                              <div className="space-y-3">
+                                {/* Filtrer les rapports affichés en fonction du type de rapport sélectionné */}
+                                {incident.reports
+                                  .filter(r => !filters.incidentSubmission || r.incidentSubmission === filters.incidentSubmission)
+                                  .map(r => (
+                                    <div key={r.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700 flex justify-between">
+                                      {/* Première colonne : informations du rapport */}
+                                      <div className="flex-1">
+                                        <div className="text-sm font-medium">
+                                          {r.incidentSubmission?.replace(/_/g, ' ') || '—'}
+                                        </div>
+                                        <div className="text-xs opacity-70 mt-1">
+                                          <strong>Description:</strong> {r.incident?.incidentDescription?.slice(0, 100) || '—'}
+                                        </div>
+                                        <div className="text-xs opacity-60 mt-2">
+                                          Saved: {new Date(r.savedAt).toLocaleString()}
+                                        </div>
+                                      </div>
+                                      {/* Deuxième colonne : commentaires */}
+                                      {r.status !== 'validated' && r.comments && r.comments.length > 0 && (
+                                        <div className="flex-1 ml-4">
+                                          <h4 className="font-medium">Commentaires :</h4>
+                                          <ul className="mt-2 text-sm list-disc pl-4">
+                                            {r.comments.map((comment, index) => (
+                                              <li key={index} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                                {comment.comment}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {/* Troisième colonne : boutons */}
+                                      <div className="flex flex-col gap-2 ml-4">
+                                        <button
+                                          onClick={() => loadReportIntoDraft(r.id)}
+                                          className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
+                                        >
+                                          {role === 'saisisseur'
+                                            ? (r.status === 'validated' ? 'Open' : 'Update')
+                                            : (r.status === 'validated' ? 'Open' : 'View')}
+                                        </button>
+
+
+
+                                        <button onClick={() => exportReportJSON(r)} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">
+                                          Download
+                                        </button>
+                                        {role === 'validateur' && r.status === 'draft' && (
+                                          <button onClick={() => validateReport(r.id)} className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm">
+                                            Validate
+                                          </button>
+                                        )}
+                                        {role === 'validateur' && r.status !== 'validated' && (
+                                          <button
+                                            onClick={() => {
+                                              const comment = prompt('Ajouter un commentaire:');
+                                              if (comment !== null) {
+                                                addComment(r.id, comment);
+                                              }
+                                            }}
+                                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
+                                          >
+                                            Add Comment
+                                          </button>
+                                        )}
+                                        {role === 'saisisseur' && r.status === 'validated' && (
+                                          <>
+                                            {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
+                                              <button
+                                                onClick={() => continueReport(r.id, 'intermediate_report')}
+                                                className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                              >
+                                                Déclarer un rapport intermédiaire
+                                              </button>
+                                            )}
+                                            {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
+                                              <button
+                                                onClick={() => continueReport(r.id, 'final_report')}
+                                                className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                              >
+                                                Déclarer un rapport final
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
 
 
-              {role !== 'validateur' && (
-                  <div className="mt-6 flex justify-end">
-                    <button onClick={() => setView('report')} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                      Create or Update Report
-                    </button>
-                  </div>
-              )}
-            </motion.div>
+                  {role !== 'validateur' && (
+                      <div className="mt-6 flex justify-end">
+                        <button onClick={() => setView('report')} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
+                          Create or Update Report
+                        </button>
+                      </div>
+                  )}
+                </motion.div>
           )}
         </AnimatePresence>
       </main>
