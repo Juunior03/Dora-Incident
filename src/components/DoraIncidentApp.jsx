@@ -589,8 +589,30 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         const field = parts.at(-1);
         if (!cur[field]) cur[field] = [];
 
-        toggleValueInArray(cur, field, value);
-        handleGeographicalSpread(path, value, next);
+        // Logique pour gérer les dépendances
+        if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
+          if (!cur[field].includes(value)) {
+            // Si "geographical_spread" est décoché, réinitialiser "countryCodeMaterialityThresholds"
+            const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
+            const thresholdParts = thresholdPath.split('.');
+            let thresholdCur = next;
+
+            for (let i = 0; i < thresholdParts.length - 1; i++) {
+              const p = thresholdParts[i];
+              if (!(p in thresholdCur)) thresholdCur[p] = {};
+              thresholdCur = thresholdCur[p];
+            }
+
+            thresholdCur[thresholdParts.at(-1)] = [];
+          }
+        }
+
+        // Logique pour ajouter/supprimer la valeur
+        if (cur[field].includes(value)) {
+          cur[field] = cur[field].filter(v => v !== value);
+        } else {
+          cur[field].push(value);
+        }
 
         return next;
       });
@@ -1415,11 +1437,16 @@ export default function DoraIncidentApp() {
 
 
                         <div className="mt-6">
-                          <label className="block text-xs font-medium mb-2">Affected entity types</label>
+                          <p className="block text-xs font-medium mb-2">Affected entity types</p>
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ENTITY_TYPES.map(type => (
-                              <label key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                              <label
+                                key={type.value}
+                                htmlFor={`affected-entity-type-${type.value}`}
+                                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
+                              >
                                 <input
+                                  id={`affected-entity-type-${type.value}`}
                                   type="checkbox"
                                   checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
                                   onChange={() => {
@@ -1432,12 +1459,11 @@ export default function DoraIncidentApp() {
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
                                 />
-                                {type.label}
+                                <span>{type.label}</span>
                               </label>
                             ))}
                           </div>
                         </div>
-
                         </div>
 
                         <div className="mt-4">
@@ -1645,10 +1671,13 @@ export default function DoraIncidentApp() {
                       </div>
 
                       <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">Classification Criteria</label>
+                          <p className="block text-sm font-medium mb-2">Classification Criteria</p>
                           <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {CLASSIFICATION_CRITERIA.map(criteria => (
-                              <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">
+                              <label
+                                key={criteria.value}
+                                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-2 rounded"
+                              >
                                 <input
                                   type="checkbox"
                                   checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)}
@@ -1657,12 +1686,18 @@ export default function DoraIncidentApp() {
                                     const updatedValues = currentValues.includes(criteria.value)
                                       ? currentValues.filter(v => v !== criteria.value)
                                       : [...currentValues, criteria.value];
+
+                                    // Si "geographical_spread" est décoché, réinitialiser "countryCodeMaterialityThresholds"
+                                    if (criteria.value === 'geographical_spread' && !updatedValues.includes('geographical_spread')) {
+                                      updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', []);
+                                    }
+
                                     updateDraft('incident.classificationTypes.0.classificationCriterion', updatedValues);
                                   }}
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
                                 />
-                                {criteria.label}
+                                <span>{criteria.label}</span>
                               </label>
                             ))}
                           </div>
@@ -1671,35 +1706,33 @@ export default function DoraIncidentApp() {
                         {/* Zone conditionnelle pour "geographical_spread" */}
                         {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("geographical_spread") && (
                           <div className="mt-4 p-4 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                            <fieldset>
-                              <legend className="text-sm font-medium">Country Code Materiality Thresholds</legend>
-                              <div className="grid grid-cols-3 gap-2 mt-2 max-h-48 overflow-y-auto">
-                                {COUNTRY_OPTIONS.map(country => (
-                                  <div key={country.value} className="flex items-center gap-2 text-sm">
-                                    <input
-                                      type="checkbox"
-                                      id={`country-code-${country.value}`}
-                                      checked={draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds?.includes(country.value) || false}
-                                      onChange={() => {
-                                        const currentThresholds = draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds || [];
-                                        const updatedThresholds = currentThresholds.includes(country.value)
-                                          ? currentThresholds.filter(c => c !== country.value)
-                                          : [...currentThresholds, country.value];
-                                        updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', updatedThresholds);
-                                      }}
-                                      className="rounded"
-                                      disabled={isFieldDisabled(role, draft.status)}
-                                    />
-                                    <label htmlFor={`country-code-${country.value}`} className="cursor-pointer">
-                                      {country.label}
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-                            </fieldset>
-
+                            <p className="text-sm font-medium">Country Code Materiality Thresholds</p>
+                            <div className="grid grid-cols-3 gap-2 mt-2 max-h-48 overflow-y-auto">
+                              {COUNTRY_OPTIONS.map(country => (
+                                <label
+                                  key={country.value}
+                                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds?.includes(country.value) || false}
+                                    onChange={() => {
+                                      const currentThresholds = draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds || [];
+                                      const updatedThresholds = currentThresholds.includes(country.value)
+                                        ? currentThresholds.filter(c => c !== country.value)
+                                        : [...currentThresholds, country.value];
+                                      updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', updatedThresholds);
+                                    }}
+                                    className="rounded"
+                                    disabled={isFieldDisabled(role, draft.status)}
+                                  />
+                                  <span>{country.label}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         )}
+
 
                         <div className="mt-6">
                           <label className="text-sm font-medium">Incident Discovery</label>
