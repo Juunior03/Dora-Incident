@@ -551,6 +551,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
     }
 
     function toggleValueInArray(obj, field, value) {
+      if (!obj[field]) obj[field] = [];
       if (obj[field].includes(value)) {
         obj[field] = obj[field].filter(v => v !== value);
       } else {
@@ -558,60 +559,46 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       }
     }
 
-    function handleGeographicalSpread(path, value, draft) {
-      if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
-        const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
-        const thresholdParts = thresholdPath.split('.');
-        let thresholdCur = draft;
+    function getNestedObject(obj, path) {
+      const parts = path.split('.');
+      let cur = obj;
 
-        for (let i = 0; i < thresholdParts.length - 1; i++) {
-          const p = thresholdParts[i];
-          if (!(p in thresholdCur)) thresholdCur[p] = {};
-          thresholdCur = thresholdCur[p];
-        }
-
-        thresholdCur[thresholdParts.at(-1)] = [];
+      for (let i = 0; i < parts.length - 1; i++) {
+        const p = parts[i];
+        if (!(p in cur)) cur[p] = {};
+        cur = cur[p];
       }
+
+      return { obj: cur, field: parts[parts.length - 1] };
+    }
+
+    function resetGeographicalSpreadThresholds(draft) {
+      const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
+      const thresholdParts = thresholdPath.split('.');
+      let thresholdCur = draft;
+
+      for (let i = 0; i < thresholdParts.length - 1; i++) {
+        const p = thresholdParts[i];
+        if (!(p in thresholdCur)) thresholdCur[p] = {};
+        thresholdCur = thresholdCur[p];
+      }
+
+      thresholdCur[thresholdParts[thresholdParts.length - 1]] = [];
     }
 
     function toggleArrayValue(path, value) {
       setDraft(prev => {
         const next = structuredClone(prev);
-        const parts = path.split('.');
-        let cur = next;
+        const { obj: cur, field } = getNestedObject(next, path);
 
-        for (let i = 0; i < parts.length - 1; i++) {
-          const p = parts[i];
-          if (!(p in cur)) cur[p] = {};
-          cur = cur[p];
-        }
-
-        const field = parts.at(-1);
-        if (!cur[field]) cur[field] = [];
+        // Logique pour ajouter/supprimer la valeur
+        toggleValueInArray(cur, field, value);
 
         // Logique pour gérer les dépendances
         if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
           if (!cur[field].includes(value)) {
-            // Si "geographical_spread" est décoché, réinitialiser "countryCodeMaterialityThresholds"
-            const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
-            const thresholdParts = thresholdPath.split('.');
-            let thresholdCur = next;
-
-            for (let i = 0; i < thresholdParts.length - 1; i++) {
-              const p = thresholdParts[i];
-              if (!(p in thresholdCur)) thresholdCur[p] = {};
-              thresholdCur = thresholdCur[p];
-            }
-
-            thresholdCur[thresholdParts.at(-1)] = [];
+            resetGeographicalSpreadThresholds(next);
           }
-        }
-
-        // Logique pour ajouter/supprimer la valeur
-        if (cur[field].includes(value)) {
-          cur[field] = cur[field].filter(v => v !== value);
-        } else {
-          cur[field].push(value);
         }
 
         return next;
