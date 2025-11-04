@@ -383,7 +383,6 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
     function validateRequiredFieldsForIntermediateAndFinalReports(report, errors) {
       const fields = [
         { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
-        { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'number'], message: "Number of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'percentage'], message: "Percentage of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'number'], message: "Number of affected financial counterparts is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'percentage'], message: "Percentage of affected financial counterparts is required for intermediate and final reports" },
@@ -537,12 +536,13 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
     function validateFields(report, fields, errors) {
       for (const { path, check, message } of fields) {
         const value = path.reduce((obj, key) => obj?.[key], report);
-        const isValid = check ? check(value) : value;
+        const isValid = check ? check(value) : value !== undefined && value !== null;
         if (!isValid) {
           errors.push(message);
         }
       }
     }
+
 
 
     // Valide le format d'un email
@@ -2082,7 +2082,7 @@ export default function DoraIncidentApp() {
                             type="text"
                             value={draft.incident.incidentDuration}
                             onChange={(e) => {
-                              let value = e.target.value.replaceAll(/[^0-9]/g, '');
+                              let value = e.target.value.replaceAll(/\D/g, '');
                               let formattedValue = '';
                               if (value.length > 0) {
                                 formattedValue = value.substring(0, 2);
@@ -2104,15 +2104,14 @@ export default function DoraIncidentApp() {
 
                         {/* Service Downtime */}
                         <div>
-                          <label className="text-sm font-medium">Service Downtime (DD:HH:MM)</label>
+                          <label htmlFor="serviceDowntime" className="text-sm font-medium">Service Downtime (DD:HH:MM)</label>
                           <input
+                            id="serviceDowntime"
                             type="text"
                             value={draft.impactAssessment.serviceImpact.serviceDowntime}
                             onChange={(e) => {
-                              let value = e.target.value.replace(/[^0-9]/g, ''); // Supprime tout ce qui n'est pas un chiffre
+                              let value = e.target.value.replaceAll(/\D/g, '');
                               let formattedValue = '';
-
-                              // Ajoute les ":" au bon endroit
                               if (value.length > 0) {
                                 formattedValue = value.substring(0, 2);
                                 if (value.length > 2) {
@@ -2122,7 +2121,6 @@ export default function DoraIncidentApp() {
                                   }
                                 }
                               }
-
                               updateDraft('impactAssessment.serviceImpact.serviceDowntime', formattedValue);
                             }}
                             placeholder="DD:HH:MM"
@@ -2135,31 +2133,32 @@ export default function DoraIncidentApp() {
                     </div>
 
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("duration_and_service_downtime") && (
-                      <div className="mt-4">
-                        <label className="text-sm font-medium">
-                          Information whether the values for duration and service downtime are actual or estimates
-                        </label>
-                        <select
-                          value={draft.informationDurationServiceDowntimeActualOrEstimate}
-                          onChange={(e) => updateDraft('informationDurationServiceDowntimeActualOrEstimate', e.target.value)}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={isFieldDisabled(role, draft.status)}
-                        >
-                          <option value="">Select an option</option>
-                          {DURATION_SERVICE_DOWNTIME_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="mt-4">
+                      <label htmlFor="durationServiceDowntimeInfo" className="text-sm font-medium">
+                        Information whether the values for duration and service downtime are actual or estimates
+                      </label>
+                      <select
+                        id="durationServiceDowntimeInfo"
+                        value={draft.informationDurationServiceDowntimeActualOrEstimate}
+                        onChange={(e) => updateDraft('informationDurationServiceDowntimeActualOrEstimate', e.target.value)}
+                        className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                        disabled={isFieldDisabled(role, draft.status)}
+                      >
+                        <option value="">Select an option</option>
+                        {DURATION_SERVICE_DOWNTIME_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     )}
 
 
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("geographical_spread") && (
                       <>
                         <div className="mt-4">
-                          <label className="block text-xs font-medium mb-2">Types of Impact in the Member States</label>
+                          <p className="block text-xs font-medium mb-2">Types of Impact in the Member States</p>
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {MEMBER_STATES_IMPACT_TYPE_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2181,10 +2180,11 @@ export default function DoraIncidentApp() {
                             ))}
                           </div>
                         </div>
+
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Description of the Impact and Severity in Each Affected Member State
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.classificationTypes[0]?.memberStatesImpactTypeDescription || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.memberStatesImpactTypeDescription', e.target.value)}
@@ -2200,7 +2200,7 @@ export default function DoraIncidentApp() {
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("data_losses") && (
                       <>
                         <div className="mt-4">
-                          <label className="block text-xs font-medium mb-2">Type of Data Losses</label>
+                          <p className="block text-xs font-medium mb-2">Type of Data Losses</p>
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {DATA_LOSS_MATERIALITY_THRESHOLDS_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2222,6 +2222,7 @@ export default function DoraIncidentApp() {
                             ))}
                           </div>
                         </div>
+
                         <div className="mt-4">
                           <label className="block text-sm font-medium mb-2">
                             Description of the Data Losses
