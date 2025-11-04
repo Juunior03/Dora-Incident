@@ -1411,28 +1411,33 @@ export default function DoraIncidentApp() {
                             <input placeholder="Identification Code" value={draft.ultimateParentUndertaking.code} onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
                             <input placeholder="LEI Code" value={draft.ultimateParentUndertaking.LEI} onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
                           </div>
-                          </div>
+                        </div>
 
-                        <fieldset className="border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50 p-2 mt-6 max-h-32 overflow-y-auto">
-                          <legend className="block text-xs font-medium mb-2">Affected entity types</legend>
-                          <div className="grid grid-cols-2 gap-2">
+
+                        <div className="mt-6">
+                          <label className="block text-xs font-medium mb-2">Affected entity types</label>
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ENTITY_TYPES.map(type => (
-                              <div key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                              <label key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
                                 <input
                                   type="checkbox"
-                                  id={`entity-type-${type.value}`}
                                   checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
-                                  onChange={() => toggleArrayValue('submittingEntity.affectedEntityType', type.value)}
+                                  onChange={() => {
+                                    const currentValues = draft.submittingEntity.affectedEntityType || [];
+                                    const updatedValues = currentValues.includes(type.value)
+                                      ? currentValues.filter(value => value !== type.value)
+                                      : [...currentValues, type.value];
+                                    updateDraft('submittingEntity.affectedEntityType', updatedValues);
+                                  }}
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
                                 />
-                                <label htmlFor={`entity-type-${type.value}`} className="cursor-pointer">
-                                  {type.label}
-                                </label>
-                              </div>
+                                {type.label}
+                              </label>
                             ))}
                           </div>
-                        </fieldset>
+                        </div>
+
                         </div>
 
                         <div className="mt-4">
@@ -1503,94 +1508,81 @@ export default function DoraIncidentApp() {
                       <h2 className="text-2xl font-semibold mb-2">Contacts</h2>
                       <p className="text-sm opacity-70 mb-6">Primary and secondary contact information</p>
 
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium">Primary Contact Name</label>
-                            <input value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Secondary Contact Name</label>
-                            <input value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
-                          </div>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="primaryContactName" className="text-sm font-medium">Primary Contact Name</label>
+                          <input id="primaryContactName" value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium">Primary Contact Email</label>
-                            <input type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Secondary Contact Email</label>
-                            <input type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Primary Contact Phone */}
-                          <div>
-                            <label className="text-sm font-medium">Primary Contact Phone</label>
-                            <input
-                              type="tel"
-                              value={draft.primaryContact.phone}
-                              onChange={e => {
-                                // Ne permettre que les chiffres
-                                const value = e.target.value.replace(/\D/g, '');
-                                // Limiter à 10 chiffres
-                                if (value.length <= 10) {
-                                  updateDraft('primaryContact.phone', value);
-                                }
-                              }}
-                              pattern="[0-9]{10}"
-                              title="10 chiffres requis"
-                              placeholder = "0610101010"
-                              className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
-                                draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 ?
-                                'border-red-500 dark:border-red-400' : ''
-                              }`}
-                              disabled={isFieldDisabled(role, draft.status)}
-                              required
-                            />
-                            {draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 && (
-                              <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
-                            )}
-                          </div>
-
-                          {/* Secondary Contact Phone */}
-                          <div>
-                            <label className="text-sm font-medium">Secondary Contact Phone</label>
-                            <input
-                              type="tel"
-                              value={draft.secondaryContact.phone}
-                              onChange={e => {
-                                // Ne permettre que les chiffres
-                                const value = e.target.value.replace(/\D/g, '');
-                                // Limiter à 10 chiffres
-                                if (value.length <= 10) {
-                                  updateDraft('secondaryContact.phone', value);
-                                }
-                              }}
-                              pattern="[0-9]{10}"
-                              title="10 chiffres requis"
-                              placeholder = "0610101010"
-                              className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
-                                draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 10 ?
-                                'border-red-500 dark:border-red-400' : ''
-                              }`}
-                              disabled={isFieldDisabled(role, draft.status)}
-                            />
-                            {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 && (
-                              <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
-                            )}
-                          </div>
-                        </div>
-
-
-                        <div className="mt-6 flex justify-between">
-                          <button onClick={() => setStep(0)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">Back</button>
-                          <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">Next → Incident</button>
+                        <div>
+                          <label htmlFor="secondaryContactName" className="text-sm font-medium">Secondary Contact Name</label>
+                          <input id="secondaryContactName" value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="primaryContactEmail" className="text-sm font-medium">Primary Contact Email</label>
+                          <input id="primaryContactEmail" type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                        </div>
+                        <div>
+                          <label htmlFor="secondaryContactEmail" className="text-sm font-medium">Secondary Contact Email</label>
+                          <input id="secondaryContactEmail" type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
+                          <input
+                            id="primaryContactPhone"
+                            type="tel"
+                            value={draft.primaryContact.phone}
+                            onChange={(e) => {
+                              const value = e.target.value.replaceAll(/\D/g, '');
+                              if (value.length <= 10) {
+                                updateDraft('primaryContact.phone', value);
+                              }
+                            }}
+                            pattern="[0-9]{10}"
+                            title="10 chiffres requis"
+                            placeholder="0610101010"
+                            className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
+                              draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 ?
+                              'border-red-500 dark:border-red-400' : ''
+                            }`}
+                            disabled={isFieldDisabled(role, draft.status)}
+                            required
+                          />
+                          {draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 && (
+                            <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
+                          )}
+                        </div>
+                        <div>
+                          <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
+                          <input
+                            id="secondaryContactPhone"
+                            type="tel"
+                            value={draft.secondaryContact.phone}
+                            onChange={(e) => {
+                              const value = e.target.value.replaceAll(/\D/g, '');
+                              if (value.length <= 10) {
+                                updateDraft('secondaryContact.phone', value);
+                              }
+                            }}
+                            pattern="[0-9]{10}"
+                            title="10 chiffres requis"
+                            placeholder="0610101010"
+                            className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
+                              draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 ?
+                              'border-red-500 dark:border-red-400' : ''
+                            }`}
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
+                          {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 && (
+                            <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     </div>
                   )}
 
@@ -1599,82 +1591,113 @@ export default function DoraIncidentApp() {
                       <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
                       <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
 
-                      <div className="grid grid-cols-1 gap-4">
-                          <div>
-                            <label className="text-sm font-medium">Incident Reference Code Provided by the Financial Entity</label>
-                            <input
-                                value={draft.incident.financialEntityCode}
-                                onChange={e => updateDraft('incident.financialEntityCode', e.target.value)}
-                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                disabled={isFieldDisabled(role, draft.status)}
-                                />
-                          </div>
-                      </div>
+                        <div>
+                          <label htmlFor="financialEntityCode" className="text-sm font-medium">Incident Reference Code Provided by the Financial Entity</label>
+                          <input
+                            id="financialEntityCode"
+                            value={draft.incident.financialEntityCode}
+                            onChange={e => updateDraft('incident.financialEntityCode', e.target.value)}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
+                        </div>
 
                       <div className="mt-4">
-                      <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium">Detection Date/Time</label>
-                            <input
-                                 type="datetime-local"
-                                 value={draft.incident.detectionDateTime}
-                                 onChange={e => updateDraft('incident.detectionDateTime', e.target.value)}
-                                 className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                                 disabled={isFieldDisabled(role, draft.status)}
-                            />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="detectionDateTime" className="text-sm font-medium">Detection Date/Time</label>
+                              <input
+                                id="detectionDateTime"
+                                type="datetime-local"
+                                value={draft.incident.detectionDateTime}
+                                onChange={e => updateDraft('incident.detectionDateTime', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="classificationDateTime" className="text-sm font-medium">Classification Date/Time</label>
+                              <input
+                                id="classificationDateTime"
+                                type="datetime-local"
+                                value={draft.incident.classificationDateTime}
+                                onChange={e => updateDraft('incident.classificationDateTime', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="text-sm font-medium">Classification Date/Time</label>
-                            <input type="datetime-local" value={draft.incident.classificationDateTime} onChange={e => updateDraft('incident.classificationDateTime', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)} />
-                          </div>
-                        </div>
-                        </div>
+                      </div>
 
                       <div className="mt-4">
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium">Incident Description</label>
-                          <textarea value={draft.incident.incidentDescription} onChange={e => updateDraft('incident.incidentDescription', e.target.value)} rows={3} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                          <label htmlFor="incidentDescription" className="text-sm font-medium">Incident Description</label>
+                          <textarea
+                            id="incidentDescription"
+                            value={draft.incident.incidentDescription}
+                            onChange={e => updateDraft('incident.incidentDescription', e.target.value)}
+                            rows={3}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                         </div>
                       </div>
 
-                        <div>
-                          <div className="mt-4">
-                          <label className="text-sm font-medium">Classification Criteria</label>
+                      <div className="mt-4">
+                          <label className="block text-sm font-medium mb-2">Classification Criteria</label>
                           <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {CLASSIFICATION_CRITERIA.map(criteria => (
                               <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">
-                                <input type="checkbox" checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)} onChange={() => toggleArrayValue('incident.classificationTypes.0.classificationCriterion', criteria.value)} className="rounded" disabled={isFieldDisabled(role, draft.status)}/>
-                                <span>{criteria.label}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)}
+                                  onChange={() => {
+                                    const currentValues = draft.incident.classificationTypes[0]?.classificationCriterion || [];
+                                    const updatedValues = currentValues.includes(criteria.value)
+                                      ? currentValues.filter(v => v !== criteria.value)
+                                      : [...currentValues, criteria.value];
+                                    updateDraft('incident.classificationTypes.0.classificationCriterion', updatedValues);
+                                  }}
+                                  className="rounded"
+                                  disabled={isFieldDisabled(role, draft.status)}
+                                />
+                                {criteria.label}
                               </label>
                             ))}
                           </div>
-                          </div>
-                        </div>
+                      </div>
 
                         {/* Zone conditionnelle pour "geographical_spread" */}
                         {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("geographical_spread") && (
                           <div className="mt-4 p-4 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                            <label className="text-sm font-medium">Country Code Materiality Thresholds</label>
-                            <div className="grid grid-cols-3 gap-2 mt-2 max-h-48 overflow-y-auto">
-                              {COUNTRY_OPTIONS.map(country => (
-                                <label key={country.value} className="flex items-center gap-2 text-sm">
-                                  <input
-                                    type="checkbox"
-                                    checked={draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds?.includes(country.value) || false}
-                                    onChange={() => {
-                                      const currentThresholds = draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds || [];
-                                      const updatedThresholds = currentThresholds.includes(country.value)
-                                        ? currentThresholds.filter(c => c !== country.value)
-                                        : [...currentThresholds, country.value];
-                                      updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', updatedThresholds);
-                                    }}
-                                    className="rounded" disabled={isFieldDisabled(role, draft.status)}
-                                  />
-                                  {country.label}
-                                </label>
-                              ))}
-                            </div>
+                            <fieldset>
+                              <legend className="text-sm font-medium">Country Code Materiality Thresholds</legend>
+                              <div className="grid grid-cols-3 gap-2 mt-2 max-h-48 overflow-y-auto">
+                                {COUNTRY_OPTIONS.map(country => (
+                                  <div key={country.value} className="flex items-center gap-2 text-sm">
+                                    <input
+                                      type="checkbox"
+                                      id={`country-code-${country.value}`}
+                                      checked={draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds?.includes(country.value) || false}
+                                      onChange={() => {
+                                        const currentThresholds = draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds || [];
+                                        const updatedThresholds = currentThresholds.includes(country.value)
+                                          ? currentThresholds.filter(c => c !== country.value)
+                                          : [...currentThresholds, country.value];
+                                        updateDraft('incident.classificationTypes.0.countryCodeMaterialityThresholds', updatedThresholds);
+                                      }}
+                                      className="rounded"
+                                      disabled={isFieldDisabled(role, draft.status)}
+                                    />
+                                    <label htmlFor={`country-code-${country.value}`} className="cursor-pointer">
+                                      {country.label}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+                            </fieldset>
+
                           </div>
                         )}
 
