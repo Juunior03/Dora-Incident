@@ -550,15 +550,6 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    function toggleValueInArray(obj, field, value) {
-      if (!obj[field]) obj[field] = [];
-      if (obj[field].includes(value)) {
-        obj[field] = obj[field].filter(v => v !== value);
-      } else {
-        obj[field].push(value);
-      }
-    }
-
     function getNestedObject(obj, path) {
       const parts = path.split('.');
       let cur = obj;
@@ -569,7 +560,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         cur = cur[p];
       }
 
-      return { obj: cur, field: parts[parts.length - 1] };
+      return { obj: cur, field: parts.at(-1) };
     }
 
     function resetGeographicalSpreadThresholds(draft) {
@@ -583,7 +574,16 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         thresholdCur = thresholdCur[p];
       }
 
-      thresholdCur[thresholdParts[thresholdParts.length - 1]] = [];
+      thresholdCur[thresholdParts.at(-1)] = [];
+    }
+
+    function toggleValueInArray(obj, field, value) {
+      if (!obj[field]) obj[field] = [];
+      if (obj[field].includes(value)) {
+        obj[field] = obj[field].filter(v => v !== value);
+      } else {
+        obj[field].push(value);
+      }
     }
 
     function toggleArrayValue(path, value) {
@@ -591,10 +591,8 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         const next = structuredClone(prev);
         const { obj: cur, field } = getNestedObject(next, path);
 
-        // Logique pour ajouter/supprimer la valeur
         toggleValueInArray(cur, field, value);
 
-        // Logique pour gérer les dépendances
         if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
           if (!cur[field].includes(value)) {
             resetGeographicalSpreadThresholds(next);
@@ -604,6 +602,7 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         return next;
       });
     }
+
 
     // Fonction pour regrouper les rapports par incident
     function groupReportsByIncident(reports) {
@@ -1595,6 +1594,19 @@ export default function DoraIncidentApp() {
                           )}
                         </div>
                       </div>
+
+                      <div className="mt-6 flex justify-between">
+                          {!fromContinueButton && (
+                            <button onClick={() => setStep(0)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
+                              Back
+                            </button>
+                          )}
+                          <div className="flex gap-2">
+                            <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                              Next → Incident
+                            </button>
+                          </div>
+                        </div>
                     </div>
                     </div>
                   )}
@@ -1720,10 +1732,10 @@ export default function DoraIncidentApp() {
                           </div>
                         )}
 
-
                         <div className="mt-6">
-                          <label className="text-sm font-medium">Incident Discovery</label>
+                          <label htmlFor="incidentDiscovery" className="text-sm font-medium">Incident Discovery</label>
                           <select
+                            id="incidentDiscovery"
                             value={draft.incident.incidentDiscovery}
                             onChange={e => updateDraft('incident.incidentDiscovery', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
@@ -1847,8 +1859,9 @@ export default function DoraIncidentApp() {
                       <div className="mt-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="text-sm font-medium">Occurrence Date/Time</label>
+                              <label htmlFor="incidentOccurrenceDateTime" className="text-sm font-medium">Occurrence Date/Time</label>
                               <input
+                                id="incidentOccurrenceDateTime"
                                 type="datetime-local"
                                 value={draft.incident.incidentOccurrenceDateTime}
                                 onChange={e => updateDraft('incident.incidentOccurrenceDateTime', e.target.value)}
@@ -1856,9 +1869,11 @@ export default function DoraIncidentApp() {
                                 disabled={isFieldDisabled(role, draft.status)}
                               />
                             </div>
+
                             <div>
-                              <label className="text-sm font-medium">Services Restoration Date/Time</label>
+                              <label htmlFor="serviceRestorationDateTime" className="text-sm font-medium">Services Restoration Date/Time</label>
                               <input
+                                id="serviceRestorationDateTime"
                                 type="datetime-local"
                                 value={draft.impactAssessment.serviceImpact.serviceRestorationDateTime}
                                 onChange={e => updateDraft('impactAssessment.serviceImpact.serviceRestorationDateTime', e.target.value)}
@@ -1866,82 +1881,88 @@ export default function DoraIncidentApp() {
                                 disabled={isFieldDisabled(role, draft.status)}
                               />
                             </div>
+
                           </div>
                       </div>
 
                       <div className="mt-4">
-                      <div className="space-y-4">
-                      {/* Clients affectés */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium">Number of Affected Clients</label>
-                          <input
-                            type="number"
-                            value={draft.impactAssessment.affectedAssets.affectedClients.number}
-                            onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.number', e.target.value)}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Percentage of Affected Clients (%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={draft.impactAssessment.affectedAssets.affectedClients.percentage}
-                            onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.percentage', e.target.value)}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Financial Counterparts affectés */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium">Number of Affected Financial Counterparts</label>
-                          <input
-                            type="number"
-                            value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.number}
-                            onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.number', e.target.value)}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium">Percentage of Affected Financial Counterparts (%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage}
-                            onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage', e.target.value)}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
-                          />
-                        </div>
-
-                        <div className="mt-4">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-4">
+                          {/* Clients affectés */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="affectedClientsNumber" className="text-sm font-medium">Number of Affected Clients</label>
                               <input
-                                type="checkbox"
-                                id="hasImpactOnRelevantClients"
-                                checked={draft.impactAssessment.hasImpactOnRelevantClients}
-                                onChange={e => updateDraft('impactAssessment.hasImpactOnRelevantClients', e.target.checked)}
-                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                id="affectedClientsNumber"
+                                type="number"
+                                value={draft.impactAssessment.affectedAssets.affectedClients.number}
+                                onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.number', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                                 disabled={isFieldDisabled(role, draft.status)}
                               />
-                              <label htmlFor="hasImpactOnRelevantClients" className="text-sm font-medium">
-                                Impact on relevant clients or financial counterparts
-                              </label>
+                            </div>
+                            <div>
+                              <label htmlFor="affectedClientsPercentage" className="text-sm font-medium">Percentage of Affected Clients (%)</label>
+                              <input
+                                id="affectedClientsPercentage"
+                                type="number"
+                                step="0.01"
+                                value={draft.impactAssessment.affectedAssets.affectedClients.percentage}
+                                onChange={e => updateDraft('impactAssessment.affectedAssets.affectedClients.percentage', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
                           </div>
-                      </div>
+
+                          {/* Financial Counterparts affectés */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="affectedFinancialCounterpartsNumber" className="text-sm font-medium">Number of Affected Financial Counterparts</label>
+                              <input
+                                id="affectedFinancialCounterpartsNumber"
+                                type="number"
+                                value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.number}
+                                onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.number', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="affectedFinancialCounterpartsPercentage" className="text-sm font-medium">Percentage of Affected Financial Counterparts (%)</label>
+                              <input
+                                id="affectedFinancialCounterpartsPercentage"
+                                type="number"
+                                step="0.01"
+                                value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage}
+                                onChange={e => updateDraft('impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
+
+                            <div className="mt-4">
+                              <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    id="hasImpactOnRelevantClients"
+                                    checked={draft.impactAssessment.hasImpactOnRelevantClients}
+                                    onChange={e => updateDraft('impactAssessment.hasImpactOnRelevantClients', e.target.checked)}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                    disabled={isFieldDisabled(role, draft.status)}
+                                  />
+                                  <label htmlFor="hasImpactOnRelevantClients" className="text-sm font-medium">
+                                    Impact on relevant clients or financial counterparts
+                                  </label>
+                              </div>
+                        </div>
                       </div> <br/>
 
                       {/* Transactions affectées */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="text-sm font-medium">Number of Affected Transactions</label>
+                          <label htmlFor="affectedTransactionsNumber" className="text-sm font-medium">Number of Affected Transactions</label>
                           <input
+                            id="affectedTransactionsNumber"
                             type="number"
                             value={draft.impactAssessment.affectedAssets.affectedTransactions.number}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.affectedTransactions.number', e.target.value)}
@@ -1950,8 +1971,9 @@ export default function DoraIncidentApp() {
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Percentage of Affected Transactions (%)</label>
+                          <label htmlFor="affectedTransactionsPercentage" className="text-sm font-medium">Percentage of Affected Transactions (%)</label>
                           <input
+                            id="affectedTransactionsPercentage"
                             type="number"
                             step="0.01"
                             value={draft.impactAssessment.affectedAssets.affectedTransactions.percentage}
@@ -1960,13 +1982,12 @@ export default function DoraIncidentApp() {
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
-                      </div>
 
-                      {/* Valeur des transactions affectées */}
-                      <div className="grid grid-cols-1 gap-4">
+                        {/* Valeur des transactions affectées */}
                         <div>
-                          <label className="text-sm font-medium">Value of Affected Transactions</label>
+                          <label htmlFor="valueOfAffectedTransactions" className="text-sm font-medium">Value of Affected Transactions</label>
                           <input
+                            id="valueOfAffectedTransactions"
                             type="number"
                             value={draft.impactAssessment.affectedAssets.valueOfAffectedTransactions}
                             onChange={e => updateDraft('impactAssessment.affectedAssets.valueOfAffectedTransactions', e.target.value)}
@@ -1979,9 +2000,7 @@ export default function DoraIncidentApp() {
                     </div>
 
                     <div className="mt-6">
-                      <label className="block text-xs font-medium mb-2">
-                        Information whether the values are actual or estimates
-                      </label>
+                      <p className="block text-xs font-medium mb-2">Information whether the values are actual or estimates</p>
                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {NUMBERS_ACTUAL_ESTIMATE_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2006,29 +2025,27 @@ export default function DoraIncidentApp() {
 
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("reputational_impact") && (
                       <div className="mt-6">
-                        <label className="block text-xs font-medium mb-2">
-                          Reputational Impact Type
-                        </label>
-                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                          {REPUTATIONAL_IMPACT_OPTIONS.map(option => (
-                            <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                              <input
-                                type="checkbox"
-                                checked={draft.incident.classificationTypes[0]?.reputationalImpactType?.includes(option.value)}
-                                onChange={() => {
-                                  const currentValues = draft.incident.classificationTypes[0]?.reputationalImpactType || [];
-                                  const updatedValues = currentValues.includes(option.value)
-                                    ? currentValues.filter(value => value !== option.value)
-                                    : [...currentValues, option.value];
-                                  updateDraft('incident.classificationTypes.0.reputationalImpactType', updatedValues);
-                                }}
-                                className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                disabled={isFieldDisabled(role, draft.status)}
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
+                        <p className="block text-xs font-medium mb-2">Reputational Impact Type</p>
+                          <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            {REPUTATIONAL_IMPACT_OPTIONS.map(option => (
+                              <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.incident.classificationTypes[0]?.reputationalImpactType?.includes(option.value)}
+                                  onChange={() => {
+                                    const currentValues = draft.incident.classificationTypes[0]?.reputationalImpactType || [];
+                                    const updatedValues = currentValues.includes(option.value)
+                                      ? currentValues.filter(value => value !== option.value)
+                                      : [...currentValues, option.value];
+                                    updateDraft('incident.classificationTypes.0.reputationalImpactType', updatedValues);
+                                  }}
+                                  className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                  disabled={isFieldDisabled(role, draft.status)}
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
 
                         <div className="mt-6">
                           <div className="flex items-center gap-2">
@@ -2052,7 +2069,6 @@ export default function DoraIncidentApp() {
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
-
                       </div>
                     )}
 
@@ -2060,15 +2076,14 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-2 gap-4">
                         {/* Incident Duration */}
                         <div>
-                          <label className="text-sm font-medium">Incident Duration (DD:HH:MM)</label>
+                          <label htmlFor="incidentDuration" className="text-sm font-medium">Incident Duration (DD:HH:MM)</label>
                           <input
+                            id="incidentDuration"
                             type="text"
                             value={draft.incident.incidentDuration}
                             onChange={(e) => {
-                              let value = e.target.value.replace(/[^0-9]/g, ''); // Supprime tout ce qui n'est pas un chiffre
+                              let value = e.target.value.replaceAll(/[^0-9]/g, '');
                               let formattedValue = '';
-
-                              // Ajoute les ":" au bon endroit
                               if (value.length > 0) {
                                 formattedValue = value.substring(0, 2);
                                 if (value.length > 2) {
@@ -2078,7 +2093,6 @@ export default function DoraIncidentApp() {
                                   }
                                 }
                               }
-
                               updateDraft('incident.incidentDuration', formattedValue);
                             }}
                             placeholder="DD:HH:MM"
@@ -3272,7 +3286,9 @@ export default function DoraIncidentApp() {
 
                   {role !== 'validateur' && (
                       <div className="mt-6 flex justify-end">
-                        <button onClick={() => setView('report')} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
+                        <button onClick={() =>{
+                        setView('report');
+                        }}className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
                           Create or Update Report
                         </button>
                       </div>
