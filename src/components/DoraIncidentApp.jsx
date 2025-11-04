@@ -862,8 +862,20 @@ export default function DoraIncidentApp() {
   function addAffectedEntity() {
     setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
   }
-  function removeAffectedEntity(idx) {
-    setDraft(d => ({ ...d, affectedEntity: d.affectedEntity.filter((_,i)=>i!==idx) }))
+  function updateAffectedEntity(index, field, value) {
+      setDraft(d => {
+        const next = structuredClone(d);
+        next.affectedEntity[index][field] = value;
+        return next;
+      });
+  }
+
+  function removeAffectedEntity(index) {
+      setDraft(d => {
+        const next = structuredClone(d);
+        next.affectedEntity = next.affectedEntity.filter((_, i) => i !== index);
+        return next;
+      });
   }
 
     async function saveReport(final = false) {
@@ -1348,17 +1360,17 @@ export default function DoraIncidentApp() {
 
                       <div className="space-y-4">
                         <div className="mt-6 grid grid-cols-2 gap-4">
-                          <div >
-                            <label className="block text-sm font-medium mb-1">Type of report</label>
-                            <select value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
+                          <div>
+                            <label htmlFor="incidentSubmission" className="block text-sm font-medium mb-1">Type of report</label>
+                            <select id="incidentSubmission" value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="initial_notification">Initial Notification</option>
                               <option value="intermediate_report">Intermediate Report</option>
                               <option value="final_report">Final Report</option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-1">Report currency</label>
-                            <select value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
+                            <label htmlFor="reportCurrency" className="block text-sm font-medium mb-1">Report currency</label>
+                            <select id="reportCurrency" value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="EUR">EUR</option>
                               <option value="BGN">BGN</option>
                               <option value="CZK">CZK</option>
@@ -1401,17 +1413,26 @@ export default function DoraIncidentApp() {
                           </div>
                           </div>
 
-                          <div className="mt-6">
-                            <label className="block text-xs font-medium mb-2">Affected entity types</label>
-                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                              {ENTITY_TYPES.map(type => (
-                                <label key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                  <input type="checkbox" checked={draft.submittingEntity.affectedEntityType?.includes(type.value)} onChange={() => toggleArrayValue('submittingEntity.affectedEntityType', type.value)} className="rounded" disabled={isFieldDisabled(role, draft.status)}/>
-                                  <span>{type.label}</span>
+                        <fieldset className="border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50 p-2 mt-6 max-h-32 overflow-y-auto">
+                          <legend className="block text-xs font-medium mb-2">Affected entity types</legend>
+                          <div className="grid grid-cols-2 gap-2">
+                            {ENTITY_TYPES.map(type => (
+                              <div key={type.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                <input
+                                  type="checkbox"
+                                  id={`entity-type-${type.value}`}
+                                  checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
+                                  onChange={() => toggleArrayValue('submittingEntity.affectedEntityType', type.value)}
+                                  className="rounded"
+                                  disabled={isFieldDisabled(role, draft.status)}
+                                />
+                                <label htmlFor={`entity-type-${type.value}`} className="cursor-pointer">
+                                  {type.label}
                                 </label>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
+                        </fieldset>
                         </div>
 
                         <div className="mt-4">
@@ -1428,27 +1449,43 @@ export default function DoraIncidentApp() {
                               </div>
                             </div>
                           </div>
-                        <div className="space-y-2 mt-2">
-                          {draft.affectedEntity.map((ae, idx)=> (
-                            <div key={idx} className="p-3 rounded-lg border bg-white">
-                              <div className="flex gap-2">
-                                <input placeholder="Name" value={ae.name} onChange={e=>{
-                                  const val = e.target.value
-                                  setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].name = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
-                                <input placeholder="Identification Code" value={ae.code} onChange={e=>{
-                                  const val = e.target.value
-                                  setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].code = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
-                                <input placeholder="LEI Code" value={ae.LEI} onChange={e=>{
-                                  const val = e.target.value
-                                  setDraft(d=>{ const next = JSON.parse(JSON.stringify(d)); next.affectedEntity[idx].LEI = val; return next })
-                                }} className="flex-1 p-2 rounded-lg border" disabled={isFieldDisabled(role, draft.status)}/>
-                                <button onClick={()=>removeAffectedEntity(idx)} className="px-3 rounded-lg bg-red-50 text-red-700" disabled={isFieldDisabled(role, draft.status)}>Remove</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+
+                          <div className="space-y-2 mt-2">
+                              {draft.affectedEntity.map((ae, idx) => (
+                                <div key={`affected-entity-${idx}-${ae.name}`} className="p-3 rounded-lg border bg-white">
+                                  <div className="flex gap-2">
+                                    <input
+                                      placeholder="Name"
+                                      value={ae.name}
+                                      onChange={e => updateAffectedEntity(idx, 'name', e.target.value)}
+                                      className="flex-1 p-2 rounded-lg border"
+                                      disabled={isFieldDisabled(role, draft.status)}
+                                    />
+                                    <input
+                                      placeholder="Identification Code"
+                                      value={ae.code}
+                                      onChange={e => updateAffectedEntity(idx, 'code', e.target.value)}
+                                      className="flex-1 p-2 rounded-lg border"
+                                      disabled={isFieldDisabled(role, draft.status)}
+                                    />
+                                    <input
+                                      placeholder="LEI Code"
+                                      value={ae.LEI}
+                                      onChange={e => updateAffectedEntity(idx, 'LEI', e.target.value)}
+                                      className="flex-1 p-2 rounded-lg border"
+                                      disabled={isFieldDisabled(role, draft.status)}
+                                    />
+                                    <button
+                                      onClick={() => removeAffectedEntity(idx)}
+                                      className="px-3 rounded-lg bg-red-50 text-red-700"
+                                      disabled={isFieldDisabled(role, draft.status)}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
                         <div className="mt-2">
                           <button onClick={addAffectedEntity} className="px-3 py-2 rounded-lg bg-indigo-500 text-white" disabled={isFieldDisabled(role, draft.status)}>Add affected entity</button>
                         </div>
