@@ -543,8 +543,6 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       }
     }
 
-
-
     // Valide le format d'un email
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -2224,9 +2222,9 @@ export default function DoraIncidentApp() {
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Description of the Data Losses
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.classificationTypes[0]?.dataLossesDescription || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.dataLossesDescription', e.target.value)}
@@ -2239,18 +2237,17 @@ export default function DoraIncidentApp() {
                       </>
                     )}
 
-
                     <div className="mt-4">
-                      <label className="block text-sm font-medium mb-2">
+                      <p className="block text-sm font-medium mb-2">
                         Critical Services Affected
-                      </label>
+                      </p>
                       <textarea
                         value={draft.impactAssessment.criticalServicesAffected || ''}
                         onChange={e => updateDraft('impactAssessment.criticalServicesAffected', e.target.value)}
                         rows={2}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                        disabled={isFieldDisabled(role, draft.status)}
                         placeholder="Décrivez les services critiques affectés, y compris ceux nécessitant une autorisation, une inscription ou une supervision par des autorités compétentes, ainsi que la nature de l'accès malveillant et non autorisé"
+                        disabled={isFieldDisabled(role, draft.status)}
                       />
                     </div>
 
