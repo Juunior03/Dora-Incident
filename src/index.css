@@ -212,7 +212,7 @@
 /* Style pour les messages d'erreur */
 .error-message {
   background-color: rgba(255, 0, 0, 0.2);
-  color: #c9181e;
+  color: #760000;
   padding: 0.8rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
@@ -230,7 +230,7 @@
 /* Style pour les messages de succès */
 .success-message {
   background-color: rgba(0, 200, 83, 0.2);
-  color: #2e7d32;
+  color: #0d5302;
   padding: 0.8rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
