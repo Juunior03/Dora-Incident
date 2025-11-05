@@ -135,6 +135,10 @@ const nowISO = () => new Date().toISOString()
       return null
     }
 
+    ConfettiCanvas.propTypes = {
+      trigger: PropTypes.bool,
+    };
+
 const ENTITY_TYPES = [
   { value: "credit_institution", label: "Credit Institution" },
   { value: "payment_institution", label: "Payment Institution" },
@@ -2533,8 +2537,7 @@ export default function DoraIncidentApp() {
                           checked={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery || false}
                           onChange={e => updateDraft('impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', e.target.checked)}
                           className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                          disabled={isFieldDisabled(role, draft.status)}
-                          />
+                          disabled={isFieldDisabled(role, draft.status)}/>
                         Have Temporary Actions/Measures Been Taken or Planned to Recover from the Incident?
                       </label>
                     </div>
@@ -3372,7 +3375,4 @@ export default function DoraIncidentApp() {
       </footer>
     </div>
   )
-  ConfettiCanvas.propTypes = {
-      trigger: PropTypes.bool,
-    };
 }
