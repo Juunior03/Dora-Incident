@@ -2252,7 +2252,7 @@ export default function DoraIncidentApp() {
                     </div>
 
                     <div className="mt-4">
-                      <label className="block text-xs font-medium mb-2">Incident Classification</label>
+                      <p className="block text-xs font-medium mb-2">Incident Classification</p>
                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {INCIDENT_CLASSIFICATION_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2262,9 +2262,7 @@ export default function DoraIncidentApp() {
                               onChange={() => {
                                 const currentValues = draft.incident.incidentType.incidentClassification;
                                 let updatedValues;
-
                                 if (option.value === "cybersecurity-related") {
-                                  // Si "cybersecurity-related" est décoché, on le retire et on réinitialise les champs liés
                                   if (currentValues.includes(option.value)) {
                                     updatedValues = currentValues.filter(value => value !== option.value);
                                     updateDraft('incident.incidentType.threatTechniques', []);
@@ -2273,12 +2271,10 @@ export default function DoraIncidentApp() {
                                     updatedValues = [...currentValues, option.value];
                                   }
                                 } else {
-                                  // Pour les autres options, on ajoute ou retire simplement
                                   updatedValues = currentValues.includes(option.value)
                                     ? currentValues.filter(value => value !== option.value)
                                     : [...currentValues, option.value];
                                 }
-
                                 updateDraft('incident.incidentType.incidentClassification', updatedValues);
                               }}
                               className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
@@ -2290,72 +2286,71 @@ export default function DoraIncidentApp() {
                       </div>
                     </div>
 
-
                     <div>
                     {draft.incident.incidentType.incidentClassification.includes("other") && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Other Incident Classification
-                        </label>
-                        <textarea
-                          value={draft.incident.incidentType.otherIncidentClassification || ''}
-                          onChange={e => updateDraft('incident.incidentType.otherIncidentClassification', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={isFieldDisabled(role, draft.status)}
-                          placeholder="Please specify the other type of incident."
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Other Incident Classification
+                          </p>
+                          <textarea
+                            value={draft.incident.incidentType.otherIncidentClassification || ''}
+                            onChange={e => updateDraft('incident.incidentType.otherIncidentClassification', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Please specify the other type of incident."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
                     )}
                     </div>
 
                     {draft.incident.incidentType.incidentClassification.includes("cybersecurity-related") && (
                       <div className="mt-4">
-                        <label className="block text-xs font-medium mb-2">Threat Techniques</label>
-                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                          {THREAT_TECHNIQUES_OPTIONS.map(option => (
-                            <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                              <input
-                                type="checkbox"
-                                checked={draft.incident.incidentType.threatTechniques.includes(option.value)}
-                                onChange={() => {
-                                  const currentValues = draft.incident.incidentType.threatTechniques;
-                                  const updatedValues = currentValues.includes(option.value)
-                                    ? currentValues.filter(value => value !== option.value)
-                                    : [...currentValues, option.value];
-                                  updateDraft('incident.incidentType.threatTechniques', updatedValues);
-                                }}
-                                className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                disabled={isFieldDisabled(role, draft.status)}
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
+                          <p className="block text-xs font-medium mb-2">Threat Techniques</p>
+                          <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            {THREAT_TECHNIQUES_OPTIONS.map(option => (
+                              <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.incident.incidentType.threatTechniques.includes(option.value)}
+                                  onChange={() => {
+                                    const currentValues = draft.incident.incidentType.threatTechniques;
+                                    const updatedValues = currentValues.includes(option.value)
+                                      ? currentValues.filter(value => value !== option.value)
+                                      : [...currentValues, option.value];
+                                    updateDraft('incident.incidentType.threatTechniques', updatedValues);
+                                  }}
+                                  className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                  disabled={isFieldDisabled(role, draft.status)}
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
                       </div>
                     )}
-
 
                     {draft.incident.incidentType.threatTechniques.includes("other") && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Other Threat Techniques
-                        </label>
-                        <textarea
-                          value={draft.incident.incidentType.otherThreatTechniques || ''}
-                          onChange={e => updateDraft('incident.incidentType.otherThreatTechniques', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          placeholder="Please specify the other threat techniques."
-                          disabled={isFieldDisabled(role, draft.status)}
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Other Threat Techniques
+                          </p>
+                          <textarea
+                            value={draft.incident.incidentType.otherThreatTechniques || ''}
+                            onChange={e => updateDraft('incident.incidentType.otherThreatTechniques', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Please specify the other threat techniques."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
+
                     )}
 
                     <div className="mt-4">
-                      <label className="block text-sm font-medium mb-2">
+                      <p className="block text-sm font-medium mb-2">
                         Information about Affected Functional Areas and Business Processes
-                      </label>
+                      </p>
                       <textarea
                         value={draft.impactAssessment.affectedFunctionalAreas || ''}
                         onChange={e => updateDraft('impactAssessment.affectedFunctionalAreas', e.target.value)}
@@ -2366,11 +2361,13 @@ export default function DoraIncidentApp() {
                       />
                     </div>
 
+
                     <div className="mt-4">
-                      <label className="block text-sm font-medium mb-2">
+                      <label htmlFor="isAffectedInfrastructureComponents" className="block text-sm font-medium mb-2">
                         Are Infrastructure Components Supporting Business Processes Affected ?
                       </label>
                       <select
+                        id="isAffectedInfrastructureComponents"
                         value={draft.impactAssessment.isAffectedInfrastructureComponents}
                         onChange={e => updateDraft('impactAssessment.isAffectedInfrastructureComponents', e.target.value)}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
@@ -2387,25 +2384,26 @@ export default function DoraIncidentApp() {
 
                     {draft.impactAssessment.isAffectedInfrastructureComponents === "yes" && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Information about Affected Infrastructure Components
-                        </label>
-                        <textarea
-                          value={draft.impactAssessment.affectedInfrastructureComponents || ''}
-                          onChange={e => updateDraft('impactAssessment.affectedInfrastructureComponents', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={isFieldDisabled(role, draft.status)}
-                          placeholder="Describe the affected infrastructure components, including hardware (servers, computers, data centers, etc.) and software (operating systems, applications, databases, etc.)."
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Information about Affected Infrastructure Components
+                          </p>
+                          <textarea
+                            value={draft.impactAssessment.affectedInfrastructureComponents || ''}
+                            onChange={e => updateDraft('impactAssessment.affectedInfrastructureComponents', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Describe the affected infrastructure components, including hardware (servers, computers, data centers, etc.) and software (operating systems, applications, databases, etc.)."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
                     )}
 
                     <div className="mt-4">
-                      <label className="block text-sm font-medium mb-2">
+                      <label htmlFor="isImpactOnFinancialInterest" className="block text-sm font-medium mb-2">
                         Has the Incident Impacted the Financial Interest of Clients?
                       </label>
                       <select
+                        id="isImpactOnFinancialInterest"
                         value={draft.impactAssessment.isImpactOnFinancialInterest}
                         onChange={e => updateDraft('impactAssessment.isImpactOnFinancialInterest', e.target.value)}
                         className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
@@ -2421,7 +2419,7 @@ export default function DoraIncidentApp() {
                     </div>
 
                     <div className="mt-4">
-                      <label className="block text-xs font-medium mb-2">Reporting to Other Authorities</label>
+                      <p className="block text-xs font-medium mb-2">Reporting to Other Authorities</p>
                       <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {REPORTING_TO_OTHER_AUTHORITIES_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2446,17 +2444,17 @@ export default function DoraIncidentApp() {
 
                     {draft.reportingToOtherAuthorities.includes("other") && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Other Authorities Informed
-                        </label>
-                        <textarea
-                          value={draft.reportingToOtherAuthoritiesOther || ''}
-                          onChange={e => updateDraft('reportingToOtherAuthoritiesOther', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          placeholder="Please specify the other authorities informed about the incident."
-                          disabled={isFieldDisabled(role, draft.status)}
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Other Authorities Informed
+                          </p>
+                          <textarea
+                            value={draft.reportingToOtherAuthoritiesOther || ''}
+                            onChange={e => updateDraft('reportingToOtherAuthoritiesOther', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Please specify the other authorities informed about the incident."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
                     )}
 
@@ -2475,33 +2473,34 @@ export default function DoraIncidentApp() {
 
                     {draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Description of Temporary Actions/Measures for Recovery
-                        </label>
-                        <textarea
-                          value={draft.impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery || ''}
-                          onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={isFieldDisabled(role, draft.status)}
-                          placeholder="Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc."
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Description of Temporary Actions/Measures for Recovery
+                          </p>
+                          <textarea
+                            id="descriptionOfTemporaryActionsMeasuresForRecovery"
+                            value={draft.impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery || ''}
+                            onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
                     )}
 
                     {draft.incident.incidentType.incidentClassification.includes("cybersecurity-related") && (
                       <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">
-                          Indicators of Compromise (IoC)
-                        </label>
-                        <textarea
-                          value={draft.incident.incidentType.indicatorsOfCompromise || ''}
-                          onChange={e => updateDraft('incident.incidentType.indicatorsOfCompromise', e.target.value)}
-                          rows={2}
-                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                          disabled={isFieldDisabled(role, draft.status)}
-                          placeholder="Provide indicators of compromise such as IP addresses, URLs, domains, file hashes, malware data, network activity data, email message data, DNS requests, user account activities, database traffic, etc."
-                        />
+                          <p className="block text-sm font-medium mb-2">
+                            Indicators of Compromise (IoC)
+                          </p>
+                          <textarea
+                            value={draft.incident.incidentType.indicatorsOfCompromise || ''}
+                            onChange={e => updateDraft('incident.incidentType.indicatorsOfCompromise', e.target.value)}
+                            rows={2}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Provide indicators of compromise such as IP addresses, URLs, domains, file hashes, malware data, network activity data, email message data, DNS requests, user account activities, database traffic, etc."
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
                       </div>
                     )}
 
@@ -2518,19 +2517,17 @@ export default function DoraIncidentApp() {
                       </div>
                     </div>
 
-
                     </div>
                   )}
 
 
                   {step === 2 && draft.incidentSubmission === "final_report" && (
                       <div>
-
-                      <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
-                      <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
+                          <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
+                          <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
 
                         <div className="mt-4">
-                          <label className="block text-xs font-medium mb-2">High-Level Classification of Root Cause of the Incident</label>
+                          <p className="block text-xs font-medium mb-2">High-Level Classification of Root Cause of the Incident</p>
                           <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ROOT_CAUSE_HL_CLASSIFICATION_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2554,148 +2551,148 @@ export default function DoraIncidentApp() {
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-xs font-medium mb-2">Detailed Classification of Root Causes of the Incident</label>
+                          <p className="block text-xs font-medium mb-2">Detailed Classification of Root Causes of the Incident</p>
                           <div className="grid grid-cols-2 gap-4 max-h-56 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
 
                             {/* Malicious Actions */}
                             {draft.incident.rootCauseHLClassification.includes("malicious_actions") && (
                               <div className="flex flex-col gap-2">
-                                <label className="block text-xs font-medium mb-2">Malicious Actions</label>
-                                {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                  .filter(option => option.value.startsWith("malicious_actions_"))
-                                  .map(option => (
-                                    <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                        onChange={() => {
-                                          const currentValues = draft.incident.rootCausesDetailedClassification;
-                                          const updatedValues = currentValues.includes(option.value)
-                                            ? currentValues.filter(value => value !== option.value)
-                                            : [...currentValues, option.value];
-                                          updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={isFieldDisabled(role, draft.status)}
-                                      />
-                                      <span>{option.label.replace("Malicious actions: ", "")}</span>
-                                    </label>
-                                  ))}
+                                  <p className="block text-xs font-medium mb-2">Malicious Actions</p>
+                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
+                                    .filter(option => option.value.startsWith("malicious_actions_"))
+                                    .map(option => (
+                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
+                                          onChange={() => {
+                                            const currentValues = draft.incident.rootCausesDetailedClassification;
+                                            const updatedValues = currentValues.includes(option.value)
+                                              ? currentValues.filter(value => value !== option.value)
+                                              : [...currentValues, option.value];
+                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                                          }}
+                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                          disabled={isFieldDisabled(role, draft.status)}
+                                        />
+                                        <span>{option.label.replace("Malicious actions: ", "")}</span>
+                                      </label>
+                                    ))}
                               </div>
                             )}
 
                             {/* Process Failure */}
                             {draft.incident.rootCauseHLClassification.includes("process_failure") && (
-                              <div className="flex flex-col gap-2">
-                                <label className="block text-xs font-medium mb-2">Process Failure</label>
-                                {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                  .filter(option => option.value.startsWith("process_failure_"))
-                                  .map(option => (
-                                    <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                        onChange={() => {
-                                          const currentValues = draft.incident.rootCausesDetailedClassification;
-                                          const updatedValues = currentValues.includes(option.value)
-                                            ? currentValues.filter(value => value !== option.value)
-                                            : [...currentValues, option.value];
-                                          updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={isFieldDisabled(role, draft.status)}
-                                      />
-                                      <span>{option.label.replace("Process failure: ", "")}</span>
-                                    </label>
-                                  ))}
-                              </div>
+                                <div className="flex flex-col gap-2">
+                                  <p className="block text-xs font-medium mb-2">Process Failure</p>
+                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
+                                    .filter(option => option.value.startsWith("process_failure_"))
+                                    .map(option => (
+                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
+                                          onChange={() => {
+                                            const currentValues = draft.incident.rootCausesDetailedClassification;
+                                            const updatedValues = currentValues.includes(option.value)
+                                              ? currentValues.filter(value => value !== option.value)
+                                              : [...currentValues, option.value];
+                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                                          }}
+                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                          disabled={isFieldDisabled(role, draft.status)}
+                                        />
+                                        <span>{option.label.replace("Process failure: ", "")}</span>
+                                      </label>
+                                    ))}
+                                </div>
                             )}
 
                             {/* System Failure */}
                             {draft.incident.rootCauseHLClassification.includes("system_failure_malfunction") && (
-                              <div className="flex flex-col gap-2">
-                                <label className="block text-xs font-medium mb-2">System Failure</label>
-                                {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                  .filter(option => option.value.startsWith("system_failure_"))
-                                  .map(option => (
-                                    <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                        onChange={() => {
-                                          const currentValues = draft.incident.rootCausesDetailedClassification;
-                                          const updatedValues = currentValues.includes(option.value)
-                                            ? currentValues.filter(value => value !== option.value)
-                                            : [...currentValues, option.value];
-                                          updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={isFieldDisabled(role, draft.status)}
-                                      />
-                                      <span>{option.label.replace("System failure: ", "")}</span>
-                                    </label>
-                                  ))}
-                              </div>
+                                <div className="flex flex-col gap-2">
+                                  <p className="block text-xs font-medium mb-2">System Failure</p>
+                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
+                                    .filter(option => option.value.startsWith("system_failure_"))
+                                    .map(option => (
+                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
+                                          onChange={() => {
+                                            const currentValues = draft.incident.rootCausesDetailedClassification;
+                                            const updatedValues = currentValues.includes(option.value)
+                                              ? currentValues.filter(value => value !== option.value)
+                                              : [...currentValues, option.value];
+                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                                          }}
+                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                          disabled={isFieldDisabled(role, draft.status)}
+                                        />
+                                        <span>{option.label.replace("System failure: ", "")}</span>
+                                      </label>
+                                    ))}
+                                </div>
                             )}
 
                             {/* Human Error */}
                             {draft.incident.rootCauseHLClassification.includes("human_error") && (
-                              <div className="flex flex-col gap-2">
-                                <label className="block text-xs font-medium mb-2">Human Error</label>
-                                {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                  .filter(option => option.value.startsWith("human_error_"))
-                                  .map(option => (
-                                    <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                        onChange={() => {
-                                          const currentValues = draft.incident.rootCausesDetailedClassification;
-                                          const updatedValues = currentValues.includes(option.value)
-                                            ? currentValues.filter(value => value !== option.value)
-                                            : [...currentValues, option.value];
-                                          updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={isFieldDisabled(role, draft.status)}
-                                      />
-                                      <span>{option.label.replace("Human error: ", "")}</span>
-                                    </label>
-                                  ))}
-                              </div>
+                                <div className="flex flex-col gap-2">
+                                  <p className="block text-xs font-medium mb-2">Human Error</p>
+                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
+                                    .filter(option => option.value.startsWith("human_error_"))
+                                    .map(option => (
+                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
+                                          onChange={() => {
+                                            const currentValues = draft.incident.rootCausesDetailedClassification;
+                                            const updatedValues = currentValues.includes(option.value)
+                                              ? currentValues.filter(value => value !== option.value)
+                                              : [...currentValues, option.value];
+                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                                          }}
+                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                          disabled={isFieldDisabled(role, draft.status)}
+                                        />
+                                        <span>{option.label.replace("Human error: ", "")}</span>
+                                      </label>
+                                    ))}
+                                </div>
                             )}
 
                             {/* External Event */}
                             {draft.incident.rootCauseHLClassification.includes("external_event") && (
-                              <div className="flex flex-col gap-2">
-                                <label className="block text-xs font-medium mb-2">External Event</label>
-                                {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                  .filter(option => option.value.startsWith("external_event_"))
-                                  .map(option => (
-                                    <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                        onChange={() => {
-                                          const currentValues = draft.incident.rootCausesDetailedClassification;
-                                          const updatedValues = currentValues.includes(option.value)
-                                            ? currentValues.filter(value => value !== option.value)
-                                            : [...currentValues, option.value];
-                                          updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                        disabled={isFieldDisabled(role, draft.status)}
-                                      />
-                                      <span>{option.label.replace("External event: ", "")}</span>
-                                    </label>
-                                  ))}
-                              </div>
+                                <div className="flex flex-col gap-2">
+                                  <p className="block text-xs font-medium mb-2">External Event</p>
+                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
+                                    .filter(option => option.value.startsWith("external_event_"))
+                                    .map(option => (
+                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
+                                          onChange={() => {
+                                            const currentValues = draft.incident.rootCausesDetailedClassification;
+                                            const updatedValues = currentValues.includes(option.value)
+                                              ? currentValues.filter(value => value !== option.value)
+                                              : [...currentValues, option.value];
+                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                                          }}
+                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                                          disabled={isFieldDisabled(role, draft.status)}
+                                        />
+                                        <span>{option.label.replace("External event: ", "")}</span>
+                                      </label>
+                                    ))}
+                                </div>
                             )}
                           </div>
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-xs font-medium mb-2">Additional Classification of Root Causes of the Incident</label>
+                          <p className="block text-xs font-medium mb-2">Additional Classification of Root Causes of the Incident</p>
                           <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
@@ -2719,122 +2716,122 @@ export default function DoraIncidentApp() {
                         </div>
 
                         {draft.incident.rootCausesDetailedClassification.some(value => value.includes("other")) && (
-                          <div className="mt-4">
-                            <label className="block text-sm font-medium mb-2">
-                              Other Types of Root Causes
-                            </label>
-                            <textarea
-                              value={draft.incident.rootCausesOther || ''}
-                              onChange={e => updateDraft('incident.rootCausesOther', e.target.value)}
-                              rows={2}
-                              className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                              placeholder="Specify other types of root causes if applicable."
-                              disabled={isFieldDisabled(role, draft.status)}
-                            />
-                          </div>
+                            <div className="mt-4">
+                              <p className="block text-sm font-medium mb-2">Other Types of Root Causes</p>
+                              <textarea
+                                value={draft.incident.rootCausesOther || ''}
+                                onChange={e => updateDraft('incident.rootCausesOther', e.target.value)}
+                                rows={2}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                placeholder="Specify other types of root causes if applicable."
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
                         )}
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Information about the Root Causes of the Incident
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.rootCausesInformation || ''}
                             onChange={e => updateDraft('incident.rootCausesInformation', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez la séquence des événements qui ont conduit à l'incident et comment l'incident semble avoir une cause racine similaire s'il s'agit d'un incident récurrent"
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Incident Resolution Summary
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.incidentResolutionSummary || ''}
                             onChange={e => updateDraft('incident.incidentResolutionSummary', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez les actions/mesures prises ou planifiées pour résoudre définitivement l'incident et pour prévenir que cet incident ne se reproduise à l'avenir. Incluez les leçons tirées de l'incident et les problèmes potentiels identifiés concernant la robustesse des systèmes informatiques affectés"
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Date and Time When the Incident Root Cause Was Addressed
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={draft.incident.rootCauseAddressingDateTime || ''}
-                              onChange={e => updateDraft('incident.rootCauseAddressingDateTime', e.target.value)}
-                              className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                              disabled={isFieldDisabled(role, draft.status)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Date and Time When the Incident Was Resolved
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={draft.incident.incidentResolutionDateTime || ''}
-                              onChange={e => updateDraft('incident.incidentResolutionDateTime', e.target.value)}
-                              className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                              disabled={isFieldDisabled(role, draft.status)}
-                            />
-                          </div>
+                            <div className="mt-4">
+                              <label htmlFor="rootCauseAddressingDateTime" className="block text-sm font-medium mb-2">
+                                Date and Time When the Incident Root Cause Was Addressed
+                              </label>
+                              <input
+                                id="rootCauseAddressingDateTime"
+                                type="datetime-local"
+                                value={draft.incident.rootCauseAddressingDateTime || ''}
+                                onChange={e => updateDraft('incident.rootCauseAddressingDateTime', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
+                            <div className="mt-4">
+                              <label htmlFor="incidentResolutionDateTime" className="block text-sm font-medium mb-2">
+                                Date and Time When the Incident Was Resolved
+                              </label>
+                              <input
+                                id="incidentResolutionDateTime"
+                                type="datetime-local"
+                                value={draft.incident.incidentResolutionDateTime || ''}
+                                onChange={e => updateDraft('incident.incidentResolutionDateTime', e.target.value)}
+                                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Reason for the Difference Between Permanent Resolution Date and Initially Planned Implementation Date
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.incidentResolutionVsPlannedImplementation || ''}
                             onChange={e => updateDraft('incident.incidentResolutionVsPlannedImplementation', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez la raison pour laquelle la date de résolution définitive des incidents diffère de la date de mise en œuvre initialement prévue, le cas échéant"
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Assessment of risk to critical functions for resolution purposes
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.assessmentOfRiskToCriticalFunctions || ''}
                             onChange={e => updateDraft('incident.assessmentOfRiskToCriticalFunctions', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Indiquez si l'incident représente un risque pour les fonctions critiques au sens de l'article 2, paragraphe 1, point 35, de la directive 2014/59/UE."
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Information Relevant for Resolution Authorities
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.informationRelevantToResolutionAuthorities || ''}
                             onChange={e => updateDraft('incident.informationRelevantToResolutionAuthorities', e.target.value)}
                             rows={4}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Décrivez l'impact de l'incident ICT majeur sur la résolvabilité de l'entité ou du groupe, incluant la continuité opérationnelle, les coûts, les pertes, la position financière et la robustesse des accords contractuels ICT en cas de résolution"
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Materiality Threshold for the Classification Criterion "Economic Impact"
-                          </label>
+                          </p>
                           <textarea
                             value={draft.incident.classificationTypes[0].economicImpactMaterialityThreshold || ''}
                             onChange={e => {
@@ -2844,8 +2841,8 @@ export default function DoraIncidentApp() {
                             }}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Détaillez les seuils atteints par l'incident pour le critère 'Impact économique' (articles 7 et 14 du Règlement (UE) 2022/2554)."
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
@@ -2898,29 +2895,29 @@ export default function DoraIncidentApp() {
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <p className="block text-sm font-medium mb-2">
                             Information whether the non-major incidents have been recurring
-                          </label>
+                          </p>
                           <textarea
-                            value={draft.incident.recurringNonMajorIncidentsDescription}
+                            value={draft.incident.recurringNonMajorIncidentsDescription || ''}
                             onChange={e => updateDraft('incident.recurringNonMajorIncidentsDescription', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
                             placeholder="Indiquer si plusieurs incidents non majeurs sont récurrents et considérés comme un incident majeur, ainsi que le nombre d'occurrences."
+                            disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium mb-2">
+                          <label htmlFor="recurringIncidentDate" className="block text-sm font-medium mb-2">
                             Date and time of occurrence of recurring incidents
                           </label>
                           <input
+                            id="recurringIncidentDate"
                             type="datetime-local"
-                            value={draft.incident.recurringIncidentDate}
+                            value={draft.incident.recurringIncidentDate || ''}
                             onChange={e => updateDraft('incident.recurringIncidentDate', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            placeholder="YYYY-MM-DDThh:mm:ssZ"
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
@@ -2954,7 +2951,7 @@ export default function DoraIncidentApp() {
                             <div className="mt-2 text-sm text-green-700 dark:text-green-400">No validation errors detected</div>
                           ) : (
                             <ul className="mt-2 text-sm text-red-700 dark:text-red-400 list-disc pl-4">
-                              {Array.isArray(errors) && errors.map((e, i) => <li key={i}>{e}</li>)}
+                              {Array.isArray(errors) && errors.map((e) => <li key={e}>{e}</li>)}
                             </ul>
                           )}
 
@@ -2971,11 +2968,11 @@ export default function DoraIncidentApp() {
                                 console.log('draft.id:', draft.id);
                                 console.log('user.id:', user.id);
                                 const result = await saveReport(true);
-                                if (!result.ok) {
+                                if (result.ok) {
+                                  alert('Saved to Dashboard');
+                                } else {
                                   console.error('Erreurs lors de la sauvegarde:', result.errors);
                                   setErrors(result.errors);
-                                } else {
-                                  alert('Saved to Dashboard');
                                 }
                               }}
                               className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
@@ -2991,11 +2988,10 @@ export default function DoraIncidentApp() {
                         <button onClick={() => {
                           setView('dashboard');
                           setFromContinueButton(false); // Réinitialiser fromContinueButton à false
-                          window.location.reload();
+                          globalThis.location.reload();
                         }} className="px-4 py-2 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 transition-colors">
                           Go to Dashboard
                         </button>
-
                       </div>
                     </div>
                   )}
