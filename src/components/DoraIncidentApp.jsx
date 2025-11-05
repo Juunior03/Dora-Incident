@@ -20,7 +20,7 @@ const nowISO = () => new Date().toISOString()
           const cleanedCT = { ...ct };
 
           // Supprimer les propriétés sans valeur
-          Object.keys(cleanedCT).forEach(key => {
+          for (const key of Object.keys(cleanedCT)) {
             if (
               cleanedCT[key] === null ||
               cleanedCT[key] === undefined ||
@@ -29,14 +29,14 @@ const nowISO = () => new Date().toISOString()
             ) {
               delete cleanedCT[key];
             }
-          });
+          }
 
           return cleanedCT;
         }).filter(ct => Object.keys(ct).length > 0); // Supprimer les objets vides
       };
 
       // Nettoyer uniquement la section classificationTypes
-      if (cleanedReport.incident && cleanedReport.incident.classificationTypes) {
+      if (cleanedReport.incident?.classificationTypes) {
         cleanedReport.incident.classificationTypes = cleanClassificationTypes(cleanedReport.incident.classificationTypes);
       }
 
@@ -73,13 +73,13 @@ const nowISO = () => new Date().toISOString()
     function deepMerge(target, source) {
       const output = { ...target };
       if (isObject(source) && isObject(target)) {
-        Object.keys(source).forEach(key => {
+        for (const key of Object.keys(source)) {
           if (isObject(source[key]) && key in target) {
             output[key] = deepMerge(target[key], source[key]);
           } else {
             output[key] = source[key];
           }
-        });
+        }
       }
       return output;
     }
@@ -680,6 +680,14 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
         }
       }
       return incidents;
+    }
+
+    function getButtonLabel(role, status) {
+      if (role === 'saisisseur') {
+        return status === 'validated' ? 'Open' : 'Update';
+      } else {
+        return status === 'validated' ? 'Open' : 'View';
+      }
     }
 
     function emptyDraft(incidentId = null) {
@@ -3290,12 +3298,8 @@ export default function DoraIncidentApp() {
                                           onClick={() => loadReportIntoDraft(r.id)}
                                           className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
                                         >
-                                          {role === 'saisisseur'
-                                            ? (r.status === 'validated' ? 'Open' : 'Update')
-                                            : (r.status === 'validated' ? 'Open' : 'View')}
+                                          {getButtonLabel(role, r.status)}
                                         </button>
-
-
 
                                         <button onClick={() => exportReportJSON(r)} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">
                                           Download
@@ -3369,6 +3373,6 @@ export default function DoraIncidentApp() {
     </div>
   )
   ConfettiCanvas.propTypes = {
-      trigger: PropTypes.bool.isRequired, // ou .bool si la prop est optionnelle
-  };
+      trigger: PropTypes.bool,
+    };
 }
