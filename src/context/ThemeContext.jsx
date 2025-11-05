@@ -1,5 +1,6 @@
 // src/context/ThemeContext.jsx
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 
 export const ThemeContext = createContext();
 
@@ -21,12 +22,21 @@ export const ThemeProvider = ({ children }) => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
+  const contextValue = useMemo(() => ({
+    theme,
+    toggleTheme,
+  }), [theme]);
+
   return (
     <>
-      <div className="theme-variables"></div>
-      <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <div className="theme-variables" />
+      <ThemeContext.Provider value={contextValue}>
         {children}
       </ThemeContext.Provider>
     </>
   );
+};
+
+ThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

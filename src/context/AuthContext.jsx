@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
         setUser(currentUser);
         if (currentUser) {
           try {
-            const { data, error } = await supabase
+            const { data } = await supabase
               .from('users')
               .select('role')
               .eq('id', currentUser.id)

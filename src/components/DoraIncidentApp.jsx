@@ -2537,8 +2537,9 @@ export default function DoraIncidentApp() {
                           checked={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery || false}
                           onChange={e => updateDraft('impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', e.target.checked)}
                           className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                          disabled={isFieldDisabled(role, draft.status)}/>
-                        Have Temporary Actions/Measures Been Taken or Planned to Recover from the Incident?
+                          disabled={isFieldDisabled(role, draft.status)}
+                        />
+                        <span>Have Temporary Actions/Measures Been Taken or Planned to Recover from the Incident?</span>
                       </label>
                     </div>
 
