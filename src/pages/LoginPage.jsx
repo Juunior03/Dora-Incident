@@ -8,7 +8,6 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -23,7 +22,7 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       await signIn(email, password);
-      window.location.reload();
+      globalThis.location.reload();
       // La navigation vers '/' est gérée par useEffect ci-dessus
     } catch (err) {
       setError(err.message);
