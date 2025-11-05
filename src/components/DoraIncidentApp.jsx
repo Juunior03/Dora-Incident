@@ -8,8 +8,39 @@ import PropTypes from 'prop-types';
 const nowISO = () => new Date().toISOString()
 
     function cleanReportForExport(report) {
-        const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType,  ...cleanedReport } = report;
-        return cleanedReport;
+      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, ...cleanedReport } = report;
+
+      // Fonction pour nettoyer uniquement la section classificationTypes
+      const cleanClassificationTypes = (classificationTypes) => {
+        if (!Array.isArray(classificationTypes)) {
+          return classificationTypes;
+        }
+
+        return classificationTypes.map(ct => {
+          const cleanedCT = { ...ct };
+
+          // Supprimer les propriétés sans valeur
+          Object.keys(cleanedCT).forEach(key => {
+            if (
+              cleanedCT[key] === null ||
+              cleanedCT[key] === undefined ||
+              cleanedCT[key] === "" ||
+              (Array.isArray(cleanedCT[key]) && cleanedCT[key].length === 0)
+            ) {
+              delete cleanedCT[key];
+            }
+          });
+
+          return cleanedCT;
+        }).filter(ct => Object.keys(ct).length > 0); // Supprimer les objets vides
+      };
+
+      // Nettoyer uniquement la section classificationTypes
+      if (cleanedReport.incident && cleanedReport.incident.classificationTypes) {
+        cleanedReport.incident.classificationTypes = cleanClassificationTypes(cleanedReport.incident.classificationTypes);
+      }
+
+      return cleanedReport;
     }
 
     function niceDownload(filename, data) {
@@ -24,10 +55,37 @@ const nowISO = () => new Date().toISOString()
     }
 
     function exportReportJSON(report) {
-      const cleanedReport = cleanReportForExport({ ...emptyDraft(report.incidentId), ...report });
+      // Récupérer la structure de base avec emptyDraft
+      const baseStructure = emptyDraft(report.incidentId);
+
+      // Fusionner les données du rapport existant avec la structure de base
+      const mergedReport = deepMerge(baseStructure, report);
+
+      // Nettoyer le rapport fusionné pour l'export
+      const cleanedReport = cleanReportForExport(mergedReport);
+
       const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
       const filename = `dora-incident-${financialEntityCode}.json`;
+
       niceDownload(filename, cleanedReport);
+    }
+
+    function deepMerge(target, source) {
+      const output = { ...target };
+      if (isObject(source) && isObject(target)) {
+        Object.keys(source).forEach(key => {
+          if (isObject(source[key]) && key in target) {
+            output[key] = deepMerge(target[key], source[key]);
+          } else {
+            output[key] = source[key];
+          }
+        });
+      }
+      return output;
+    }
+
+    function isObject(item) {
+      return (item && typeof item === 'object' && !Array.isArray(item));
     }
 
     function ConfettiCanvas({ trigger }) {
@@ -630,10 +688,11 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
       return {
         id: null,
         incidentId: incidentId || `incident_${Date.now()}`,
-        incidentSubmission: 'initial_notification',
         nextSubmissionType: null,
         skipIdentity: false,
         skipContacts: false,
+
+        incidentSubmission: 'initial_notification',
         reportCurrency: 'EUR',
         submittingEntity: {
           entityType: 'SUBMITTING_ENTITY',
@@ -822,6 +881,7 @@ export default function DoraIncidentApp() {
       }
       loadReports();
     }, []);
+
 
     useEffect(() => {
       console.log('Vérification de draft et user :');
@@ -2466,7 +2526,7 @@ export default function DoraIncidentApp() {
                           onChange={e => updateDraft('impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', e.target.checked)}
                           className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
                           disabled={isFieldDisabled(role, draft.status)}
-                        />
+                          />
                         Have Temporary Actions/Measures Been Taken or Planned to Recover from the Incident?
                       </label>
                     </div>
@@ -3074,37 +3134,45 @@ export default function DoraIncidentApp() {
                         {filters.showFilters && (
                           <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
                               {/* Filtre par type de rapport */}
-                              <div>
-                                <label className="block text-sm font-medium mb-1">Type de rapport</label>
-                                <select
-                                  value={filters.incidentSubmission}
-                                  onChange={(e) => setFilters({...filters, incidentSubmission: e.target.value})}
-                                  className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                >
-                                  <option value="">Tous</option>
-                                  <option value="initial_notification">Initial Notification</option>
-                                  <option value="intermediate_report">Intermediate Report</option>
-                                  <option value="final_report">Final Report</option>
-                                </select>
-                              </div>
-                              {/* Filtre par statut de l'incident */}
-                              <div>
-                                <label className="block text-sm font-medium mb-1">Statut de l'incident</label>
-                                <select
-                                  value={filters.incidentStatus}
-                                  onChange={(e) => setFilters({...filters, incidentStatus: e.target.value})}
-                                  className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                >
-                                  <option value="">Tous</option>
-                                  <option value="open">Incident en cours</option>
-                                  <option value="closed">Incident fermé</option>
-                                </select>
-                              </div>
-                              {/* Filtre par critères de classification */}
-                              <div>
-                                <label className="block text-sm font-medium mb-1">Critères de classification</label>
-                                <div className="max-h-40 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div>
+                                  <label htmlFor="incidentSubmission" className="block text-sm font-medium mb-1">
+                                    Type de rapport
+                                  </label>
+                                  <select
+                                    id="incidentSubmission"
+                                    value={filters.incidentSubmission}
+                                    onChange={(e) => setFilters({ ...filters, incidentSubmission: e.target.value })}
+                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                  >
+                                    <option value="">Tous</option>
+                                    <option value="initial_notification">Initial Notification</option>
+                                    <option value="intermediate_report">Intermediate Report</option>
+                                    <option value="final_report">Final Report</option>
+                                  </select>
+                                </div>
+
+                                {/* Filtre par statut de l'incident */}
+                                <div>
+                                  <label htmlFor="incidentStatus" className="block text-sm font-medium mb-1">
+                                    Statut de l'incident
+                                  </label>
+                                  <select
+                                    id="incidentStatus"
+                                    value={filters.incidentStatus}
+                                    onChange={(e) => setFilters({ ...filters, incidentStatus: e.target.value })}
+                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                  >
+                                    <option value="">Tous</option>
+                                    <option value="open">Incident en cours</option>
+                                    <option value="closed">Incident fermé</option>
+                                  </select>
+                                </div>
+
+                                {/* Filtre par critères de classification */}
+                                <fieldset className="p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <legend className="block text-sm font-medium mb-1">Critères de classification</legend>
                                   {CLASSIFICATION_CRITERIA.map(criteria => (
                                     <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
                                       <input
@@ -3114,34 +3182,35 @@ export default function DoraIncidentApp() {
                                           const updatedCriteria = filters.classificationCriterion.includes(criteria.value)
                                             ? filters.classificationCriterion.filter(v => v !== criteria.value)
                                             : [...filters.classificationCriterion, criteria.value];
-                                          setFilters({...filters, classificationCriterion: updatedCriteria});
+                                          setFilters({ ...filters, classificationCriterion: updatedCriteria });
                                         }}
                                         className="rounded"
                                       />
                                       <span>{criteria.label}</span>
                                     </label>
                                   ))}
-                                </div>
-                              </div>
+                                </fieldset>
+
                               {/* Filtre par plage de dates */}
-                              <div>
-                                <label className="block text-sm font-medium mb-1">Plage de dates</label>
-                                <div className="grid grid-cols-1 gap-2">
+                                <fieldset className="grid grid-cols-1 gap-2">
+                                  <legend className="block text-sm font-medium mb-1">Plage de dates</legend>
                                   <input
+                                    id="startDate"
                                     type="date"
                                     value={filters.dateRange.start}
-                                    onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, start: e.target.value}})}
+                                    onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } })}
                                     className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                   />
                                   <input
+                                    id="endDate"
                                     type="date"
                                     value={filters.dateRange.end}
-                                    onChange={(e) => setFilters({...filters, dateRange: {...filters.dateRange, end: e.target.value}})}
+                                    onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } })}
                                     className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                   />
-                                </div>
-                              </div>
+                                </fieldset>
                             </div>
+
                             {/* Bouton pour réinitialiser les filtres */}
                             <div className="mt-4 flex justify-end">
                               <button
@@ -3191,7 +3260,7 @@ export default function DoraIncidentApp() {
                                       {/* Première colonne : informations du rapport */}
                                       <div className="flex-1">
                                         <div className="text-sm font-medium">
-                                          {r.incidentSubmission?.replace(/_/g, ' ') || '—'}
+                                          {r.incidentSubmission?.replaceAll('_', ' ') || '-'}
                                         </div>
                                         <div className="text-xs opacity-70 mt-1">
                                           <strong>Description:</strong> {r.incident?.incidentDescription?.slice(0, 100) || '—'}
@@ -3200,19 +3269,21 @@ export default function DoraIncidentApp() {
                                           Saved: {new Date(r.savedAt).toLocaleString()}
                                         </div>
                                       </div>
+
                                       {/* Deuxième colonne : commentaires */}
                                       {r.status !== 'validated' && r.comments && r.comments.length > 0 && (
                                         <div className="flex-1 ml-4">
                                           <h4 className="font-medium">Commentaires :</h4>
                                           <ul className="mt-2 text-sm list-disc pl-4">
                                             {r.comments.map((comment, index) => (
-                                              <li key={index} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                              <li key={comment.id} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
                                                 {comment.comment}
                                               </li>
                                             ))}
                                           </ul>
                                         </div>
                                       )}
+
                                       {/* Troisième colonne : boutons */}
                                       <div className="flex flex-col gap-2 ml-4">
                                         <button
