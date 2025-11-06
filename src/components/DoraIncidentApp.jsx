@@ -73,18 +73,22 @@ const nowISO = () => new Date().toISOString()
       if (!Array.isArray(classificationTypes) || !classificationTypes.length) {
         return classificationTypes;
       }
+
       const expanded = [];
-      classificationTypes.forEach(ct => {
+
+      for (const ct of classificationTypes) {
         if (Array.isArray(ct.classificationCriterion)) {
-          ct.classificationCriterion.forEach(criterion => {
+          for (const criterion of ct.classificationCriterion) {
             expanded.push({ ...ct, classificationCriterion: criterion });
-          });
+          }
         } else {
           expanded.push(ct);
         }
-      });
+      }
+
       return expanded.map(ct => {
         const base = { classificationCriterion: ct.classificationCriterion };
+
         switch (ct.classificationCriterion) {
           case 'geographical_spread':
             return {
@@ -114,36 +118,46 @@ const nowISO = () => new Date().toISOString()
     // Sous-fonction pour convertir les champs numériques
     function convertNumericFields(incident, impactAssessment) {
       if (!incident) return { incident, impactAssessment };
-      ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'].forEach(key => {
+
+      const numericFields = ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'];
+      for (const key of numericFields) {
         const val = incident[key];
         if (typeof val === 'string' && val.trim() !== '') {
           incident[key] = Number(val);
         }
-      });
+      }
+
       if (!impactAssessment?.affectedAssets) return { incident, impactAssessment };
+
       const assets = impactAssessment.affectedAssets;
-      ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions'].forEach(section => {
+      const sections = ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions'];
+      for (const section of sections) {
         if (assets[section]) {
-          ['number', 'percentage'].forEach(field => {
+          const fields = ['number', 'percentage'];
+          for (const field of fields) {
             const val = assets[section][field];
             if (typeof val === 'string' && val.trim() !== '') {
               assets[section][field] = Number(val);
             }
-          });
+          }
         }
-      });
+      }
+
       if (typeof assets.valueOfAffectedTransactions === 'string' && assets.valueOfAffectedTransactions.trim() !== '') {
         assets.valueOfAffectedTransactions = Number(assets.valueOfAffectedTransactions);
       }
+
       return { incident, impactAssessment };
     }
 
     // Sous-fonction pour formater les dates
     function formatDates(incident) {
       if (!incident) return incident;
+
       if (incident.classificationDateTime) {
         incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'withZ');
       }
+
       const otherDateFields = [
         'detectionDateTime',
         'incidentOccurrenceDateTime',
@@ -151,11 +165,13 @@ const nowISO = () => new Date().toISOString()
         'incidentResolutionDateTime',
         'recurringIncidentDate'
       ];
-      otherDateFields.forEach(field => {
+
+      for (const field of otherDateFields) {
         if (incident[field]) {
           incident[field] = formatDateForExport(incident[field], 'withMilliseconds');
         }
-      });
+      }
+
       return incident;
     }
 
@@ -847,14 +863,13 @@ const nowISO = () => new Date().toISOString()
         // Créer un objet Date à partir de la chaîne
         const date = new Date(dateString);
 
-        // Vérifier si la date est valide
-        if (isNaN(date.getTime())) {
+        // Vérifier si la date est valide avec Number.isNaN
+        if (Number.isNaN(date.getTime())) {
           return null;
         }
 
         // Fonction pour ajouter un zéro devant si nécessaire
         const pad = (num) => num.toString().padStart(2, '0');
-
         const year = date.getUTCFullYear();
         const month = pad(date.getUTCMonth() + 1);
         const day = pad(date.getUTCDate());
@@ -867,11 +882,9 @@ const nowISO = () => new Date().toISOString()
           case 'withZ':
             // Format: "2001-12-17T09:30:47.0Z" (pour classificationDateTime)
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0Z`;
-
           case 'withMilliseconds':
             // Format: "2001-12-17T09:30:47.0" (pour les autres dates)
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0`;
-
           default:
             // Format original si aucun format spécifique n'est demandé
             return dateString;
@@ -1231,28 +1244,28 @@ export default function DoraIncidentApp() {
           const defaultDraft = emptyDraft(item.incident_id);
           const reportData = item.report_data;
 
-          // Initialiser les contacts avec des valeurs par défaut
+          // Initialiser les contacts avec les valeurs par défaut et les données du rapport
           const primaryContact = {
-            name: '',
-            email: '',
-            phone: '',
-            countryCode: '+33',
             ...defaultDraft.primaryContact,
-            ...(reportData.primaryContact || {})
+            ...(reportData.primaryContact || {}),
           };
+          primaryContact.name = primaryContact.name || '';
+          primaryContact.email = primaryContact.email || '';
+          primaryContact.phone = primaryContact.phone || '';
+          primaryContact.countryCode = primaryContact.countryCode || '+33';
 
           const secondaryContact = {
-            name: '',
-            email: '',
-            phone: '',
-            countryCode: '+33',
             ...defaultDraft.secondaryContact,
-            ...(reportData.secondaryContact || {})
+            ...(reportData.secondaryContact || {}),
           };
+          secondaryContact.name = secondaryContact.name || '';
+          secondaryContact.email = secondaryContact.email || '';
+          secondaryContact.phone = secondaryContact.phone || '';
+          secondaryContact.countryCode = secondaryContact.countryCode || '+33';
 
           // S'assurer que countryCode est toujours une chaîne de caractères
-          primaryContact.countryCode = String(primaryContact.countryCode || '+33');
-          secondaryContact.countryCode = String(secondaryContact.countryCode || '+33');
+          primaryContact.countryCode = String(primaryContact.countryCode);
+          secondaryContact.countryCode = String(secondaryContact.countryCode);
 
           // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
           if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
@@ -1262,7 +1275,6 @@ export default function DoraIncidentApp() {
               primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
             }
           }
-
           if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
             const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
             if (countryCodeMatch) {
