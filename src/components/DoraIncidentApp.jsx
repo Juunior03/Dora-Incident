@@ -248,49 +248,64 @@ const nowISO = () => new Date().toISOString()
 
     function ConfettiCanvas({ trigger }) {
       useEffect(() => {
-        if (!trigger) return
-        const canvas = document.createElement('canvas')
-        canvas.style.position = 'fixed'
-        canvas.style.left = '0'
-        canvas.style.top = '0'
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
-        canvas.style.pointerEvents = 'none'
-        canvas.style.zIndex = '9999'
-        document.body.appendChild(canvas)
-        const ctx = canvas.getContext('2d')
-        const pieces = Array.from({ length: 60 }).map(() => ({
-          x: Math.random() * canvas.width,
-          y: -20 - Math.random() * 200,
-          r: 6 + Math.random() * 8,
-          vx: -2 + Math.random() * 4,
-          vy: 2 + Math.random() * 6,
-          color: `hsl(${Math.random() * 360},80%,55%)`,
-        }))
-        let t = 0
+        if (!trigger) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'fixed';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '9999';
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        // Générer un tableau de valeurs aléatoires une seule fois
+        const randomValues = Array.from({ length: 60 }, () => ({
+          x: Math.random(),
+          yOffset: Math.random(),
+          r: Math.random(),
+          vxOffset: Math.random(),
+          vyOffset: Math.random(),
+          colorHue: Math.random()
+        }));
+
+        const pieces = Array.from({ length: 60 }).map((_, i) => ({
+          x: randomValues[i].x * canvas.width,
+          y: -20 - randomValues[i].yOffset * 200,
+          r: 6 + randomValues[i].r * 8,
+          vx: -2 + randomValues[i].vxOffset * 4,
+          vy: 2 + randomValues[i].vyOffset * 6,
+          color: `hsl(${randomValues[i].colorHue * 360}, 80%, 55%)`,
+        }));
+
+        let t = 0;
         const id = setInterval(() => {
-          t += 1
-          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          t += 1;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           for (const p of pieces) {
-              p.x += p.vx;
-              p.y += p.vy;
-              p.vy += 0.2;
-              ctx.beginPath();
-              ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-              ctx.fillStyle = p.color;
-              ctx.fill();
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
           }
           if (t > 80) {
-            clearInterval(id)
-            canvas.remove()
+            clearInterval(id);
+            canvas.remove();
           }
-        }, 16)
+        }, 16);
+
         return () => {
-          clearInterval(id)
-          canvas.remove()
-        }
-      }, [trigger])
-      return null
+          clearInterval(id);
+          canvas.remove();
+        };
+      }, [trigger]);
+
+      return null;
     }
 
     ConfettiCanvas.propTypes = {
@@ -810,8 +825,9 @@ const nowISO = () => new Date().toISOString()
 
     // Valide le format d'un email
     function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
     }
+
 
     function getNestedObject(obj, path) {
       const parts = path.split('.');
