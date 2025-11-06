@@ -297,6 +297,33 @@ const nowISO = () => new Date().toISOString()
       trigger: PropTypes.bool,
     };
 
+    function handleError(error) {
+      if (error) {
+        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
+        return true;
+      }
+      return false;
+    }
+
+    function ensureCountryCode(draft) {
+      if (!draft.primaryContact.countryCode) {
+        draft.primaryContact.countryCode = '+33';
+      }
+      if (!draft.secondaryContact.countryCode) {
+        draft.secondaryContact.countryCode = '+33';
+      }
+    }
+
+    function processPhoneNumber(contact) {
+      if (typeof contact.phone === 'string' && contact.phone.startsWith('+')) {
+        const countryCodeMatch = contact.phone.match(/^\+\d+/);
+        if (countryCodeMatch) {
+          contact.countryCode = countryCodeMatch[0];
+          contact.phone = contact.phone.substring(countryCodeMatch[0].length);
+        }
+      }
+    }
+
     const ENTITY_TYPES = [
       { value: "credit_institution", label: "Credit Institution" },
       { value: "payment_institution", label: "Payment Institution" },
@@ -1443,14 +1470,6 @@ export default function DoraIncidentApp() {
       }
     }
 
-    function handleError(error) {
-      if (error) {
-        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
-        return true;
-      }
-      return false;
-    }
-
     function createMergedDraft(data) {
       const defaultDraft = emptyDraft(data.report_data.incidentId);
       const mergedDraft = {
@@ -1466,28 +1485,9 @@ export default function DoraIncidentApp() {
       return mergedDraft;
     }
 
-    function ensureCountryCode(draft) {
-      if (!draft.primaryContact.countryCode) {
-        draft.primaryContact.countryCode = '+33';
-      }
-      if (!draft.secondaryContact.countryCode) {
-        draft.secondaryContact.countryCode = '+33';
-      }
-    }
-
     function processPhoneNumbers(draft) {
       processPhoneNumber(draft.primaryContact);
       processPhoneNumber(draft.secondaryContact);
-    }
-
-    function processPhoneNumber(contact) {
-      if (typeof contact.phone === 'string' && contact.phone.startsWith('+')) {
-        const countryCodeMatch = contact.phone.match(/^\+\d+/);
-        if (countryCodeMatch) {
-          contact.countryCode = countryCodeMatch[0];
-          contact.phone = contact.phone.substring(countryCodeMatch[0].length);
-        }
-      }
     }
 
     function setStepBasedOnReportType(draft) {
