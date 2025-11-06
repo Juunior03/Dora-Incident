@@ -247,7 +247,7 @@ const nowISO = () => new Date().toISOString()
     }
 
     const getSecureRandomValue = (() => {
-      const crypto = window.crypto || window.msCrypto;
+      const crypto = globalThis.crypto || globalThis.msCrypto;
       return () => {
         const array = new Uint32Array(1);
         crypto.getRandomValues(array);
@@ -258,7 +258,6 @@ const nowISO = () => new Date().toISOString()
     function ConfettiCanvas({ trigger }) {
       useEffect(() => {
         if (!trigger) return;
-
         const canvas = document.createElement('canvas');
         canvas.style.position = 'fixed';
         canvas.style.left = '0';
@@ -269,16 +268,14 @@ const nowISO = () => new Date().toISOString()
         canvas.style.zIndex = '9999';
         document.body.appendChild(canvas);
         const ctx = canvas.getContext('2d');
-
         const getSecureRandomValue = (() => {
-          const crypto = window.crypto || window.msCrypto;
+          const crypto = globalThis.crypto || globalThis.msCrypto;
           return () => {
             const array = new Uint32Array(1);
             crypto.getRandomValues(array);
             return array[0] / 4294967295;
           };
         })();
-
         const randomValues = Array.from({ length: 60 }, () => ({
           x: getSecureRandomValue(),
           yOffset: getSecureRandomValue(),
@@ -287,7 +284,6 @@ const nowISO = () => new Date().toISOString()
           vyOffset: getSecureRandomValue(),
           colorHue: getSecureRandomValue()
         }));
-
         const pieces = Array.from({ length: 60 }).map((_, i) => ({
           x: randomValues[i].x * canvas.width,
           y: -20 - randomValues[i].yOffset * 200,
@@ -296,7 +292,6 @@ const nowISO = () => new Date().toISOString()
           vy: 2 + randomValues[i].vyOffset * 6,
           color: `hsl(${randomValues[i].colorHue * 360}, 80%, 55%)`,
         }));
-
         let t = 0;
         const id = setInterval(() => {
           t += 1;
@@ -315,13 +310,11 @@ const nowISO = () => new Date().toISOString()
             canvas.remove();
           }
         }, 16);
-
         return () => {
           clearInterval(id);
-          canvas?.parentNode?.removeChild(canvas);
+          canvas.remove();
         };
       }, [trigger]);
-
       return null;
     }
 
