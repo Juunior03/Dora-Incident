@@ -16,28 +16,60 @@ const nowISO = () => new Date().toISOString()
           return classificationTypes;
         }
 
-        return classificationTypes.map(ct => {
-          const cleanedCT = { ...ct };
-
-          // Supprimer les propriétés sans valeur
-          for (const key of Object.keys(cleanedCT)) {
-            if (
-              cleanedCT[key] === null ||
-              cleanedCT[key] === undefined ||
-              cleanedCT[key] === "" ||
-              (Array.isArray(cleanedCT[key]) && cleanedCT[key].length === 0)
-            ) {
-              delete cleanedCT[key];
-            }
-          }
-
-          return cleanedCT;
-        }).filter(ct => Object.keys(ct).length > 0); // Supprimer les objets vides
+        // ❌ On ne supprime plus les champs vides ici
+        return classificationTypes.map(ct => ({ ...ct }));
       };
 
-      // Nettoyer uniquement la section classificationTypes
+      // Nettoyer uniquement la section classificationTypes (sans suppression des champs vides)
       if (cleanedReport.incident?.classificationTypes) {
         cleanedReport.incident.classificationTypes = cleanClassificationTypes(cleanedReport.incident.classificationTypes);
+      }
+
+      // 🔁 Décomposer classificationTypes si nécessaire
+      if (cleanedReport.incident?.classificationTypes?.length) {
+        const expanded = [];
+        cleanedReport.incident.classificationTypes.forEach(ct => {
+          if (Array.isArray(ct.classificationCriterion)) {
+            ct.classificationCriterion.forEach(criterion => {
+              expanded.push({ ...ct, classificationCriterion: criterion });
+            });
+          } else {
+            expanded.push(ct);
+          }
+        });
+
+        // 🧩 Garder tous les champs spécifiques, même vides
+        cleanedReport.incident.classificationTypes = expanded.map(ct => {
+          const base = { classificationCriterion: ct.classificationCriterion };
+
+          switch (ct.classificationCriterion) {
+            case 'geographical_spread':
+              return {
+                ...base,
+                countryCodeMaterialityThresholds: ct.countryCodeMaterialityThresholds ?? [],
+                memberStatesImpactType: ct.memberStatesImpactType ?? [],
+                memberStatesImpactTypeDescription: ct.memberStatesImpactTypeDescription ?? "",
+              };
+
+            case 'data_losses':
+              return {
+                ...base,
+                dataLosseMaterialityThresholds: ct.dataLosseMaterialityThresholds ?? [],
+                dataLossesDescription: ct.dataLossesDescription ?? "",
+              };
+
+            case 'reputational_impact':
+              return {
+                ...base,
+                reputationalImpactType: ct.reputationalImpactType ?? [],
+                reputationalImpactDescription: ct.reputationalImpactDescription ?? "",
+              };
+
+            default:
+              // Critères simples : on garde uniquement classificationCriterion
+              return base;
+          }
+        });
       }
 
       return cleanedReport;
