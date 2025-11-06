@@ -7,6 +7,17 @@ import PropTypes from 'prop-types';
 
 const nowISO = () => new Date().toISOString()
 
+    function orderAffectedEntityKeys(affectedEntities) {
+      const keyOrder = ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'];
+      return affectedEntities.map(entity => {
+        const ordered = {};
+        keyOrder.forEach(key => {
+          if (key in entity) ordered[key] = entity[key];
+        });
+        return ordered;
+      });
+    }
+
     function cleanReportForExport(report) {
       const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, ...cleanedReport } = report;
 
@@ -72,6 +83,92 @@ const nowISO = () => new Date().toISOString()
         });
       }
 
+        if (Array.isArray(cleanedReport.affectedEntity)) {
+          cleanedReport.affectedEntity = orderAffectedEntityKeys(cleanedReport.affectedEntity);
+        }
+
+        // 🔢 Conversion des champs numériques (alignée sur emptyDraft)
+        if (cleanedReport.incident) {
+          ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'].forEach(key => {
+            const val = cleanedReport.incident[key];
+            if (typeof val === 'string' && val.trim() !== '') {
+              cleanedReport.incident[key] = Number(val);
+            }
+          });
+        }
+
+        if (cleanedReport.impactAssessment?.affectedAssets) {
+          const assets = cleanedReport.impactAssessment.affectedAssets;
+
+          [
+            'affectedClients',
+            'affectedFinancialCounterparts',
+            'affectedTransactions'
+          ].forEach(section => {
+            if (assets[section]) {
+              ['number', 'percentage'].forEach(field => {
+                const val = assets[section][field];
+                if (typeof val === 'string' && val.trim() !== '') {
+                  assets[section][field] = Number(val);
+                }
+              });
+            }
+          });
+
+          if (typeof assets.valueOfAffectedTransactions === 'string' && assets.valueOfAffectedTransactions.trim() !== '') {
+            assets.valueOfAffectedTransactions = Number(assets.valueOfAffectedTransactions);
+          }
+        }
+
+          // Concaténer l'indicatif du pays avec le numéro de téléphone
+          if (cleanedReport.primaryContact) {
+            // Vérifier que phone est bien défini et est une chaîne de caractères
+            const phoneNumber = typeof cleanedReport.primaryContact.phone === 'string'
+              ? cleanedReport.primaryContact.phone
+              : '';
+
+            // Vérifier que countryCode est bien défini et est une chaîne de caractères
+            const countryCode = typeof cleanedReport.primaryContact.countryCode === 'string'
+              ? cleanedReport.primaryContact.countryCode
+              : '+33';
+
+            // Vérifier si le numéro commence déjà par un indicatif
+            const hasCountryCode = phoneNumber.startsWith('+');
+
+            // Si le numéro ne commence pas déjà par un indicatif, on concatène
+            if (!hasCountryCode) {
+              cleanedReport.primaryContact.phone = countryCode + phoneNumber;
+            }
+            // Sinon, on garde le numéro tel quel
+
+            // Supprimer countryCode du JSON final
+            delete cleanedReport.primaryContact.countryCode;
+          }
+
+          if (cleanedReport.secondaryContact) {
+            // Vérifier que phone est bien défini et est une chaîne de caractères
+            const phoneNumber = typeof cleanedReport.secondaryContact.phone === 'string'
+              ? cleanedReport.secondaryContact.phone
+              : '';
+
+            // Vérifier que countryCode est bien défini et est une chaîne de caractères
+            const countryCode = typeof cleanedReport.secondaryContact.countryCode === 'string'
+              ? cleanedReport.secondaryContact.countryCode
+              : '+33';
+
+            // Vérifier si le numéro commence déjà par un indicatif
+            const hasCountryCode = phoneNumber.startsWith('+');
+
+            // Si le numéro ne commence pas déjà par un indicatif, on concatène
+            if (!hasCountryCode) {
+              cleanedReport.secondaryContact.phone = countryCode + phoneNumber;
+            }
+            // Sinon, on garde le numéro tel quel
+
+            // Supprimer countryCode du JSON final
+            delete cleanedReport.secondaryContact.countryCode;
+          }
+
       return cleanedReport;
     }
 
@@ -95,6 +192,23 @@ const nowISO = () => new Date().toISOString()
 
       // Nettoyer le rapport fusionné pour l'export
       const cleanedReport = cleanReportForExport(mergedReport);
+
+      // Vérification supplémentaire pour éviter la double concaténation
+      if (cleanedReport.primaryContact && typeof cleanedReport.primaryContact.phone === 'string') {
+        // Si le numéro commence déjà par un +, on ne fait rien
+        if (!cleanedReport.primaryContact.phone.startsWith('+')) {
+          cleanedReport.primaryContact.phone = (cleanedReport.primaryContact.countryCode || '+33') + cleanedReport.primaryContact.phone;
+        }
+        delete cleanedReport.primaryContact.countryCode;
+      }
+
+      if (cleanedReport.secondaryContact && typeof cleanedReport.secondaryContact.phone === 'string') {
+        // Si le numéro commence déjà par un +, on ne fait rien
+        if (!cleanedReport.secondaryContact.phone.startsWith('+')) {
+          cleanedReport.secondaryContact.phone = (cleanedReport.secondaryContact.countryCode || '+33') + cleanedReport.secondaryContact.phone;
+        }
+        delete cleanedReport.secondaryContact.countryCode;
+      }
 
       const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
       const filename = `dora-incident-${financialEntityCode}.json`;
@@ -388,6 +502,19 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
   { value: "error_handling", label: "Error handling" },
   { value: "inadequate_ict_systems_acquisition_development_and_maintenance", label: "Inadequate ICT systems acquisition, development, and maintenance" },
   { value: "insufficient_or_failure_of_software_testing", label: "Insufficient or failure of software testing" }
+];
+
+const COUNTRY_CODES = [
+  { value: "+33", label: "(+33)" },
+  { value: "+32", label: "(+32)" },
+  { value: "+40", label: "(+40)" },
+  { value: "+41", label: "(+41)" },
+  { value: "+49", label: "(+49)" },
+  { value: "+44", label: "(+44)" },
+  { value: "+1", label: "(+1)" },
+  { value: "+7", label: "(+7)" },
+  { value: "+81", label: "(+81)" },
+  { value: "+86", label: "(+86)" },
 ];
 
     /**
@@ -758,8 +885,8 @@ const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
           affectedEntityType: [],
           LEI: ''
         },
-        primaryContact: { name: '', email: '', phone: '' },
-        secondaryContact: { name: '', email: '', phone: '' },
+        primaryContact: { name: '', email: '', phone: '', countryCode: '+33' },
+        secondaryContact: { name: '', email: '', phone: '', countryCode: '+33' },
         incident: {
           financialEntityCode: '',
           detectionDateTime: '',
@@ -1061,33 +1188,75 @@ export default function DoraIncidentApp() {
       }
     }
 
-    async function fetchReportsFromSupabase() {
-      let query = supabase.from('reports').select('*, comments(*)').order('created_at', { ascending: false });
+async function fetchReportsFromSupabase() {
+  let query = supabase.from('reports').select('*, comments(*)').order('created_at', { ascending: false });
+  if (role === 'saisisseur') {
+    query = query.eq('created_by', user.id);
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error('Erreur lors de la récupération des rapports depuis Supabase :', error);
+    return [];
+  } else {
+    return data.map(item => {
+      const defaultDraft = emptyDraft(item.incident_id);
+      const reportData = item.report_data;
 
-      if (role === 'saisisseur') {
-        query = query.eq('created_by', user.id);
+      // Initialiser les contacts avec des valeurs par défaut
+      const primaryContact = {
+        name: '',
+        email: '',
+        phone: '',
+        countryCode: '+33',
+        ...defaultDraft.primaryContact,
+        ...(reportData.primaryContact || {})
+      };
+
+      const secondaryContact = {
+        name: '',
+        email: '',
+        phone: '',
+        countryCode: '+33',
+        ...defaultDraft.secondaryContact,
+        ...(reportData.secondaryContact || {})
+      };
+
+      // S'assurer que countryCode est toujours une chaîne de caractères
+      primaryContact.countryCode = String(primaryContact.countryCode || '+33');
+      secondaryContact.countryCode = String(secondaryContact.countryCode || '+33');
+
+      // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
+      if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
+        const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
+        if (countryCodeMatch) {
+          primaryContact.countryCode = countryCodeMatch[0];
+          primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
+        }
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Erreur lors de la récupération des rapports depuis Supabase :', error);
-        return [];
-      } else {
-        return data.map(item => {
-          const defaultDraft = emptyDraft(item.incident_id);
-          return {
-            ...defaultDraft,
-            ...item.report_data,
-            id: item.id,
-            status: item.status,
-            nextSubmissionType: item.next_submission_type,
-            comments: item.comments || [],
-            savedAt: item.report_data.savedAt || item.created_at // Assurez-vous que savedAt est bien défini
-          };
-        });
+      if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
+        const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
+        if (countryCodeMatch) {
+          secondaryContact.countryCode = countryCodeMatch[0];
+          secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
+        }
       }
-    }
+
+      return {
+        ...defaultDraft,
+        ...reportData,
+        primaryContact: primaryContact,
+        secondaryContact: secondaryContact,
+        id: item.id,
+        status: item.status,
+        nextSubmissionType: item.next_submission_type,
+        comments: item.comments || [],
+        savedAt: reportData.savedAt || item.created_at
+      };
+    });
+  }
+}
+
 
     async function validateReport(reportId) {
       try {
@@ -1208,39 +1377,61 @@ export default function DoraIncidentApp() {
     }
 
     async function loadReportIntoDraft(reportId) {
-      const { data, error } = await supabase
-        .from('reports')
-        .select('*')
-        .eq('id', reportId)
-        .single();
+  const { data, error } = await supabase
+    .from('reports')
+    .select('*')
+    .eq('id', reportId)
+    .single();
+  if (error) {
+    console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
+    return;
+  }
+  if (data) {
+    const defaultDraft = emptyDraft(data.report_data.incidentId);
+    const mergedDraft = {
+      ...defaultDraft,
+      ...data.report_data,
+      id: data.id,
+      status: data.status
+    };
 
-      if (error) {
-        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
-        return;
-      }
+    // S'assurer que countryCode est défini
+    if (!mergedDraft.primaryContact.countryCode) {
+      mergedDraft.primaryContact.countryCode = '+33';
+    }
+    if (!mergedDraft.secondaryContact.countryCode) {
+      mergedDraft.secondaryContact.countryCode = '+33';
+    }
 
-      if (data) {
-        const defaultDraft = emptyDraft(data.report_data.incidentId);
-        const mergedDraft = {
-          ...defaultDraft,
-          ...data.report_data,
-          id: data.id,
-          status: data.status
-        };
-
-        setDraft(mergedDraft);
-        setView('report');
-
-        // Définir le step en fonction du type de rapport
-        if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
-          setStep(2); // Aller directement à la section "Incident"
-          setFromContinueButton(true); // Masquer le bouton "Back"
-        } else {
-          setStep(0); // Aller à la section "Identity" pour les rapports initiaux
-          setFromContinueButton(false); // Afficher le bouton "Back"
-        }
+    // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
+    if (typeof mergedDraft.primaryContact.phone === 'string' && mergedDraft.primaryContact.phone.startsWith('+')) {
+      const countryCodeMatch = mergedDraft.primaryContact.phone.match(/^\+\d+/);
+      if (countryCodeMatch) {
+        mergedDraft.primaryContact.countryCode = countryCodeMatch[0];
+        mergedDraft.primaryContact.phone = mergedDraft.primaryContact.phone.substring(countryCodeMatch[0].length);
       }
     }
+
+    if (typeof mergedDraft.secondaryContact.phone === 'string' && mergedDraft.secondaryContact.phone.startsWith('+')) {
+      const countryCodeMatch = mergedDraft.secondaryContact.phone.match(/^\+\d+/);
+      if (countryCodeMatch) {
+        mergedDraft.secondaryContact.countryCode = countryCodeMatch[0];
+        mergedDraft.secondaryContact.phone = mergedDraft.secondaryContact.phone.substring(countryCodeMatch[0].length);
+      }
+    }
+
+    setDraft(mergedDraft);
+    setView('report');
+    // Définir le step en fonction du type de rapport
+    if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
+      setStep(2); // Aller directement à la section "Incident"
+      setFromContinueButton(true); // Masquer le bouton "Back"
+    } else {
+      setStep(0); // Aller à la section "Identity" pour les rapports initiaux
+      setFromContinueButton(false); // Afficher le bouton "Back"
+    }
+  }
+}
 
   function clearDraft() {
     setDraft(emptyDraft())
@@ -1643,59 +1834,88 @@ export default function DoraIncidentApp() {
                           <input id="secondaryContactEmail" type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
-                          <input
-                            id="primaryContactPhone"
-                            type="tel"
-                            value={draft.primaryContact.phone}
-                            onChange={(e) => {
-                              const value = e.target.value.replaceAll(/\D/g, '');
-                              if (value.length <= 10) {
-                                updateDraft('primaryContact.phone', value);
-                              }
-                            }}
-                            pattern="[0-9]{10}"
-                            title="10 chiffres requis"
-                            placeholder="0610101010"
-                            className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
-                              draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 ?
-                              'border-red-500 dark:border-red-400' : ''
-                            }`}
-                            disabled={isFieldDisabled(role, draft.status)}
-                            required
-                          />
-                          {draft.primaryContact.phone && draft.primaryContact.phone.length !== 10 && (
-                            <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
-                          )}
-                        </div>
-                        <div>
-                          <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
-                          <input
-                            id="secondaryContactPhone"
-                            type="tel"
-                            value={draft.secondaryContact.phone}
-                            onChange={(e) => {
-                              const value = e.target.value.replaceAll(/\D/g, '');
-                              if (value.length <= 10) {
-                                updateDraft('secondaryContact.phone', value);
-                              }
-                            }}
-                            pattern="[0-9]{10}"
-                            title="10 chiffres requis"
-                            placeholder="0610101010"
-                            className={`mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full ${
-                              draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 ?
-                              'border-red-500 dark:border-red-400' : ''
-                            }`}
-                            disabled={isFieldDisabled(role, draft.status)}
-                          />
-                          {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 10 && (
-                            <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide</p>
-                          )}
-                        </div>
-                      </div>
+<div className="grid grid-cols-2 gap-4">
+  <div>
+    <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
+    <div className="flex gap-2">
+      <select
+          value={draft.secondaryContact.countryCode || '+33'}
+          onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
+          className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
+          disabled={isFieldDisabled(role, draft.status)}
+        >
+          {COUNTRY_CODES.map((code) => (
+            <option key={code.value} value={code.value}>
+              {code.label}
+            </option>
+          ))}
+        </select>
+
+      <input
+        id="primaryContactPhone"
+        type="tel"
+        value={draft.primaryContact.phone}
+        onChange={(e) => {
+          const value = e.target.value.replaceAll(/\D/g, '');
+          if (value.length <= 9) {
+            updateDraft('primaryContact.phone', value);
+          }
+        }}
+        pattern="[0-9]{9}"
+        title="9 chiffres requis"
+        placeholder="123456789"
+        className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
+          draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 ?
+          'border-red-500 dark:border-red-400' : ''
+        }`}
+        disabled={isFieldDisabled(role, draft.status)}
+        required
+      />
+    </div>
+    {draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 && draft.primaryContact.phone.length > 0 && (
+      <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
+    )}
+  </div>
+  <div>
+    <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
+    <div className="flex gap-2">
+      <select
+        value={draft.secondaryContact.countryCode}
+        onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
+        className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
+        disabled={isFieldDisabled(role, draft.status)}
+      >
+        {COUNTRY_CODES.map((code) => (
+          <option key={code.value} value={code.value}>
+            {code.label}
+          </option>
+        ))}
+      </select>
+      <input
+        id="secondaryContactPhone"
+        type="tel"
+        value={draft.secondaryContact.phone}
+        onChange={(e) => {
+          const value = e.target.value.replaceAll(/\D/g, '');
+          if (value.length <= 9) {
+            updateDraft('secondaryContact.phone', value);
+          }
+        }}
+        pattern="[0-9]{9}"
+        title="9 chiffres requis"
+        placeholder="123456789"
+        className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
+          draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 ?
+          'border-red-500 dark:border-red-400' : ''
+        }`}
+        disabled={isFieldDisabled(role, draft.status)}
+      />
+    </div>
+    {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 && (
+      <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
+    )}
+  </div>
+</div>
 
                       <div className="mt-6 flex justify-between">
                           {!fromContinueButton && (
