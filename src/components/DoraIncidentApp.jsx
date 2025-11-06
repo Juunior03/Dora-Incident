@@ -169,6 +169,37 @@ const nowISO = () => new Date().toISOString()
             delete cleanedReport.secondaryContact.countryCode;
           }
 
+      // Formater les dates selon les spécifications
+      if (cleanedReport.incident) {
+        // classificationDateTime doit être au format "2001-12-17T09:30:47.0Z"
+        if (cleanedReport.incident.classificationDateTime) {
+          cleanedReport.incident.classificationDateTime =
+            formatDateForExport(cleanedReport.incident.classificationDateTime, 'withZ');
+        }
+
+        // Les autres dates doivent être au format "2001-12-17T09:30:47.0"
+        const otherDateFields = [
+          'detectionDateTime',
+          'incidentOccurrenceDateTime',
+          'rootCauseAddressingDateTime',
+          'incidentResolutionDateTime',
+          'recurringIncidentDate'
+        ];
+
+        otherDateFields.forEach(field => {
+          if (cleanedReport.incident[field]) {
+            cleanedReport.incident[field] =
+              formatDateForExport(cleanedReport.incident[field], 'withMilliseconds');
+          }
+        });
+      }
+
+      // Formater la date dans impactAssessment.serviceImpact
+      if (cleanedReport.impactAssessment?.serviceImpact?.serviceRestorationDateTime) {
+        cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime =
+          formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'withMilliseconds');
+      }
+
       return cleanedReport;
     }
 
@@ -285,237 +316,237 @@ const nowISO = () => new Date().toISOString()
       trigger: PropTypes.bool,
     };
 
-const ENTITY_TYPES = [
-  { value: "credit_institution", label: "Credit Institution" },
-  { value: "payment_institution", label: "Payment Institution" },
-  { value: "exempted_payment_institution", label: "Exempted Payment Institution " },
-  { value: "account_information_service_provider", label: "Account Information Service Provider" },
-  { value: "electronic_money_institution", label: "Electronic Money Institution " },
-  { value: "exempted_electronic_money_institution", label: "Exempted Electronic Money Institution" },
-  { value: "investment_firm", label: "Investment Firm" },
-  { value: "crypto-asset_service_provider", label: "Crypto Asset Service Provider" },
-  { value: "issuer_of_asset-referenced_tokens", label: "Issuer Of Asset Referenced Tokens" },
-  { value: "central_securities_depository", label: "Central Securities Depository" },
-  { value: "central_counterparty", label: "Central Counterparty " },
-  { value: "trading_venue", label: "Trading Venue" },
-  { value: "trade_repository", label: "Trade Repository" },
-  { value: "manager_of_alternative_investment_fund", label: "Manager Of Alternative Investment Fund " },
-  { value: "management_company", label: "Management Company" },
-  { value: "data_reporting_service_provider", label: "Data Reporting Service Provider" },
-  { value: "insurance_and_reinsurance_undertaking", label: "Insurance And Reinsurance Undertaking" },
-  { value: "institution_for_occupational_retirement_provision", label: "Institution For Occupational Retirement Provision" },
-  { value: "credit_rating_agency", label: "Credit Rating Agency " },
-  { value: "administrator_of_critical_benchmarks", label: "Administrator Of Critical Benchmarks" },
-  { value: "crowdfunding_service_provider", label: "Crowdfunding Service Provider" },
-  { value: "securitisation_repository", label: "Securitisation Repository" }
-]
+    const ENTITY_TYPES = [
+      { value: "credit_institution", label: "Credit Institution" },
+      { value: "payment_institution", label: "Payment Institution" },
+      { value: "exempted_payment_institution", label: "Exempted Payment Institution " },
+      { value: "account_information_service_provider", label: "Account Information Service Provider" },
+      { value: "electronic_money_institution", label: "Electronic Money Institution " },
+      { value: "exempted_electronic_money_institution", label: "Exempted Electronic Money Institution" },
+      { value: "investment_firm", label: "Investment Firm" },
+      { value: "crypto-asset_service_provider", label: "Crypto Asset Service Provider" },
+      { value: "issuer_of_asset-referenced_tokens", label: "Issuer Of Asset Referenced Tokens" },
+      { value: "central_securities_depository", label: "Central Securities Depository" },
+      { value: "central_counterparty", label: "Central Counterparty " },
+      { value: "trading_venue", label: "Trading Venue" },
+      { value: "trade_repository", label: "Trade Repository" },
+      { value: "manager_of_alternative_investment_fund", label: "Manager Of Alternative Investment Fund " },
+      { value: "management_company", label: "Management Company" },
+      { value: "data_reporting_service_provider", label: "Data Reporting Service Provider" },
+      { value: "insurance_and_reinsurance_undertaking", label: "Insurance And Reinsurance Undertaking" },
+      { value: "institution_for_occupational_retirement_provision", label: "Institution For Occupational Retirement Provision" },
+      { value: "credit_rating_agency", label: "Credit Rating Agency " },
+      { value: "administrator_of_critical_benchmarks", label: "Administrator Of Critical Benchmarks" },
+      { value: "crowdfunding_service_provider", label: "Crowdfunding Service Provider" },
+      { value: "securitisation_repository", label: "Securitisation Repository" }
+    ]
 
-const CLASSIFICATION_CRITERIA = [
-  { value: "clients_financial_counterparts_and_transactions_affected", label: "Clients, financial counterparts affected" },
-  { value: "geographical_spread", label: "Geographical spread" },
-  { value: "data_losses", label: "Data losses" },
-  { value: "critical_services_affected", label: "Critical services affected" },
-  { value: "economic_impact", label: "Economic impact" },
-  { value: "reputational_impact", label: "Reputational impact" },
-  { value: "duration_and_service_downtime", label: "Duration and service downtime" }
-]
+    const CLASSIFICATION_CRITERIA = [
+      { value: "clients_financial_counterparts_and_transactions_affected", label: "Clients, financial counterparts affected" },
+      { value: "geographical_spread", label: "Geographical spread" },
+      { value: "data_losses", label: "Data losses" },
+      { value: "critical_services_affected", label: "Critical services affected" },
+      { value: "economic_impact", label: "Economic impact" },
+      { value: "reputational_impact", label: "Reputational impact" },
+      { value: "duration_and_service_downtime", label: "Duration and service downtime" }
+    ]
 
-const COUNTRY_OPTIONS = [
-  { value: "AT", label: "Autriche" },  { value: "BE", label: "Belgique" },  { value: "BG", label: "Bulgarie" },
-  { value: "HR", label: "Croatie" },  { value: "CY", label: "Chypre" },
-  { value: "CZ", label: "République tchèque" },  { value: "DK", label: "Danemark" },  { value: "EE", label: "Estonie" },
-  { value: "ES", label: "Espagne" },  { value: "FI", label: "Finlande" },  { value: "FR", label: "France" },
-  { value: "DE", label: "Allemagne" },  { value: "GR", label: "Grèce" },  { value: "HU", label: "Hongrie" },
-  { value: "IS", label: "Islande" },  { value: "IE", label: "Irlande" },  { value: "IT", label: "Italie" },
-  { value: "LI", label: "Liechtenstein" },  { value: "LT", label: "Lituanie" },  { value: "LU", label: "Luxembourg" },
-  { value: "LV", label: "Lettonie" },  { value: "MT", label: "Malte" },  { value: "NL", label: "Pays-Bas" },
-  { value: "NO", label: "Norvège" },  { value: "PL", label: "Pologne" },  { value: "PT", label: "Portugal" },
-  { value: "RO", label: "Roumanie" },  { value: "SE", label: "Suède" },  { value: "SI", label: "Slovénie" },  { value: "SK", label: "Slovaquie" },
-];
+    const COUNTRY_OPTIONS = [
+      { value: "AT", label: "Autriche" },  { value: "BE", label: "Belgique" },  { value: "BG", label: "Bulgarie" },
+      { value: "HR", label: "Croatie" },  { value: "CY", label: "Chypre" },
+      { value: "CZ", label: "République tchèque" },  { value: "DK", label: "Danemark" },  { value: "EE", label: "Estonie" },
+      { value: "ES", label: "Espagne" },  { value: "FI", label: "Finlande" },  { value: "FR", label: "France" },
+      { value: "DE", label: "Allemagne" },  { value: "GR", label: "Grèce" },  { value: "HU", label: "Hongrie" },
+      { value: "IS", label: "Islande" },  { value: "IE", label: "Irlande" },  { value: "IT", label: "Italie" },
+      { value: "LI", label: "Liechtenstein" },  { value: "LT", label: "Lituanie" },  { value: "LU", label: "Luxembourg" },
+      { value: "LV", label: "Lettonie" },  { value: "MT", label: "Malte" },  { value: "NL", label: "Pays-Bas" },
+      { value: "NO", label: "Norvège" },  { value: "PL", label: "Pologne" },  { value: "PT", label: "Portugal" },
+      { value: "RO", label: "Roumanie" },  { value: "SE", label: "Suède" },  { value: "SI", label: "Slovénie" },  { value: "SK", label: "Slovaquie" },
+    ];
 
-const INCIDENT_DISCOVERY_OPTIONS = [
-  { value: "it_security", label: "IT Security" },
-  { value: "staff", label: "Staff" },
-  { value: "internal_audit", label: "Internal Audit" },
-  { value: "external_audit", label: "External Audit" },
-  { value: "clients", label: "Clients" },
-  { value: "financial_counterparts", label: "Financial Counterparts" },
-  { value: "third-party_provider", label: "Third-Party Provider" },
-  { value: "attacker", label: "Attacker" },
-  { value: "monitoring_systems", label: "Monitoring Systems" },
-  { value: "authority_agency_law_enforcement_body", label: "Authority/Agency/Law Enforcement Body" },
-  { value: "other", label: "Other" },
-];
+    const INCIDENT_DISCOVERY_OPTIONS = [
+      { value: "it_security", label: "IT Security" },
+      { value: "staff", label: "Staff" },
+      { value: "internal_audit", label: "Internal Audit" },
+      { value: "external_audit", label: "External Audit" },
+      { value: "clients", label: "Clients" },
+      { value: "financial_counterparts", label: "Financial Counterparts" },
+      { value: "third-party_provider", label: "Third-Party Provider" },
+      { value: "attacker", label: "Attacker" },
+      { value: "monitoring_systems", label: "Monitoring Systems" },
+      { value: "authority_agency_law_enforcement_body", label: "Authority/Agency/Law Enforcement Body" },
+      { value: "other", label: "Other" },
+    ];
 
-const NUMBERS_ACTUAL_ESTIMATE_OPTIONS = [
-  { value: "actual_figures_for_clients_affected", label: "Actual figures for clients affected" },
-  { value: "actual_figures_for_financial_counterparts_affected", label: "Actual figures for financial counterparts affected" },
-  { value: "actual_figures_for_transactions_affected", label: "Actual figures for transactions affected" },
-  { value: "estimates_for_clients_affected", label: "Estimates for clients affected" },
-  { value: "estimates_for_financial_counterparts_affected", label: "Estimates for financial counterparts affected" },
-  { value: "estimates_for_transactions_affected", label: "Estimates for transactions affected" },
-  { value: "no_impact_on_clients", label: "No impact on clients" },
-  { value: "no_impact_on_financial_counterparts", label: "No impact on financial counterparts" },
-  { value: "no_impact_on_transactions", label: "No impact on transactions" },
-];
+    const NUMBERS_ACTUAL_ESTIMATE_OPTIONS = [
+      { value: "actual_figures_for_clients_affected", label: "Actual figures for clients affected" },
+      { value: "actual_figures_for_financial_counterparts_affected", label: "Actual figures for financial counterparts affected" },
+      { value: "actual_figures_for_transactions_affected", label: "Actual figures for transactions affected" },
+      { value: "estimates_for_clients_affected", label: "Estimates for clients affected" },
+      { value: "estimates_for_financial_counterparts_affected", label: "Estimates for financial counterparts affected" },
+      { value: "estimates_for_transactions_affected", label: "Estimates for transactions affected" },
+      { value: "no_impact_on_clients", label: "No impact on clients" },
+      { value: "no_impact_on_financial_counterparts", label: "No impact on financial counterparts" },
+      { value: "no_impact_on_transactions", label: "No impact on transactions" },
+    ];
 
-const REPUTATIONAL_IMPACT_OPTIONS = [
-  {
-    value: "the_major_ict-related_incident_has_been_reflected_in_the_media",
-    label: "The major ICT-related incident has been reflected in the media"
-  },
-  {
-    value: "the_major_ict-related_incident_has_resulted_in_repetitive_complaints_from_different_clients_or_financial_counterparts_on_client-facing_services_or_critical_business_relationships",
-    label: "The major ICT-related incident has resulted in repetitive complaints from different clients or financial counterparts on client-facing services or critical business relationships"
-  },
-  {
-    value: "the_financial_entity_will_not_be_able_to_or_is_likely_not_to_be_able_to_meet_regulatory_requirements_as_a_result_of_the_major_ict-related_incident",
-    label: "The financial entity will not be able to or is likely not to be able to meet regulatory requirements as a result of the major ICT-related incident"
-  },
-  {
-    value: "the_financial_entity_will_or_is_likely_to_lose_clients_or_financial_counterparts_with_a_material_impact_on_its_business_as_a_result_of_the_major_ict-related_incident",
-    label: "The financial entity will or is likely to lose clients or financial counterparts with a material impact on its business as a result of the major ICT-related incident"
-  },
-];
+    const REPUTATIONAL_IMPACT_OPTIONS = [
+      {
+        value: "the_major_ict-related_incident_has_been_reflected_in_the_media",
+        label: "The major ICT-related incident has been reflected in the media"
+      },
+      {
+        value: "the_major_ict-related_incident_has_resulted_in_repetitive_complaints_from_different_clients_or_financial_counterparts_on_client-facing_services_or_critical_business_relationships",
+        label: "The major ICT-related incident has resulted in repetitive complaints from different clients or financial counterparts on client-facing services or critical business relationships"
+      },
+      {
+        value: "the_financial_entity_will_not_be_able_to_or_is_likely_not_to_be_able_to_meet_regulatory_requirements_as_a_result_of_the_major_ict-related_incident",
+        label: "The financial entity will not be able to or is likely not to be able to meet regulatory requirements as a result of the major ICT-related incident"
+      },
+      {
+        value: "the_financial_entity_will_or_is_likely_to_lose_clients_or_financial_counterparts_with_a_material_impact_on_its_business_as_a_result_of_the_major_ict-related_incident",
+        label: "The financial entity will or is likely to lose clients or financial counterparts with a material impact on its business as a result of the major ICT-related incident"
+      },
+    ];
 
-const DURATION_SERVICE_DOWNTIME_OPTIONS = [
-  { value: "actual_figures", label: "Actual figures" },
-  { value: "estimates", label: "Estimates" },
-  { value: "actual_figures_and_estimates", label: "Actual figures and estimates" },
-  { value: "no_information_available", label: "No information available" },
-];
+    const DURATION_SERVICE_DOWNTIME_OPTIONS = [
+      { value: "actual_figures", label: "Actual figures" },
+      { value: "estimates", label: "Estimates" },
+      { value: "actual_figures_and_estimates", label: "Actual figures and estimates" },
+      { value: "no_information_available", label: "No information available" },
+    ];
 
-const MEMBER_STATES_IMPACT_TYPE_OPTIONS = [
-  { value: "clients", label: "Clients" },
-  { value: "financial_counterparts", label: "Financial counterparts" },
-  { value: "branch_of_the_financial_entity", label: "Branch of the financial entity" },
-  { value: "financial_entities_within_the_group_carrying_out_activities_in_the_respective_member_state", label: "Financial entities within the group carrying out activities in the respective Member State" },
-  { value: "financial_market_infrastructure", label: "Financial market infrastructure" },
-  { value: "third-party_providers_that_may_be_common_to_other_financial_entities", label: "Third-party providers that may be common to other financial entities" },
-];
+    const MEMBER_STATES_IMPACT_TYPE_OPTIONS = [
+      { value: "clients", label: "Clients" },
+      { value: "financial_counterparts", label: "Financial counterparts" },
+      { value: "branch_of_the_financial_entity", label: "Branch of the financial entity" },
+      { value: "financial_entities_within_the_group_carrying_out_activities_in_the_respective_member_state", label: "Financial entities within the group carrying out activities in the respective Member State" },
+      { value: "financial_market_infrastructure", label: "Financial market infrastructure" },
+      { value: "third-party_providers_that_may_be_common_to_other_financial_entities", label: "Third-party providers that may be common to other financial entities" },
+    ];
 
-const DATA_LOSS_MATERIALITY_THRESHOLDS_OPTIONS = [
-  { value: "availability", label: "Availability" },
-  { value: "authenticity", label: "Authenticity" },
-  { value: "integrity", label: "Integrity" },
-  { value: "confidentiality", label: "Confidentiality" },
-];
+    const DATA_LOSS_MATERIALITY_THRESHOLDS_OPTIONS = [
+      { value: "availability", label: "Availability" },
+      { value: "authenticity", label: "Authenticity" },
+      { value: "integrity", label: "Integrity" },
+      { value: "confidentiality", label: "Confidentiality" },
+    ];
 
-const INCIDENT_CLASSIFICATION_OPTIONS = [
-  { value: "cybersecurity-related", label: "Cybersecurity-related" },
-  { value: "process_failure", label: "Process failure" },
-  { value: "system_failure", label: "System failure" },
-  { value: "external_event", label: "External event" },
-  { value: "payment-related", label: "Payment-related" },
-  { value: "other", label: "Other (please specify)" },
-];
+    const INCIDENT_CLASSIFICATION_OPTIONS = [
+      { value: "cybersecurity-related", label: "Cybersecurity-related" },
+      { value: "process_failure", label: "Process failure" },
+      { value: "system_failure", label: "System failure" },
+      { value: "external_event", label: "External event" },
+      { value: "payment-related", label: "Payment-related" },
+      { value: "other", label: "Other (please specify)" },
+    ];
 
-const THREAT_TECHNIQUES_OPTIONS = [
-  { value: "social_engineering_including_phishing", label: "Social engineering (including phishing)" },
-  { value: "ddos", label: "(D)DoS" },
-  { value: "identity_theft", label: "Identity theft" },
-  { value: "data_encryption_for_impact_including_ransomware", label: "Data encryption for impact (including ransomware)" },
-  { value: "resource_hijacking", label: "Resource hijacking" },
-  { value: "data_exfiltration_and_manipulation_including_identity_theft", label: "Data exfiltration and manipulation (including identity theft)" },
-  { value: "data_destruction", label: "Data destruction" },
-  { value: "defacement", label: "Defacement" },
-  { value: "supply-chain_attack", label: "Supply-chain attack" },
-  { value: "other", label: "Other (please specify)" },
-];
+    const THREAT_TECHNIQUES_OPTIONS = [
+      { value: "social_engineering_including_phishing", label: "Social engineering (including phishing)" },
+      { value: "ddos", label: "(D)DoS" },
+      { value: "identity_theft", label: "Identity theft" },
+      { value: "data_encryption_for_impact_including_ransomware", label: "Data encryption for impact (including ransomware)" },
+      { value: "resource_hijacking", label: "Resource hijacking" },
+      { value: "data_exfiltration_and_manipulation_including_identity_theft", label: "Data exfiltration and manipulation (including identity theft)" },
+      { value: "data_destruction", label: "Data destruction" },
+      { value: "defacement", label: "Defacement" },
+      { value: "supply-chain_attack", label: "Supply-chain attack" },
+      { value: "other", label: "Other (please specify)" },
+    ];
 
-const IS_AFFECTED_INFRASTRUCTURE_OPTIONS = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
-  { value: "information_not_available", label: "Information not available" },
-];
+    const IS_AFFECTED_INFRASTRUCTURE_OPTIONS = [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+      { value: "information_not_available", label: "Information not available" },
+    ];
 
-const IS_IMPACT_ON_FINANCIAL_INTEREST_OPTIONS = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
-  { value: "information_not_available", label: "Information not available" },
-];
+    const IS_IMPACT_ON_FINANCIAL_INTEREST_OPTIONS = [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+      { value: "information_not_available", label: "Information not available" },
+    ];
 
-const REPORTING_TO_OTHER_AUTHORITIES_OPTIONS = [
-  { value: "police_law_enforcement", label: "Police/Law Enforcement" },
-  { value: "csirt", label: "CSIRT" },
-  { value: "data_protection_authority", label: "Data Protection Authority" },
-  { value: "national_cybersecurity_agency", label: "National Cybersecurity Agency" },
-  { value: "none", label: "None" },
-  { value: "other", label: "Other (please specify)" },
-];
+    const REPORTING_TO_OTHER_AUTHORITIES_OPTIONS = [
+      { value: "police_law_enforcement", label: "Police/Law Enforcement" },
+      { value: "csirt", label: "CSIRT" },
+      { value: "data_protection_authority", label: "Data Protection Authority" },
+      { value: "national_cybersecurity_agency", label: "National Cybersecurity Agency" },
+      { value: "none", label: "None" },
+      { value: "other", label: "Other (please specify)" },
+    ];
 
-const ROOT_CAUSE_HL_CLASSIFICATION_OPTIONS = [
-  { value: "malicious_actions", label: "Malicious actions" },
-  { value: "process_failure", label: "Process failure" },
-  { value: "system_failure_malfunction", label: "System failure/malfunction" },
-  { value: "human_error", label: "Human error" },
-  { value: "external_event", label: "External event" },
-];
+    const ROOT_CAUSE_HL_CLASSIFICATION_OPTIONS = [
+      { value: "malicious_actions", label: "Malicious actions" },
+      { value: "process_failure", label: "Process failure" },
+      { value: "system_failure_malfunction", label: "System failure/malfunction" },
+      { value: "human_error", label: "Human error" },
+      { value: "external_event", label: "External event" },
+    ];
 
-const ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS = [
-  { value: "malicious_actions_deliberate_internal_actions", label: "Malicious actions: deliberate internal actions" },
-  { value: "malicious_actions_deliberate_physical_damage_manipulation_theft", label: "Malicious actions: deliberate physical damage/manipulation/theft" },
-  { value: "malicious_actions_fraudulent_actions", label: "Malicious actions: fraudulent actions" },
-  { value: "process_failure_insufficient_monitoring_or_failure_of_monitoring_and_control", label: "Process failure: insufficient monitoring or failure of monitoring and control" },
-  { value: "process_failure_insufficient_unclear_roles_and_responsibilities", label: "Process failure: insufficient/unclear roles and responsibilities" },
-  { value: "process_failure_ICT_risk_management_process_failure", label: "Process failure: ICT risk management process failure" },
-  { value: "process_failure_insufficient_or_failure_of_ict_operations_and_ict_security_operations", label: "Process failure: insufficient or failure of ICT operations and ICT security operations" },
-  { value: "process_failure_insufficient_or_failure_of_ict_project_management", label: "Process failure: insufficient or failure of ICT project management" },
-  { value: "process_failure_inadequacy_of_internal_policies_procedures_and_documentation", label: "Process failure: inadequacy of internal policies, procedures, and documentation" },
-  { value: "process_failure_inadequate_ict_systems_acquisition_development_and_maintenance", label: "Process failure: inadequate ICT systems acquisition, development, and maintenance" },
-  { value: "process_failure_other", label: "Process failure: other" },
-  { value: "system_failure_hardware_capacity_and_performance", label: "System failure: hardware capacity and performance" },
-  { value: "system_failure_hardware_maintenance", label: "System failure: hardware maintenance" },
-  { value: "system_failure_hardware_obsolescence_ageing", label: "System failure: hardware obsolescence/ageing" },
-  { value: "system_failure_software_compatibility_configuration", label: "System failure: software compatibility/configuration" },
-  { value: "system_failure_software_performance", label: "System failure: software performance" },
-  { value: "system_failure_network_configuration", label: "System failure: network configuration" },
-  { value: "system_failure_physical_damage", label: "System failure: physical damage" },
-  { value: "system_failure_other", label: "System failure: other" },
-  { value: "human_error_omission", label: "Human error: omission" },
-  { value: "human_error_mistake", label: "Human error: mistake" },
-  { value: "human_error_skills_knowledge", label: "Human error: skills & knowledge" },
-  { value: "human_error_inadequate_human_resources", label: "Human error: inadequate human resources" },
-  { value: "human_error_miscommunication", label: "Human error: miscommunication" },
-  { value: "human_error_other", label: "Human error: other" },
-  { value: "external_event_natural_disasters_force_majeure", label: "External event: natural disasters/force majeure" },
-  { value: "external_event_third-party_failures", label: "External event: third-party failures" },
-  { value: "external_event_other", label: "External event: other" },
-];
+    const ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS = [
+      { value: "malicious_actions_deliberate_internal_actions", label: "Malicious actions: deliberate internal actions" },
+      { value: "malicious_actions_deliberate_physical_damage_manipulation_theft", label: "Malicious actions: deliberate physical damage/manipulation/theft" },
+      { value: "malicious_actions_fraudulent_actions", label: "Malicious actions: fraudulent actions" },
+      { value: "process_failure_insufficient_monitoring_or_failure_of_monitoring_and_control", label: "Process failure: insufficient monitoring or failure of monitoring and control" },
+      { value: "process_failure_insufficient_unclear_roles_and_responsibilities", label: "Process failure: insufficient/unclear roles and responsibilities" },
+      { value: "process_failure_ICT_risk_management_process_failure", label: "Process failure: ICT risk management process failure" },
+      { value: "process_failure_insufficient_or_failure_of_ict_operations_and_ict_security_operations", label: "Process failure: insufficient or failure of ICT operations and ICT security operations" },
+      { value: "process_failure_insufficient_or_failure_of_ict_project_management", label: "Process failure: insufficient or failure of ICT project management" },
+      { value: "process_failure_inadequacy_of_internal_policies_procedures_and_documentation", label: "Process failure: inadequacy of internal policies, procedures, and documentation" },
+      { value: "process_failure_inadequate_ict_systems_acquisition_development_and_maintenance", label: "Process failure: inadequate ICT systems acquisition, development, and maintenance" },
+      { value: "process_failure_other", label: "Process failure: other" },
+      { value: "system_failure_hardware_capacity_and_performance", label: "System failure: hardware capacity and performance" },
+      { value: "system_failure_hardware_maintenance", label: "System failure: hardware maintenance" },
+      { value: "system_failure_hardware_obsolescence_ageing", label: "System failure: hardware obsolescence/ageing" },
+      { value: "system_failure_software_compatibility_configuration", label: "System failure: software compatibility/configuration" },
+      { value: "system_failure_software_performance", label: "System failure: software performance" },
+      { value: "system_failure_network_configuration", label: "System failure: network configuration" },
+      { value: "system_failure_physical_damage", label: "System failure: physical damage" },
+      { value: "system_failure_other", label: "System failure: other" },
+      { value: "human_error_omission", label: "Human error: omission" },
+      { value: "human_error_mistake", label: "Human error: mistake" },
+      { value: "human_error_skills_knowledge", label: "Human error: skills & knowledge" },
+      { value: "human_error_inadequate_human_resources", label: "Human error: inadequate human resources" },
+      { value: "human_error_miscommunication", label: "Human error: miscommunication" },
+      { value: "human_error_other", label: "Human error: other" },
+      { value: "external_event_natural_disasters_force_majeure", label: "External event: natural disasters/force majeure" },
+      { value: "external_event_third-party_failures", label: "External event: third-party failures" },
+      { value: "external_event_other", label: "External event: other" },
+    ];
 
-const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
-  { value: "monitoring_of_policy_adherence", label: "Monitoring of policy adherence" },
-  { value: "monitoring_of_third-party_service_providers", label: "Monitoring of third-party service providers" },
-  { value: "monitoring_and_verification_of_remediation_of_vulnerabilities", label: "Monitoring and verification of remediation of vulnerabilities" },
-  { value: "identity_and_access_management", label: "Identity and access management" },
-  { value: "encryption_and_cryptography", label: "Encryption and cryptography" },
-  { value: "logging", label: "Logging" },
-  { value: "failure_in_specifying_accurate_risk_tolerance_levels", label: "Failure in specifying accurate risk tolerance levels" },
-  { value: "insufficient_vulnerability_and_threat_assessments", label: "Insufficient vulnerability and threat assessments" },
-  { value: "inadequate_risk_treatment_measures", label: "Inadequate risk treatment measures" },
-  { value: "poor_management_of_residual_ict_risks", label: "Poor management of residual ICT risks" },
-  { value: "vulnerability_and_patch_management", label: "Vulnerability and patch management" },
-  { value: "change_management", label: "Change management" },
-  { value: "capacity_and_performance_management", label: "Capacity and performance management" },
-  { value: "ict_asset_management_and_information_classification", label: "ICT asset management and information classification" },
-  { value: "backup_and_restore", label: "Backup and restore" },
-  { value: "error_handling", label: "Error handling" },
-  { value: "inadequate_ict_systems_acquisition_development_and_maintenance", label: "Inadequate ICT systems acquisition, development, and maintenance" },
-  { value: "insufficient_or_failure_of_software_testing", label: "Insufficient or failure of software testing" }
-];
+    const ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS = [
+      { value: "monitoring_of_policy_adherence", label: "Monitoring of policy adherence" },
+      { value: "monitoring_of_third-party_service_providers", label: "Monitoring of third-party service providers" },
+      { value: "monitoring_and_verification_of_remediation_of_vulnerabilities", label: "Monitoring and verification of remediation of vulnerabilities" },
+      { value: "identity_and_access_management", label: "Identity and access management" },
+      { value: "encryption_and_cryptography", label: "Encryption and cryptography" },
+      { value: "logging", label: "Logging" },
+      { value: "failure_in_specifying_accurate_risk_tolerance_levels", label: "Failure in specifying accurate risk tolerance levels" },
+      { value: "insufficient_vulnerability_and_threat_assessments", label: "Insufficient vulnerability and threat assessments" },
+      { value: "inadequate_risk_treatment_measures", label: "Inadequate risk treatment measures" },
+      { value: "poor_management_of_residual_ict_risks", label: "Poor management of residual ICT risks" },
+      { value: "vulnerability_and_patch_management", label: "Vulnerability and patch management" },
+      { value: "change_management", label: "Change management" },
+      { value: "capacity_and_performance_management", label: "Capacity and performance management" },
+      { value: "ict_asset_management_and_information_classification", label: "ICT asset management and information classification" },
+      { value: "backup_and_restore", label: "Backup and restore" },
+      { value: "error_handling", label: "Error handling" },
+      { value: "inadequate_ict_systems_acquisition_development_and_maintenance", label: "Inadequate ICT systems acquisition, development, and maintenance" },
+      { value: "insufficient_or_failure_of_software_testing", label: "Insufficient or failure of software testing" }
+    ];
 
-const COUNTRY_CODES = [
-  { value: "+33", label: "(+33)" },
-  { value: "+32", label: "(+32)" },
-  { value: "+40", label: "(+40)" },
-  { value: "+41", label: "(+41)" },
-  { value: "+49", label: "(+49)" },
-  { value: "+44", label: "(+44)" },
-  { value: "+1", label: "(+1)" },
-  { value: "+7", label: "(+7)" },
-  { value: "+81", label: "(+81)" },
-  { value: "+86", label: "(+86)" },
-];
+    const COUNTRY_CODES = [
+      { value: "+33", label: "(+33)" },
+      { value: "+32", label: "(+32)" },
+      { value: "+40", label: "(+40)" },
+      { value: "+41", label: "(+41)" },
+      { value: "+49", label: "(+49)" },
+      { value: "+44", label: "(+44)" },
+      { value: "+1", label: "(+1)" },
+      { value: "+7", label: "(+7)" },
+      { value: "+81", label: "(+81)" },
+      { value: "+86", label: "(+86)" },
+    ];
 
     /**
      * Valide tous les champs d'un rapport et retourne une liste d'erreurs.
@@ -850,6 +881,48 @@ const COUNTRY_CODES = [
         return status === 'validated' ? 'Open' : 'Update';
       } else {
         return status === 'validated' ? 'Open' : 'View';
+      }
+    }
+
+    function formatDateForExport(dateString, formatType) {
+      if (!dateString) return null;
+
+      try {
+        // Créer un objet Date à partir de la chaîne
+        const date = new Date(dateString);
+
+        // Vérifier si la date est valide
+        if (isNaN(date.getTime())) {
+          return null;
+        }
+
+        // Fonction pour ajouter un zéro devant si nécessaire
+        const pad = (num) => num.toString().padStart(2, '0');
+
+        const year = date.getUTCFullYear();
+        const month = pad(date.getUTCMonth() + 1);
+        const day = pad(date.getUTCDate());
+        const hours = pad(date.getUTCHours());
+        const minutes = pad(date.getUTCMinutes());
+        const seconds = pad(date.getUTCSeconds());
+
+        // Formater selon le type requis
+        switch (formatType) {
+          case 'withZ':
+            // Format: "2001-12-17T09:30:47.0Z" (pour classificationDateTime)
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0Z`;
+
+          case 'withMilliseconds':
+            // Format: "2001-12-17T09:30:47.0" (pour les autres dates)
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0`;
+
+          default:
+            // Format original si aucun format spécifique n'est demandé
+            return dateString;
+        }
+      } catch (e) {
+        console.error('Erreur lors du formatage de la date:', e);
+        return null;
       }
     }
 
@@ -1188,75 +1261,74 @@ export default function DoraIncidentApp() {
       }
     }
 
-async function fetchReportsFromSupabase() {
-  let query = supabase.from('reports').select('*, comments(*)').order('created_at', { ascending: false });
-  if (role === 'saisisseur') {
-    query = query.eq('created_by', user.id);
-  }
-  const { data, error } = await query;
-  if (error) {
-    console.error('Erreur lors de la récupération des rapports depuis Supabase :', error);
-    return [];
-  } else {
-    return data.map(item => {
-      const defaultDraft = emptyDraft(item.incident_id);
-      const reportData = item.report_data;
-
-      // Initialiser les contacts avec des valeurs par défaut
-      const primaryContact = {
-        name: '',
-        email: '',
-        phone: '',
-        countryCode: '+33',
-        ...defaultDraft.primaryContact,
-        ...(reportData.primaryContact || {})
-      };
-
-      const secondaryContact = {
-        name: '',
-        email: '',
-        phone: '',
-        countryCode: '+33',
-        ...defaultDraft.secondaryContact,
-        ...(reportData.secondaryContact || {})
-      };
-
-      // S'assurer que countryCode est toujours une chaîne de caractères
-      primaryContact.countryCode = String(primaryContact.countryCode || '+33');
-      secondaryContact.countryCode = String(secondaryContact.countryCode || '+33');
-
-      // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
-      if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
-        const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
-        if (countryCodeMatch) {
-          primaryContact.countryCode = countryCodeMatch[0];
-          primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
-        }
+    async function fetchReportsFromSupabase() {
+      let query = supabase.from('reports').select('*, comments(*)').order('created_at', { ascending: false });
+      if (role === 'saisisseur') {
+        query = query.eq('created_by', user.id);
       }
+      const { data, error } = await query;
+      if (error) {
+        console.error('Erreur lors de la récupération des rapports depuis Supabase :', error);
+        return [];
+      } else {
+        return data.map(item => {
+          const defaultDraft = emptyDraft(item.incident_id);
+          const reportData = item.report_data;
 
-      if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
-        const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
-        if (countryCodeMatch) {
-          secondaryContact.countryCode = countryCodeMatch[0];
-          secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
-        }
+          // Initialiser les contacts avec des valeurs par défaut
+          const primaryContact = {
+            name: '',
+            email: '',
+            phone: '',
+            countryCode: '+33',
+            ...defaultDraft.primaryContact,
+            ...(reportData.primaryContact || {})
+          };
+
+          const secondaryContact = {
+            name: '',
+            email: '',
+            phone: '',
+            countryCode: '+33',
+            ...defaultDraft.secondaryContact,
+            ...(reportData.secondaryContact || {})
+          };
+
+          // S'assurer que countryCode est toujours une chaîne de caractères
+          primaryContact.countryCode = String(primaryContact.countryCode || '+33');
+          secondaryContact.countryCode = String(secondaryContact.countryCode || '+33');
+
+          // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
+          if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
+            const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
+            if (countryCodeMatch) {
+              primaryContact.countryCode = countryCodeMatch[0];
+              primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
+            }
+          }
+
+          if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
+            const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
+            if (countryCodeMatch) {
+              secondaryContact.countryCode = countryCodeMatch[0];
+              secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
+            }
+          }
+
+          return {
+            ...defaultDraft,
+            ...reportData,
+            primaryContact: primaryContact,
+            secondaryContact: secondaryContact,
+            id: item.id,
+            status: item.status,
+            nextSubmissionType: item.next_submission_type,
+            comments: item.comments || [],
+            savedAt: reportData.savedAt || item.created_at
+          };
+        });
       }
-
-      return {
-        ...defaultDraft,
-        ...reportData,
-        primaryContact: primaryContact,
-        secondaryContact: secondaryContact,
-        id: item.id,
-        status: item.status,
-        nextSubmissionType: item.next_submission_type,
-        comments: item.comments || [],
-        savedAt: reportData.savedAt || item.created_at
-      };
-    });
-  }
-}
-
+    }
 
     async function validateReport(reportId) {
       try {
@@ -1377,61 +1449,61 @@ async function fetchReportsFromSupabase() {
     }
 
     async function loadReportIntoDraft(reportId) {
-  const { data, error } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', reportId)
-    .single();
-  if (error) {
-    console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
-    return;
-  }
-  if (data) {
-    const defaultDraft = emptyDraft(data.report_data.incidentId);
-    const mergedDraft = {
-      ...defaultDraft,
-      ...data.report_data,
-      id: data.id,
-      status: data.status
-    };
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('id', reportId)
+        .single();
+      if (error) {
+        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
+        return;
+      }
+      if (data) {
+        const defaultDraft = emptyDraft(data.report_data.incidentId);
+        const mergedDraft = {
+          ...defaultDraft,
+          ...data.report_data,
+          id: data.id,
+          status: data.status
+        };
 
-    // S'assurer que countryCode est défini
-    if (!mergedDraft.primaryContact.countryCode) {
-      mergedDraft.primaryContact.countryCode = '+33';
-    }
-    if (!mergedDraft.secondaryContact.countryCode) {
-      mergedDraft.secondaryContact.countryCode = '+33';
-    }
+        // S'assurer que countryCode est défini
+        if (!mergedDraft.primaryContact.countryCode) {
+          mergedDraft.primaryContact.countryCode = '+33';
+        }
+        if (!mergedDraft.secondaryContact.countryCode) {
+          mergedDraft.secondaryContact.countryCode = '+33';
+        }
 
-    // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
-    if (typeof mergedDraft.primaryContact.phone === 'string' && mergedDraft.primaryContact.phone.startsWith('+')) {
-      const countryCodeMatch = mergedDraft.primaryContact.phone.match(/^\+\d+/);
-      if (countryCodeMatch) {
-        mergedDraft.primaryContact.countryCode = countryCodeMatch[0];
-        mergedDraft.primaryContact.phone = mergedDraft.primaryContact.phone.substring(countryCodeMatch[0].length);
+        // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
+        if (typeof mergedDraft.primaryContact.phone === 'string' && mergedDraft.primaryContact.phone.startsWith('+')) {
+          const countryCodeMatch = mergedDraft.primaryContact.phone.match(/^\+\d+/);
+          if (countryCodeMatch) {
+            mergedDraft.primaryContact.countryCode = countryCodeMatch[0];
+            mergedDraft.primaryContact.phone = mergedDraft.primaryContact.phone.substring(countryCodeMatch[0].length);
+          }
+        }
+
+        if (typeof mergedDraft.secondaryContact.phone === 'string' && mergedDraft.secondaryContact.phone.startsWith('+')) {
+          const countryCodeMatch = mergedDraft.secondaryContact.phone.match(/^\+\d+/);
+          if (countryCodeMatch) {
+            mergedDraft.secondaryContact.countryCode = countryCodeMatch[0];
+            mergedDraft.secondaryContact.phone = mergedDraft.secondaryContact.phone.substring(countryCodeMatch[0].length);
+          }
+        }
+
+        setDraft(mergedDraft);
+        setView('report');
+        // Définir le step en fonction du type de rapport
+        if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
+          setStep(2); // Aller directement à la section "Incident"
+          setFromContinueButton(true); // Masquer le bouton "Back"
+        } else {
+          setStep(0); // Aller à la section "Identity" pour les rapports initiaux
+          setFromContinueButton(false); // Afficher le bouton "Back"
+        }
       }
     }
-
-    if (typeof mergedDraft.secondaryContact.phone === 'string' && mergedDraft.secondaryContact.phone.startsWith('+')) {
-      const countryCodeMatch = mergedDraft.secondaryContact.phone.match(/^\+\d+/);
-      if (countryCodeMatch) {
-        mergedDraft.secondaryContact.countryCode = countryCodeMatch[0];
-        mergedDraft.secondaryContact.phone = mergedDraft.secondaryContact.phone.substring(countryCodeMatch[0].length);
-      }
-    }
-
-    setDraft(mergedDraft);
-    setView('report');
-    // Définir le step en fonction du type de rapport
-    if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
-      setStep(2); // Aller directement à la section "Incident"
-      setFromContinueButton(true); // Masquer le bouton "Back"
-    } else {
-      setStep(0); // Aller à la section "Identity" pour les rapports initiaux
-      setFromContinueButton(false); // Afficher le bouton "Back"
-    }
-  }
-}
 
   function clearDraft() {
     setDraft(emptyDraft())
@@ -1834,88 +1906,88 @@ async function fetchReportsFromSupabase() {
                           <input id="secondaryContactEmail" type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
-<div className="grid grid-cols-2 gap-4">
-  <div>
-    <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
-    <div className="flex gap-2">
-      <select
-          value={draft.secondaryContact.countryCode || '+33'}
-          onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
-          className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
-          disabled={isFieldDisabled(role, draft.status)}
-        >
-          {COUNTRY_CODES.map((code) => (
-            <option key={code.value} value={code.value}>
-              {code.label}
-            </option>
-          ))}
-        </select>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
+                            <div className="flex gap-2">
+                              <select
+                                  value={draft.secondaryContact.countryCode || '+33'}
+                                  onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
+                                  className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
+                                  disabled={isFieldDisabled(role, draft.status)}
+                                >
+                                  {COUNTRY_CODES.map((code) => (
+                                    <option key={code.value} value={code.value}>
+                                      {code.label}
+                                    </option>
+                                  ))}
+                                </select>
 
-      <input
-        id="primaryContactPhone"
-        type="tel"
-        value={draft.primaryContact.phone}
-        onChange={(e) => {
-          const value = e.target.value.replaceAll(/\D/g, '');
-          if (value.length <= 9) {
-            updateDraft('primaryContact.phone', value);
-          }
-        }}
-        pattern="[0-9]{9}"
-        title="9 chiffres requis"
-        placeholder="123456789"
-        className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
-          draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 ?
-          'border-red-500 dark:border-red-400' : ''
-        }`}
-        disabled={isFieldDisabled(role, draft.status)}
-        required
-      />
-    </div>
-    {draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 && draft.primaryContact.phone.length > 0 && (
-      <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
-    )}
-  </div>
-  <div>
-    <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
-    <div className="flex gap-2">
-      <select
-        value={draft.secondaryContact.countryCode}
-        onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
-        className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
-        disabled={isFieldDisabled(role, draft.status)}
-      >
-        {COUNTRY_CODES.map((code) => (
-          <option key={code.value} value={code.value}>
-            {code.label}
-          </option>
-        ))}
-      </select>
-      <input
-        id="secondaryContactPhone"
-        type="tel"
-        value={draft.secondaryContact.phone}
-        onChange={(e) => {
-          const value = e.target.value.replaceAll(/\D/g, '');
-          if (value.length <= 9) {
-            updateDraft('secondaryContact.phone', value);
-          }
-        }}
-        pattern="[0-9]{9}"
-        title="9 chiffres requis"
-        placeholder="123456789"
-        className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
-          draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 ?
-          'border-red-500 dark:border-red-400' : ''
-        }`}
-        disabled={isFieldDisabled(role, draft.status)}
-      />
-    </div>
-    {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 && (
-      <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
-    )}
-  </div>
-</div>
+                              <input
+                                id="primaryContactPhone"
+                                type="tel"
+                                value={draft.primaryContact.phone}
+                                onChange={(e) => {
+                                  const value = e.target.value.replaceAll(/\D/g, '');
+                                  if (value.length <= 9) {
+                                    updateDraft('primaryContact.phone', value);
+                                  }
+                                }}
+                                pattern="[0-9]{9}"
+                                title="9 chiffres requis"
+                                placeholder="123456789"
+                                className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
+                                  draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 ?
+                                  'border-red-500 dark:border-red-400' : ''
+                                }`}
+                                disabled={isFieldDisabled(role, draft.status)}
+                                required
+                              />
+                            </div>
+                            {draft.primaryContact.phone && draft.primaryContact.phone.length !== 9 && draft.primaryContact.phone.length > 0 && (
+                              <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
+                            )}
+                          </div>
+                          <div>
+                            <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
+                            <div className="flex gap-2">
+                              <select
+                                value={draft.secondaryContact.countryCode}
+                                onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
+                                className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
+                                disabled={isFieldDisabled(role, draft.status)}
+                              >
+                                {COUNTRY_CODES.map((code) => (
+                                  <option key={code.value} value={code.value}>
+                                    {code.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                id="secondaryContactPhone"
+                                type="tel"
+                                value={draft.secondaryContact.phone}
+                                onChange={(e) => {
+                                  const value = e.target.value.replaceAll(/\D/g, '');
+                                  if (value.length <= 9) {
+                                    updateDraft('secondaryContact.phone', value);
+                                  }
+                                }}
+                                pattern="[0-9]{9}"
+                                title="9 chiffres requis"
+                                placeholder="123456789"
+                                className={`flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 ${
+                                  draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 ?
+                                  'border-red-500 dark:border-red-400' : ''
+                                }`}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
+                            </div>
+                            {draft.secondaryContact.phone && draft.secondaryContact.phone.length !== 0 && draft.secondaryContact.phone.length !== 9 && (
+                              <p className="text-xs text-red-500 mt-1">Veuillez saisir un numéro de téléphone valide (9 chiffres)</p>
+                            )}
+                          </div>
+                        </div>
 
                       <div className="mt-6 flex justify-between">
                           {!fromContinueButton && (
