@@ -246,12 +246,14 @@ const nowISO = () => new Date().toISOString()
       return (item && typeof item === 'object' && !Array.isArray(item));
     }
 
-    function getSecureRandomValue() {
+    const getSecureRandomValue = (() => {
       const crypto = window.crypto || window.msCrypto;
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      return array[0] / 4294967295; // Convertir en un nombre flottant entre 0 et 1
-    }
+      return () => {
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        return array[0] / 4294967295;
+      };
+    })();
 
     function ConfettiCanvas({ trigger }) {
       useEffect(() => {
@@ -268,14 +270,15 @@ const nowISO = () => new Date().toISOString()
         document.body.appendChild(canvas);
         const ctx = canvas.getContext('2d');
 
-        const getSecureRandomValue = () => {
+        const getSecureRandomValue = (() => {
           const crypto = window.crypto || window.msCrypto;
-          const array = new Uint32Array(1);
-          crypto.getRandomValues(array);
-          return array[0] / 4294967295;
-        };
+          return () => {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] / 4294967295;
+          };
+        })();
 
-        // Générer un tableau de valeurs aléatoires sécurisées une seule fois
         const randomValues = Array.from({ length: 60 }, () => ({
           x: getSecureRandomValue(),
           yOffset: getSecureRandomValue(),
@@ -315,9 +318,7 @@ const nowISO = () => new Date().toISOString()
 
         return () => {
           clearInterval(id);
-          if (canvas && canvas.parentNode) {
-            canvas.parentNode.removeChild(canvas);
-          }
+          canvas?.parentNode?.removeChild(canvas);
         };
       }, [trigger]);
 
