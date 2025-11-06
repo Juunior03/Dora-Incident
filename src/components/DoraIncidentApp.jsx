@@ -11,9 +11,9 @@ const nowISO = () => new Date().toISOString()
       const keyOrder = ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'];
       return affectedEntities.map(entity => {
         const ordered = {};
-        keyOrder.forEach(key => {
+        for (const key of keyOrder) {
           if (key in entity) ordered[key] = entity[key];
-        });
+        }
         return ordered;
       });
     }
@@ -21,186 +21,142 @@ const nowISO = () => new Date().toISOString()
     function cleanReportForExport(report) {
       const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, ...cleanedReport } = report;
 
-      // Fonction pour nettoyer uniquement la section classificationTypes
-      const cleanClassificationTypes = (classificationTypes) => {
-        if (!Array.isArray(classificationTypes)) {
-          return classificationTypes;
-        }
+      // Nettoyer les numéros de téléphone
+      cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
+      cleanedReport.secondaryContact = cleanPhoneNumber(cleanedReport.secondaryContact);
 
-        // ❌ On ne supprime plus les champs vides ici
-        return classificationTypes.map(ct => ({ ...ct }));
-      };
-
-      // Nettoyer uniquement la section classificationTypes (sans suppression des champs vides)
-      if (cleanedReport.incident?.classificationTypes) {
-        cleanedReport.incident.classificationTypes = cleanClassificationTypes(cleanedReport.incident.classificationTypes);
-      }
-
-      // 🔁 Décomposer classificationTypes si nécessaire
+      // Décomposer classificationTypes
       if (cleanedReport.incident?.classificationTypes?.length) {
-        const expanded = [];
-        cleanedReport.incident.classificationTypes.forEach(ct => {
-          if (Array.isArray(ct.classificationCriterion)) {
-            ct.classificationCriterion.forEach(criterion => {
-              expanded.push({ ...ct, classificationCriterion: criterion });
-            });
-          } else {
-            expanded.push(ct);
-          }
-        });
-
-        // 🧩 Garder tous les champs spécifiques, même vides
-        cleanedReport.incident.classificationTypes = expanded.map(ct => {
-          const base = { classificationCriterion: ct.classificationCriterion };
-
-          switch (ct.classificationCriterion) {
-            case 'geographical_spread':
-              return {
-                ...base,
-                countryCodeMaterialityThresholds: ct.countryCodeMaterialityThresholds ?? [],
-                memberStatesImpactType: ct.memberStatesImpactType ?? [],
-                memberStatesImpactTypeDescription: ct.memberStatesImpactTypeDescription ?? "",
-              };
-
-            case 'data_losses':
-              return {
-                ...base,
-                dataLosseMaterialityThresholds: ct.dataLosseMaterialityThresholds ?? [],
-                dataLossesDescription: ct.dataLossesDescription ?? "",
-              };
-
-            case 'reputational_impact':
-              return {
-                ...base,
-                reputationalImpactType: ct.reputationalImpactType ?? [],
-                reputationalImpactDescription: ct.reputationalImpactDescription ?? "",
-              };
-
-            default:
-              // Critères simples : on garde uniquement classificationCriterion
-              return base;
-          }
-        });
+        cleanedReport.incident.classificationTypes = expandClassificationTypes(cleanedReport.incident.classificationTypes);
       }
 
-        if (Array.isArray(cleanedReport.affectedEntity)) {
-          cleanedReport.affectedEntity = orderAffectedEntityKeys(cleanedReport.affectedEntity);
-        }
+      // Convertir les champs numériques
+      const { incident: cleanedIncident, impactAssessment: cleanedImpactAssessment } = convertNumericFields(
+        cleanedReport.incident,
+        cleanedReport.impactAssessment
+      );
+      cleanedReport.incident = cleanedIncident;
+      cleanedReport.impactAssessment = cleanedImpactAssessment;
 
-        // 🔢 Conversion des champs numériques (alignée sur emptyDraft)
-        if (cleanedReport.incident) {
-          ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'].forEach(key => {
-            const val = cleanedReport.incident[key];
-            if (typeof val === 'string' && val.trim() !== '') {
-              cleanedReport.incident[key] = Number(val);
-            }
-          });
-        }
-
-        if (cleanedReport.impactAssessment?.affectedAssets) {
-          const assets = cleanedReport.impactAssessment.affectedAssets;
-
-          [
-            'affectedClients',
-            'affectedFinancialCounterparts',
-            'affectedTransactions'
-          ].forEach(section => {
-            if (assets[section]) {
-              ['number', 'percentage'].forEach(field => {
-                const val = assets[section][field];
-                if (typeof val === 'string' && val.trim() !== '') {
-                  assets[section][field] = Number(val);
-                }
-              });
-            }
-          });
-
-          if (typeof assets.valueOfAffectedTransactions === 'string' && assets.valueOfAffectedTransactions.trim() !== '') {
-            assets.valueOfAffectedTransactions = Number(assets.valueOfAffectedTransactions);
-          }
-        }
-
-          // Concaténer l'indicatif du pays avec le numéro de téléphone
-          if (cleanedReport.primaryContact) {
-            // Vérifier que phone est bien défini et est une chaîne de caractères
-            const phoneNumber = typeof cleanedReport.primaryContact.phone === 'string'
-              ? cleanedReport.primaryContact.phone
-              : '';
-
-            // Vérifier que countryCode est bien défini et est une chaîne de caractères
-            const countryCode = typeof cleanedReport.primaryContact.countryCode === 'string'
-              ? cleanedReport.primaryContact.countryCode
-              : '+33';
-
-            // Vérifier si le numéro commence déjà par un indicatif
-            const hasCountryCode = phoneNumber.startsWith('+');
-
-            // Si le numéro ne commence pas déjà par un indicatif, on concatène
-            if (!hasCountryCode) {
-              cleanedReport.primaryContact.phone = countryCode + phoneNumber;
-            }
-            // Sinon, on garde le numéro tel quel
-
-            // Supprimer countryCode du JSON final
-            delete cleanedReport.primaryContact.countryCode;
-          }
-
-          if (cleanedReport.secondaryContact) {
-            // Vérifier que phone est bien défini et est une chaîne de caractères
-            const phoneNumber = typeof cleanedReport.secondaryContact.phone === 'string'
-              ? cleanedReport.secondaryContact.phone
-              : '';
-
-            // Vérifier que countryCode est bien défini et est une chaîne de caractères
-            const countryCode = typeof cleanedReport.secondaryContact.countryCode === 'string'
-              ? cleanedReport.secondaryContact.countryCode
-              : '+33';
-
-            // Vérifier si le numéro commence déjà par un indicatif
-            const hasCountryCode = phoneNumber.startsWith('+');
-
-            // Si le numéro ne commence pas déjà par un indicatif, on concatène
-            if (!hasCountryCode) {
-              cleanedReport.secondaryContact.phone = countryCode + phoneNumber;
-            }
-            // Sinon, on garde le numéro tel quel
-
-            // Supprimer countryCode du JSON final
-            delete cleanedReport.secondaryContact.countryCode;
-          }
-
-      // Formater les dates selon les spécifications
+      // Formater les dates
       if (cleanedReport.incident) {
-        // classificationDateTime doit être au format "2001-12-17T09:30:47.0Z"
-        if (cleanedReport.incident.classificationDateTime) {
-          cleanedReport.incident.classificationDateTime =
-            formatDateForExport(cleanedReport.incident.classificationDateTime, 'withZ');
-        }
-
-        // Les autres dates doivent être au format "2001-12-17T09:30:47.0"
-        const otherDateFields = [
-          'detectionDateTime',
-          'incidentOccurrenceDateTime',
-          'rootCauseAddressingDateTime',
-          'incidentResolutionDateTime',
-          'recurringIncidentDate'
-        ];
-
-        otherDateFields.forEach(field => {
-          if (cleanedReport.incident[field]) {
-            cleanedReport.incident[field] =
-              formatDateForExport(cleanedReport.incident[field], 'withMilliseconds');
-          }
-        });
+        cleanedReport.incident = formatDates(cleanedReport.incident);
       }
-
-      // Formater la date dans impactAssessment.serviceImpact
       if (cleanedReport.impactAssessment?.serviceImpact?.serviceRestorationDateTime) {
         cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime =
           formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'withMilliseconds');
       }
 
+      // Ordonner les clés des entités affectées
+      if (Array.isArray(cleanedReport.affectedEntity)) {
+        cleanedReport.affectedEntity = orderAffectedEntityKeys(cleanedReport.affectedEntity);
+      }
+
       return cleanedReport;
+    }
+
+    // Sous-fonction pour nettoyer les numéros de téléphone
+    function cleanPhoneNumber(contact) {
+      if (!contact) return contact;
+      const phoneNumber = typeof contact.phone === 'string' ? contact.phone : '';
+      const countryCode = typeof contact.countryCode === 'string' ? contact.countryCode : '+33';
+      const hasCountryCode = phoneNumber.startsWith('+');
+      if (!hasCountryCode && phoneNumber) {
+        contact.phone = countryCode + phoneNumber;
+      }
+      delete contact.countryCode;
+      return contact;
+    }
+
+    // Sous-fonction pour décomposer classificationTypes
+    function expandClassificationTypes(classificationTypes) {
+      if (!Array.isArray(classificationTypes) || !classificationTypes.length) {
+        return classificationTypes;
+      }
+      const expanded = [];
+      classificationTypes.forEach(ct => {
+        if (Array.isArray(ct.classificationCriterion)) {
+          ct.classificationCriterion.forEach(criterion => {
+            expanded.push({ ...ct, classificationCriterion: criterion });
+          });
+        } else {
+          expanded.push(ct);
+        }
+      });
+      return expanded.map(ct => {
+        const base = { classificationCriterion: ct.classificationCriterion };
+        switch (ct.classificationCriterion) {
+          case 'geographical_spread':
+            return {
+              ...base,
+              countryCodeMaterialityThresholds: ct.countryCodeMaterialityThresholds ?? [],
+              memberStatesImpactType: ct.memberStatesImpactType ?? [],
+              memberStatesImpactTypeDescription: ct.memberStatesImpactTypeDescription ?? "",
+            };
+          case 'data_losses':
+            return {
+              ...base,
+              dataLosseMaterialityThresholds: ct.dataLosseMaterialityThresholds ?? [],
+              dataLossesDescription: ct.dataLossesDescription ?? "",
+            };
+          case 'reputational_impact':
+            return {
+              ...base,
+              reputationalImpactType: ct.reputationalImpactType ?? [],
+              reputationalImpactDescription: ct.reputationalImpactDescription ?? "",
+            };
+          default:
+            return base;
+        }
+      });
+    }
+
+    // Sous-fonction pour convertir les champs numériques
+    function convertNumericFields(incident, impactAssessment) {
+      if (!incident) return { incident, impactAssessment };
+      ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'].forEach(key => {
+        const val = incident[key];
+        if (typeof val === 'string' && val.trim() !== '') {
+          incident[key] = Number(val);
+        }
+      });
+      if (!impactAssessment?.affectedAssets) return { incident, impactAssessment };
+      const assets = impactAssessment.affectedAssets;
+      ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions'].forEach(section => {
+        if (assets[section]) {
+          ['number', 'percentage'].forEach(field => {
+            const val = assets[section][field];
+            if (typeof val === 'string' && val.trim() !== '') {
+              assets[section][field] = Number(val);
+            }
+          });
+        }
+      });
+      if (typeof assets.valueOfAffectedTransactions === 'string' && assets.valueOfAffectedTransactions.trim() !== '') {
+        assets.valueOfAffectedTransactions = Number(assets.valueOfAffectedTransactions);
+      }
+      return { incident, impactAssessment };
+    }
+
+    // Sous-fonction pour formater les dates
+    function formatDates(incident) {
+      if (!incident) return incident;
+      if (incident.classificationDateTime) {
+        incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'withZ');
+      }
+      const otherDateFields = [
+        'detectionDateTime',
+        'incidentOccurrenceDateTime',
+        'rootCauseAddressingDateTime',
+        'incidentResolutionDateTime',
+        'recurringIncidentDate'
+      ];
+      otherDateFields.forEach(field => {
+        if (incident[field]) {
+          incident[field] = formatDateForExport(incident[field], 'withMilliseconds');
+        }
+      });
+      return incident;
     }
 
     function niceDownload(filename, data) {
