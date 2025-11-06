@@ -119,35 +119,44 @@ const nowISO = () => new Date().toISOString()
     function convertNumericFields(incident, impactAssessment) {
       if (!incident) return { incident, impactAssessment };
 
+      convertIncidentNumericFields(incident);
+      convertImpactAssessmentNumericFields(impactAssessment);
+
+      return { incident, impactAssessment };
+    }
+
+    function convertIncidentNumericFields(incident) {
       const numericFields = ['financialRecoveriesAmount', 'grossAmountIndirectDirectCosts'];
       for (const key of numericFields) {
-        const val = incident[key];
-        if (typeof val === 'string' && val.trim() !== '') {
-          incident[key] = Number(val);
-        }
+        convertStringToNumber(incident, key);
       }
+    }
 
-      if (!impactAssessment?.affectedAssets) return { incident, impactAssessment };
+    function convertImpactAssessmentNumericFields(impactAssessment) {
+      if (!impactAssessment?.affectedAssets) return;
 
       const assets = impactAssessment.affectedAssets;
       const sections = ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions'];
+
       for (const section of sections) {
-        if (assets[section]) {
-          const fields = ['number', 'percentage'];
-          for (const field of fields) {
-            const val = assets[section][field];
-            if (typeof val === 'string' && val.trim() !== '') {
-              assets[section][field] = Number(val);
-            }
-          }
+        if (!assets[section]) continue;
+
+        const fields = ['number', 'percentage'];
+        for (const field of fields) {
+          convertStringToNumber(assets[section], field);
         }
       }
 
-      if (typeof assets.valueOfAffectedTransactions === 'string' && assets.valueOfAffectedTransactions.trim() !== '') {
-        assets.valueOfAffectedTransactions = Number(assets.valueOfAffectedTransactions);
-      }
+      convertStringToNumber(assets, 'valueOfAffectedTransactions');
+    }
 
-      return { incident, impactAssessment };
+    function convertStringToNumber(object, key) {
+      if (!object || typeof object[key] !== 'string') return;
+
+      const val = object[key].trim();
+      if (val) {
+        object[key] = Number(val);
+      }
     }
 
     // Sous-fonction pour formater les dates
@@ -1247,7 +1256,7 @@ export default function DoraIncidentApp() {
           // Initialiser les contacts avec les valeurs par défaut et les données du rapport
           const primaryContact = {
             ...defaultDraft.primaryContact,
-            ...(reportData.primaryContact || {}),
+            ...(reportData.primaryContact),
           };
           primaryContact.name = primaryContact.name || '';
           primaryContact.email = primaryContact.email || '';
@@ -1256,7 +1265,7 @@ export default function DoraIncidentApp() {
 
           const secondaryContact = {
             ...defaultDraft.secondaryContact,
-            ...(reportData.secondaryContact || {}),
+            ...(reportData.secondaryContact),
           };
           secondaryContact.name = secondaryContact.name || '';
           secondaryContact.email = secondaryContact.email || '';
