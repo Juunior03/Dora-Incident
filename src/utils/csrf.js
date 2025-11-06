@@ -1,9 +1,9 @@
 // src/utils/csrf.js
 // Générer un token CSRF aléatoire
 export const generateCSRFToken = () => {
-  return Array.from({ length: 32 }, () =>
-    Math.floor(Math.random() * 36).toString(36)
-  ).join('');
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array); // 🔒 Cryptographically secure
+  return Array.from(array, (byte) => byte.toString(36)).join('');
 };
 
 // Stocker et récupérer le token CSRF
