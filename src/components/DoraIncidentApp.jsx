@@ -324,6 +324,11 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    function processPhoneNumbers(draft) {
+      processPhoneNumber(draft.primaryContact);
+      processPhoneNumber(draft.secondaryContact);
+    }
+
     const ENTITY_TYPES = [
       { value: "credit_institution", label: "Credit Institution" },
       { value: "payment_institution", label: "Payment Institution" },
@@ -1483,11 +1488,6 @@ export default function DoraIncidentApp() {
       ensureCountryCode(mergedDraft);
 
       return mergedDraft;
-    }
-
-    function processPhoneNumbers(draft) {
-      processPhoneNumber(draft.primaryContact);
-      processPhoneNumber(draft.secondaryContact);
     }
 
     function setStepBasedOnReportType(draft) {
