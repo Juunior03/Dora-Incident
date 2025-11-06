@@ -1431,54 +1431,72 @@ export default function DoraIncidentApp() {
         .select('*')
         .eq('id', reportId)
         .single();
-      if (error) {
-        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
-        return;
-      }
+
+      if (handleError(error)) return;
+
       if (data) {
-        const defaultDraft = emptyDraft(data.report_data.incidentId);
-        const mergedDraft = {
-          ...defaultDraft,
-          ...data.report_data,
-          id: data.id,
-          status: data.status
-        };
-
-        // S'assurer que countryCode est défini
-        if (!mergedDraft.primaryContact.countryCode) {
-          mergedDraft.primaryContact.countryCode = '+33';
-        }
-        if (!mergedDraft.secondaryContact.countryCode) {
-          mergedDraft.secondaryContact.countryCode = '+33';
-        }
-
-        // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
-        if (typeof mergedDraft.primaryContact.phone === 'string' && mergedDraft.primaryContact.phone.startsWith('+')) {
-          const countryCodeMatch = mergedDraft.primaryContact.phone.match(/^\+\d+/);
-          if (countryCodeMatch) {
-            mergedDraft.primaryContact.countryCode = countryCodeMatch[0];
-            mergedDraft.primaryContact.phone = mergedDraft.primaryContact.phone.substring(countryCodeMatch[0].length);
-          }
-        }
-
-        if (typeof mergedDraft.secondaryContact.phone === 'string' && mergedDraft.secondaryContact.phone.startsWith('+')) {
-          const countryCodeMatch = mergedDraft.secondaryContact.phone.match(/^\+\d+/);
-          if (countryCodeMatch) {
-            mergedDraft.secondaryContact.countryCode = countryCodeMatch[0];
-            mergedDraft.secondaryContact.phone = mergedDraft.secondaryContact.phone.substring(countryCodeMatch[0].length);
-          }
-        }
-
+        const mergedDraft = createMergedDraft(data);
+        processPhoneNumbers(mergedDraft);
         setDraft(mergedDraft);
         setView('report');
-        // Définir le step en fonction du type de rapport
-        if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
-          setStep(2); // Aller directement à la section "Incident"
-          setFromContinueButton(true); // Masquer le bouton "Back"
-        } else {
-          setStep(0); // Aller à la section "Identity" pour les rapports initiaux
-          setFromContinueButton(false); // Afficher le bouton "Back"
+        setStepBasedOnReportType(mergedDraft);
+      }
+    }
+
+    function handleError(error) {
+      if (error) {
+        console.error('Erreur lors de la récupération du rapport depuis Supabase :', error);
+        return true;
+      }
+      return false;
+    }
+
+    function createMergedDraft(data) {
+      const defaultDraft = emptyDraft(data.report_data.incidentId);
+      const mergedDraft = {
+        ...defaultDraft,
+        ...data.report_data,
+        id: data.id,
+        status: data.status
+      };
+
+      // S'assurer que countryCode est défini
+      ensureCountryCode(mergedDraft);
+
+      return mergedDraft;
+    }
+
+    function ensureCountryCode(draft) {
+      if (!draft.primaryContact.countryCode) {
+        draft.primaryContact.countryCode = '+33';
+      }
+      if (!draft.secondaryContact.countryCode) {
+        draft.secondaryContact.countryCode = '+33';
+      }
+    }
+
+    function processPhoneNumbers(draft) {
+      processPhoneNumber(draft.primaryContact);
+      processPhoneNumber(draft.secondaryContact);
+    }
+
+    function processPhoneNumber(contact) {
+      if (typeof contact.phone === 'string' && contact.phone.startsWith('+')) {
+        const countryCodeMatch = contact.phone.match(/^\+\d+/);
+        if (countryCodeMatch) {
+          contact.countryCode = countryCodeMatch[0];
+          contact.phone = contact.phone.substring(countryCodeMatch[0].length);
         }
+      }
+    }
+
+    function setStepBasedOnReportType(draft) {
+      if (draft.incidentSubmission === 'intermediate_report' || draft.incidentSubmission === 'final_report') {
+        setStep(2); // Aller directement à la section "Incident"
+        setFromContinueButton(true); // Masquer le bouton "Back"
+      } else {
+        setStep(0); // Aller à la section "Identity" pour les rapports initiaux
+        setFromContinueButton(false); // Afficher le bouton "Back"
       }
     }
 
