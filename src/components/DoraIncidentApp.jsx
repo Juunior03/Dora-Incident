@@ -833,6 +833,30 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    /**
+     * Synchronise affectedEntityType entre submittingEntity, ultimateParentUndertaking et toutes les affectedEntity.
+     * @param {Object} draft - Le draft actuel du rapport.
+     * @param {Array} updatedValues - Les nouvelles valeurs de affectedEntityType.
+     * @returns {Object} - Un nouveau draft avec les types synchronisés.
+     */
+    function syncAffectedEntityTypes(draft, updatedValues) {
+      const newDraft = structuredClone(draft);
+
+      // Mettre à jour submittingEntity
+      newDraft.submittingEntity.affectedEntityType = updatedValues;
+
+      // Mettre à jour ultimateParentUndertaking
+      newDraft.ultimateParentUndertaking.affectedEntityType = updatedValues;
+
+      // Mettre à jour toutes les affectedEntity
+      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
+        ...entity,
+        affectedEntityType: updatedValues,
+      }));
+
+      return newDraft;
+    }
+
     // Valide le format d'un email
     function isValidEmail(email) {
       return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
@@ -1192,15 +1216,18 @@ export default function DoraIncidentApp() {
     }
 
     function addAffectedEntity() {
-      setDraft(d => {
-        const newDraft = structuredClone(d);
+      setDraft(prevDraft => {
+        const newDraft = structuredClone(prevDraft);
+        const currentEntityType = newDraft.submittingEntity.affectedEntityType || [];
+
         newDraft.affectedEntity.push({
           entityType: 'AFFECTED_ENTITY',
           name: '',
           code: '',
-          affectedEntityType: d.submittingEntity.affectedEntityType || [], // Héritage du type
+          affectedEntityType: currentEntityType, // Héritage du type actuel
           LEI: ''
         });
+
         return newDraft;
       });
     }
@@ -1527,20 +1554,20 @@ export default function DoraIncidentApp() {
 
     function createMergedDraft(data) {
       const defaultDraft = emptyDraft(data.report_data.incidentId);
-      const mergedDraft = {
+      let mergedDraft = {
         ...defaultDraft,
         ...data.report_data,
         id: data.id,
         status: data.status
       };
 
-      // Synchroniser affectedEntityType entre submittingEntity, affectedEntity et ultimateParentUndertaking
-      const affectedEntityType = mergedDraft.submittingEntity.affectedEntityType || [];
-      mergedDraft.ultimateParentUndertaking.affectedEntityType = affectedEntityType;
-      mergedDraft.affectedEntity = mergedDraft.affectedEntity.map(entity => ({
-        ...entity,
-        affectedEntityType: affectedEntityType,
-      }));
+      // Synchroniser les types si submittingEntity.affectedEntityType existe
+      if (mergedDraft.submittingEntity.affectedEntityType) {
+        mergedDraft = syncAffectedEntityTypes(
+          mergedDraft,
+          mergedDraft.submittingEntity.affectedEntityType
+        );
+      }
 
       ensureCountryCode(mergedDraft);
       return mergedDraft;
@@ -1876,21 +1903,8 @@ export default function DoraIncidentApp() {
                                       ? currentValues.filter(value => value !== type.value)
                                       : [...currentValues, type.value];
 
-                                    // Mettre à jour submittingEntity
-                                    updateDraft('submittingEntity.affectedEntityType', updatedValues);
-
-                                    // Mettre à jour ultimateParentUndertaking
-                                    updateDraft('ultimateParentUndertaking.affectedEntityType', updatedValues);
-
-                                    // Mettre à jour toutes les affectedEntity
-                                    setDraft(prevDraft => {
-                                      const newDraft = structuredClone(prevDraft);
-                                      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
-                                        ...entity,
-                                        affectedEntityType: updatedValues,
-                                      }));
-                                      return newDraft;
-                                    });
+                                    // Utiliser la fonction de synchronisation
+                                    setDraft(syncAffectedEntityTypes(draft, updatedValues));
                                   }}
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
