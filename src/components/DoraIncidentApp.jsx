@@ -833,88 +833,11 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
-    /**
-     * Synchronise affectedEntityType entre submittingEntity, ultimateParentUndertaking et toutes les affectedEntity.
-     * @param {Object} draft - Le draft actuel du rapport.
-     * @param {Array} updatedValues - Les nouvelles valeurs de affectedEntityType.
-     * @returns {Object} - Un nouveau draft avec les types synchronisés.
-     */
-    function syncAffectedEntityTypes(draft, updatedValues) {
-      const newDraft = structuredClone(draft);
-
-      // Mettre à jour submittingEntity
-      newDraft.submittingEntity.affectedEntityType = updatedValues;
-
-      // Mettre à jour ultimateParentUndertaking
-      newDraft.ultimateParentUndertaking.affectedEntityType = updatedValues;
-
-      // Mettre à jour toutes les affectedEntity
-      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
-        ...entity,
-        affectedEntityType: updatedValues,
-      }));
-
-      return newDraft;
-    }
-
-    /**
-     * Formate une valeur de durée au format DD:HH:MM.
-     * @param {string} value - La valeur brute.
-     * @returns {string} - La valeur formatée.
-     */
-    function formatDuration(value) {
-      let formattedValue = '';
-      let cleanedValue = value.replaceAll(/\D/g, '');
-
-      if (cleanedValue.length > 0) {
-        formattedValue = cleanedValue.substring(0, 2);
-        if (cleanedValue.length > 2) {
-          formattedValue += ':' + cleanedValue.substring(2, 4);
-          if (cleanedValue.length > 4) {
-            formattedValue += ':' + cleanedValue.substring(4, 6);
-          }
-        }
-      }
-
-      return formattedValue;
-    }
-
-    /**
-     * Gère le changement de valeur pour un champ de durée.
-     * @param {string} path - Le chemin du champ dans le draft.
-     * @param {string} value - La valeur brute.
-     */
-    function handleDurationChange(path, value) {
-      const formattedValue = formatDuration(value);
-      updateDraft(path, formattedValue);
-    }
-
-    /**
-     * Gère le changement de valeur pour une checkbox de cause détaillée.
-     * @param {string} prefix - Le préfixe de la catégorie (ex: "malicious_actions_").
-     * @param {string} optionValue - La valeur de l'option.
-     */
-    function handleDetailedCauseChange(prefix, optionValue) {
-      const currentValues = draft.incident.rootCausesDetailedClassification;
-      const updatedValues = currentValues.includes(optionValue)
-        ? currentValues.filter(value => value !== optionValue)
-        : [...currentValues, optionValue];
-      updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-    }
-
-    /**
-     * Filtre les options de causes détaillées par préfixe.
-     * @param {string} prefix - Le préfixe de la catégorie.
-     * @returns {Array} - Les options filtrées.
-     */
-    function getFilteredOptions(prefix) {
-      return ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS.filter(option => option.value.startsWith(prefix));
-    }
-
     // Valide le format d'un email
     function isValidEmail(email) {
       return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
     }
+
 
     function getNestedObject(obj, path) {
       const parts = path.split('.');
@@ -1268,23 +1191,9 @@ export default function DoraIncidentApp() {
       });
     }
 
-    function addAffectedEntity() {
-      setDraft(prevDraft => {
-        const newDraft = structuredClone(prevDraft);
-        const currentEntityType = newDraft.submittingEntity.affectedEntityType || [];
-
-        newDraft.affectedEntity.push({
-          entityType: 'AFFECTED_ENTITY',
-          name: '',
-          code: '',
-          affectedEntityType: currentEntityType, // Héritage du type actuel
-          LEI: ''
-        });
-
-        return newDraft;
-      });
-    }
-
+  function addAffectedEntity() {
+    setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
+  }
   function updateAffectedEntity(index, field, value) {
       setDraft(d => {
         const next = structuredClone(d);
@@ -1397,7 +1306,7 @@ export default function DoraIncidentApp() {
         const reportData = item.report_data;
         const primaryContact = {
           ...defaultDraft.primaryContact,
-          ...(reportData.primaryContact),
+          ...(reportData.primaryContact || {}),
         };
         primaryContact.name = primaryContact.name || '';
         primaryContact.email = primaryContact.email || '';
@@ -1405,7 +1314,7 @@ export default function DoraIncidentApp() {
         primaryContact.countryCode = primaryContact.countryCode || '+33';
         const secondaryContact = {
           ...defaultDraft.secondaryContact,
-          ...(reportData.secondaryContact),
+          ...(reportData.secondaryContact || {}),
         };
         secondaryContact.name = secondaryContact.name || '';
         secondaryContact.email = secondaryContact.email || '';
@@ -1607,23 +1516,27 @@ export default function DoraIncidentApp() {
 
     function createMergedDraft(data) {
       const defaultDraft = emptyDraft(data.report_data.incidentId);
-      let mergedDraft = {
+      const mergedDraft = {
         ...defaultDraft,
         ...data.report_data,
         id: data.id,
         status: data.status
       };
 
-      // Synchroniser les types si submittingEntity.affectedEntityType existe
-      if (mergedDraft.submittingEntity.affectedEntityType) {
-        mergedDraft = syncAffectedEntityTypes(
-          mergedDraft,
-          mergedDraft.submittingEntity.affectedEntityType
-        );
-      }
-
+      // S'assurer que countryCode est défini
       ensureCountryCode(mergedDraft);
+
       return mergedDraft;
+    }
+
+    function setStepBasedOnReportType(draft) {
+      if (draft.incidentSubmission === 'intermediate_report' || draft.incidentSubmission === 'final_report') {
+        setStep(2); // Aller directement à la section "Incident"
+        setFromContinueButton(true); // Masquer le bouton "Back"
+      } else {
+        setStep(0); // Aller à la section "Identity" pour les rapports initiaux
+        setFromContinueButton(false); // Afficher le bouton "Back"
+      }
     }
 
   function clearDraft() {
@@ -1937,6 +1850,7 @@ export default function DoraIncidentApp() {
                           </div>
                         </div>
 
+
                         <div className="mt-6">
                           <p className="block text-xs font-medium mb-2">Affected entity types</p>
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
@@ -1955,9 +1869,7 @@ export default function DoraIncidentApp() {
                                     const updatedValues = currentValues.includes(type.value)
                                       ? currentValues.filter(value => value !== type.value)
                                       : [...currentValues, type.value];
-
-                                    // Utiliser la fonction de synchronisation
-                                    setDraft(syncAffectedEntityTypes(draft, updatedValues));
+                                    updateDraft('submittingEntity.affectedEntityType', updatedValues);
                                   }}
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
@@ -2633,13 +2545,27 @@ export default function DoraIncidentApp() {
                             id="incidentDuration"
                             type="text"
                             value={draft.incident.incidentDuration}
-                            onChange={(e) => handleDurationChange('incident.incidentDuration', e.target.value)}
+                            onChange={(e) => {
+                              let value = e.target.value.replaceAll(/\D/g, '');
+                              let formattedValue = '';
+                              if (value.length > 0) {
+                                formattedValue = value.substring(0, 2);
+                                if (value.length > 2) {
+                                  formattedValue += ':' + value.substring(2, 4);
+                                  if (value.length > 4) {
+                                    formattedValue += ':' + value.substring(4, 6);
+                                  }
+                                }
+                              }
+                              updateDraft('incident.incidentDuration', formattedValue);
+                            }}
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
+
                         {/* Service Downtime */}
                         <div>
                           <label htmlFor="serviceDowntime" className="text-sm font-medium">Service Downtime (DD:HH:MM)</label>
@@ -2647,7 +2573,20 @@ export default function DoraIncidentApp() {
                             id="serviceDowntime"
                             type="text"
                             value={draft.impactAssessment.serviceImpact.serviceDowntime}
-                            onChange={(e) => handleDurationChange('impactAssessment.serviceImpact.serviceDowntime', e.target.value)}
+                            onChange={(e) => {
+                              let value = e.target.value.replaceAll(/\D/g, '');
+                              let formattedValue = '';
+                              if (value.length > 0) {
+                                formattedValue = value.substring(0, 2);
+                                if (value.length > 2) {
+                                  formattedValue += ':' + value.substring(2, 4);
+                                  if (value.length > 4) {
+                                    formattedValue += ':' + value.substring(4, 6);
+                                  }
+                                }
+                              }
+                              updateDraft('impactAssessment.serviceImpact.serviceDowntime', formattedValue);
+                            }}
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
