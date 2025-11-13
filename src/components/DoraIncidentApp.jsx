@@ -857,11 +857,64 @@ const nowISO = () => new Date().toISOString()
       return newDraft;
     }
 
+    /**
+     * Formate une valeur de durée au format DD:HH:MM.
+     * @param {string} value - La valeur brute.
+     * @returns {string} - La valeur formatée.
+     */
+    function formatDuration(value) {
+      let formattedValue = '';
+      let cleanedValue = value.replaceAll(/\D/g, '');
+
+      if (cleanedValue.length > 0) {
+        formattedValue = cleanedValue.substring(0, 2);
+        if (cleanedValue.length > 2) {
+          formattedValue += ':' + cleanedValue.substring(2, 4);
+          if (cleanedValue.length > 4) {
+            formattedValue += ':' + cleanedValue.substring(4, 6);
+          }
+        }
+      }
+
+      return formattedValue;
+    }
+
+    /**
+     * Gère le changement de valeur pour un champ de durée.
+     * @param {string} path - Le chemin du champ dans le draft.
+     * @param {string} value - La valeur brute.
+     */
+    function handleDurationChange(path, value) {
+      const formattedValue = formatDuration(value);
+      updateDraft(path, formattedValue);
+    }
+
+    /**
+     * Gère le changement de valeur pour une checkbox de cause détaillée.
+     * @param {string} prefix - Le préfixe de la catégorie (ex: "malicious_actions_").
+     * @param {string} optionValue - La valeur de l'option.
+     */
+    function handleDetailedCauseChange(prefix, optionValue) {
+      const currentValues = draft.incident.rootCausesDetailedClassification;
+      const updatedValues = currentValues.includes(optionValue)
+        ? currentValues.filter(value => value !== optionValue)
+        : [...currentValues, optionValue];
+      updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+    }
+
+    /**
+     * Filtre les options de causes détaillées par préfixe.
+     * @param {string} prefix - Le préfixe de la catégorie.
+     * @returns {Array} - Les options filtrées.
+     */
+    function getFilteredOptions(prefix) {
+      return ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS.filter(option => option.value.startsWith(prefix));
+    }
+
     // Valide le format d'un email
     function isValidEmail(email) {
       return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
     }
-
 
     function getNestedObject(obj, path) {
       const parts = path.split('.');
@@ -2580,27 +2633,13 @@ export default function DoraIncidentApp() {
                             id="incidentDuration"
                             type="text"
                             value={draft.incident.incidentDuration}
-                            onChange={(e) => {
-                              let value = e.target.value.replaceAll(/\D/g, '');
-                              let formattedValue = '';
-                              if (value.length > 0) {
-                                formattedValue = value.substring(0, 2);
-                                if (value.length > 2) {
-                                  formattedValue += ':' + value.substring(2, 4);
-                                  if (value.length > 4) {
-                                    formattedValue += ':' + value.substring(4, 6);
-                                  }
-                                }
-                              }
-                              updateDraft('incident.incidentDuration', formattedValue);
-                            }}
+                            onChange={(e) => handleDurationChange('incident.incidentDuration', e.target.value)}
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
-
                         {/* Service Downtime */}
                         <div>
                           <label htmlFor="serviceDowntime" className="text-sm font-medium">Service Downtime (DD:HH:MM)</label>
@@ -2608,20 +2647,7 @@ export default function DoraIncidentApp() {
                             id="serviceDowntime"
                             type="text"
                             value={draft.impactAssessment.serviceImpact.serviceDowntime}
-                            onChange={(e) => {
-                              let value = e.target.value.replaceAll(/\D/g, '');
-                              let formattedValue = '';
-                              if (value.length > 0) {
-                                formattedValue = value.substring(0, 2);
-                                if (value.length > 2) {
-                                  formattedValue += ':' + value.substring(2, 4);
-                                  if (value.length > 4) {
-                                    formattedValue += ':' + value.substring(4, 6);
-                                  }
-                                }
-                              }
-                              updateDraft('impactAssessment.serviceImpact.serviceDowntime', formattedValue);
-                            }}
+                            onChange={(e) => handleDurationChange('impactAssessment.serviceImpact.serviceDowntime', e.target.value)}
                             placeholder="DD:HH:MM"
                             maxLength={8}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
