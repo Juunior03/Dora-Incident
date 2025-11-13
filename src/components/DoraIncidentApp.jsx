@@ -892,30 +892,10 @@ const nowISO = () => new Date().toISOString()
       });
     }
 
-
-    // Fonction pour regrouper les rapports par incident
-    function groupReportsByIncident(reports) {
-      const incidents = {};
-      for (const report of reports) {
-        const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
-        if (!incidents[financialEntityCode]) {
-          incidents[financialEntityCode] = {
-            financialEntityCode: financialEntityCode,
-            reports: [],
-            isClosed: false,
-            description: report.incident?.incidentDescription || '',
-            date: report.savedAt || report.created_at
-          };
-        }
-        incidents[financialEntityCode].reports.push(report);
-        if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
-          incidents[financialEntityCode].isClosed = true;
-        }
-      }
-      return incidents;
-    }
-
     function getButtonLabel(role, status) {
+      if (role === 'auditeur') {
+        return 'View'; // Les auditeurs ne peuvent que voir
+      }
       if (role === 'saisisseur') {
         return status === 'validated' ? 'Open' : 'Update';
       } else {
@@ -1148,9 +1128,15 @@ export default function DoraIncidentApp() {
       }
   };
 
-  const isFieldDisabled = (role, status) => {
+    const isFieldDisabled = (role, status) => {
+      // Pour les auditeurs, toujours en lecture seule
+      if (role === 'auditeur') {
+        return true;
+      }
+      // Pour les validateurs, en lecture seule uniquement si le statut est "validated"
       return status === 'validated' || (role === 'validateur' && status === 'draft');
-  };
+    };
+
 
   const { user, role, signOut } = useAuth();
 
@@ -1225,9 +1211,9 @@ export default function DoraIncidentApp() {
   }
 
     async function saveReport(final = false) {
-      if (role === 'validateur') {
-        alert('Les validateurs ne peuvent pas sauvegarder de rapports.');
-        return { ok: false, errors: ['Les validateurs ne peuvent pas sauvegarder de rapports.'] };
+      if (role === 'validateur' || role === 'auditeur') {
+        alert('Les validateurs et auditeurs ne peuvent pas sauvegarder de rapports.');
+        return { ok: false, errors: ['Les validateurs et auditeurs ne peuvent pas sauvegarder de rapports.'] };
       }
 
       const candidate = { ...emptyDraft(draft.incidentId), ...draft, savedAt: nowISO() };
@@ -1299,73 +1285,78 @@ export default function DoraIncidentApp() {
 
     async function fetchReportsFromSupabase() {
       let query = supabase.from('reports').select('*, comments(*)').order('created_at', { ascending: false });
+
       if (role === 'saisisseur') {
         query = query.eq('created_by', user.id);
+      } else if (role === 'auditeur') {
+        // **Filtrer UNIQUEMENT les rapports validés pour les auditeurs**
+        query = query.eq('status', 'validated');
       }
+
       const { data, error } = await query;
+
       if (error) {
-        console.error('Erreur lors de la récupération des rapports depuis Supabase :', error);
+        console.error('Erreur lors de la récupération des rapports :', error);
         return [];
-      } else {
-        return data.map(item => {
-          const defaultDraft = emptyDraft(item.incident_id);
-          const reportData = item.report_data;
-
-          // Initialiser les contacts avec les valeurs par défaut et les données du rapport
-          const primaryContact = {
-            ...defaultDraft.primaryContact,
-            ...(reportData.primaryContact),
-          };
-          primaryContact.name = primaryContact.name || '';
-          primaryContact.email = primaryContact.email || '';
-          primaryContact.phone = primaryContact.phone || '';
-          primaryContact.countryCode = primaryContact.countryCode || '+33';
-
-          const secondaryContact = {
-            ...defaultDraft.secondaryContact,
-            ...(reportData.secondaryContact),
-          };
-          secondaryContact.name = secondaryContact.name || '';
-          secondaryContact.email = secondaryContact.email || '';
-          secondaryContact.phone = secondaryContact.phone || '';
-          secondaryContact.countryCode = secondaryContact.countryCode || '+33';
-
-          // S'assurer que countryCode est toujours une chaîne de caractères
-          primaryContact.countryCode = String(primaryContact.countryCode);
-          secondaryContact.countryCode = String(secondaryContact.countryCode);
-
-          // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
-          if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
-            const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
-            if (countryCodeMatch) {
-              primaryContact.countryCode = countryCodeMatch[0];
-              primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
-            }
-          }
-          if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
-            const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
-            if (countryCodeMatch) {
-              secondaryContact.countryCode = countryCodeMatch[0];
-              secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
-            }
-          }
-
-          return {
-            ...defaultDraft,
-            ...reportData,
-            primaryContact: primaryContact,
-            secondaryContact: secondaryContact,
-            id: item.id,
-            status: item.status,
-            nextSubmissionType: item.next_submission_type,
-            comments: item.comments || [],
-            savedAt: reportData.savedAt || item.created_at
-          };
-        });
       }
+
+      // Mapping des données (sans filtre supplémentaire)
+      return data.map(item => {
+        const defaultDraft = emptyDraft(item.incident_id);
+        const reportData = item.report_data;
+        const primaryContact = {
+          ...defaultDraft.primaryContact,
+          ...(reportData.primaryContact || {}),
+        };
+        primaryContact.name = primaryContact.name || '';
+        primaryContact.email = primaryContact.email || '';
+        primaryContact.phone = primaryContact.phone || '';
+        primaryContact.countryCode = primaryContact.countryCode || '+33';
+        const secondaryContact = {
+          ...defaultDraft.secondaryContact,
+          ...(reportData.secondaryContact || {}),
+        };
+        secondaryContact.name = secondaryContact.name || '';
+        secondaryContact.email = secondaryContact.email || '';
+        secondaryContact.phone = secondaryContact.phone || '';
+        secondaryContact.countryCode = secondaryContact.countryCode || '+33';
+        // S'assurer que countryCode est toujours une chaîne de caractères
+        primaryContact.countryCode = String(primaryContact.countryCode);
+        secondaryContact.countryCode = String(secondaryContact.countryCode);
+        // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
+        if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
+          const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
+          if (countryCodeMatch) {
+            primaryContact.countryCode = countryCodeMatch[0];
+            primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
+          }
+        }
+        if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
+          const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
+          if (countryCodeMatch) {
+            secondaryContact.countryCode = countryCodeMatch[0];
+            secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
+          }
+        }
+        return {
+          ...defaultDraft,
+          ...reportData,
+          primaryContact: primaryContact,
+          secondaryContact: secondaryContact,
+          id: item.id,
+          status: item.status, // <-- Important : status est bien celui de la base de données
+          nextSubmissionType: item.next_submission_type,
+          comments: item.comments || [],
+          savedAt: reportData.savedAt || item.created_at
+        };
+      });
     }
 
     async function validateReport(reportId) {
+        if (role !== 'validateur') {
+            alert('Seuls les validateurs peuvent valider des rapports.');
+            return { ok: false, error: 'Seuls les validateurs peuvent valider des rapports.' };
+        }
       try {
         const { data, error } = await supabase
           .from('reports')
@@ -1414,6 +1405,10 @@ export default function DoraIncidentApp() {
     }
 
     async function addComment(reportId, comment) {
+      if (role === 'auditeur') {
+        alert('Les auditeurs ne peuvent pas ajouter de commentaires.');
+        return { ok: false, error: 'Les auditeurs ne peuvent pas ajouter de commentaires.' };
+      }
       if (!comment || comment.trim() === '') {
         alert('Le commentaire ne peut pas être vide.');
         return { ok: false, error: 'Le commentaire ne peut pas être vide.' };
@@ -1446,6 +1441,11 @@ export default function DoraIncidentApp() {
     }
 
     async function continueReport(reportId, nextSubmissionType) {
+      if (role === 'auditeur') {
+        alert('Les auditeurs ne peuvent pas continuer un rapport.');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('reports')
         .select('*')
@@ -1493,11 +1493,24 @@ export default function DoraIncidentApp() {
       if (handleError(error)) return;
 
       if (data) {
+        // **Vérification redondante pour les auditeurs**
+        if (role === 'auditeur' && data.status !== 'validated') {
+          alert('Accès refusé : ce rapport n\'est pas validé.');
+          return; // <-- Important : ne pas charger le rapport
+        }
         const mergedDraft = createMergedDraft(data);
         processPhoneNumbers(mergedDraft);
+
         setDraft(mergedDraft);
         setView('report');
-        setStepBasedOnReportType(mergedDraft);
+        // Définir l'étape en fonction du type de rapport
+        if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
+          setStep(2);
+          setFromContinueButton(true);
+        } else {
+          setStep(0);
+          setFromContinueButton(false);
+        }
       }
     }
 
@@ -1557,6 +1570,10 @@ export default function DoraIncidentApp() {
     function applyIncidentFilters(incidents) {
       return Object.entries(incidents)
         .filter(([financialEntityCode, incident]) => {
+          // **Ne pas inclure les incidents avec des rapports "draft" pour les auditeurs**
+          if (role === 'auditeur' && incident.reports.some(r => r.status !== 'validated')) {
+            return false; // <-- Exclure les incidents avec des rapports non validés
+          }
           return (
             filterBySearchTerm(financialEntityCode, incident) &&
             filterByIncidentStatus(incident) &&
@@ -1625,6 +1642,32 @@ export default function DoraIncidentApp() {
         return reportDate >= startDate && reportDate <= endDate;
       });
       return hasReportInDateRange;
+    }
+
+    // Fonction pour regrouper les rapports par incident
+    function groupReportsByIncident(reports) {
+      const incidents = {};
+      for (const report of reports) {
+        // **Ne pas inclure les rapports "draft" pour les auditeurs**
+        if (role === 'auditeur' && report.status !== 'validated') {
+          continue; // <-- Sauter les rapports non validés pour les auditeurs
+        }
+        const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
+        if (!incidents[financialEntityCode]) {
+          incidents[financialEntityCode] = {
+            financialEntityCode: financialEntityCode,
+            reports: [],
+            isClosed: false,
+            description: report.incident?.incidentDescription || '',
+            date: report.savedAt || report.created_at
+          };
+        }
+        incidents[financialEntityCode].reports.push(report);
+        if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
+          incidents[financialEntityCode].isClosed = true;
+        }
+      }
+      return incidents;
     }
 
   return (
@@ -2227,12 +2270,18 @@ export default function DoraIncidentApp() {
 
                         <div className="mt-6 flex justify-between">
                           {!fromContinueButton && (
-                            <button onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                              Back
-                            </button>
+                            <button
+                            onClick={() => setStep(1)}
+                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            Back
+                          </button>
                           )}
                           <div className="flex gap-2">
-                            <button onClick={() => setStep(3)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                            <button
+                              onClick={() => setStep(3)}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
                               Next → Review
                             </button>
                           </div>
@@ -2921,18 +2970,24 @@ export default function DoraIncidentApp() {
                       </div>
                     )}
 
-                    <div className="mt-6 flex justify-between">
-                      {!fromContinueButton && (
-                        <button onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                          Back
-                        </button>
-                      )}
-                      <div className="flex gap-2">
-                        <button onClick={() => setStep(3)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                          Next → Review
-                        </button>
-                      </div>
-                    </div>
+                        <div className="mt-6 flex justify-between">
+                          {!fromContinueButton && (
+                            <button
+                            onClick={() => setStep(1)}
+                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            Back
+                          </button>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setStep(3)}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
+                              Next → Review
+                            </button>
+                          </div>
+                        </div>
 
                     </div>
                   )}
@@ -3341,12 +3396,18 @@ export default function DoraIncidentApp() {
 
                         <div className="mt-6 flex justify-between">
                           {!fromContinueButton && (
-                            <button onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                              Back
-                            </button>
+                            <button
+                            onClick={() => setStep(1)}
+                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            Back
+                          </button>
                           )}
                           <div className="flex gap-2">
-                            <button onClick={() => setStep(3)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                            <button
+                              onClick={() => setStep(3)}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
                               Next → Review
                             </button>
                           </div>
@@ -3378,25 +3439,23 @@ export default function DoraIncidentApp() {
                         </div>
 
                         <div className="mt-4 flex gap-2">
-                          {role !== 'validateur' && draft.status !== 'validated' && (
-                            <button
-                              onClick={async () => {
-                                console.log('Bouton "Save to Dashboard" cliqué');
-                                console.log('draft.id:', draft.id);
-                                console.log('user.id:', user.id);
-                                const result = await saveReport(true);
-                                if (result.ok) {
-                                  alert('Saved to Dashboard');
-                                } else {
-                                  console.error('Erreurs lors de la sauvegarde:', result.errors);
-                                  setErrors(result.errors);
-                                }
-                              }}
-                              className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                            >
-                              Save to Dashboard
-                            </button>
+                          {role !== 'validateur' && role !== 'auditeur' && draft.status !== 'validated' && (
+                              <button
+                                onClick={async () => {
+                                  const result = await saveReport(true);
+                                  if (result.ok) {
+                                    alert('Saved to Dashboard');
+                                  } else {
+                                    console.error('Erreurs lors de la sauvegarde:', result.errors);
+                                    setErrors(result.errors);
+                                  }
+                                }}
+                                className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                              >
+                                Save to Dashboard
+                              </button>
                           )}
+
                         </div>
                       </div>
 
@@ -3641,57 +3700,69 @@ export default function DoraIncidentApp() {
                                         </div>
                                       )}
 
-                                      {/* Troisième colonne : boutons */}
-                                      <div className="flex flex-col gap-2 ml-4">
-                                        <button
-                                          onClick={() => loadReportIntoDraft(r.id)}
-                                          className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
-                                        >
-                                          {getButtonLabel(role, r.status)}
-                                        </button>
 
-                                        <button onClick={() => exportReportJSON(r)} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">
-                                          Download
-                                        </button>
-                                        {role === 'validateur' && r.status === 'draft' && (
-                                          <button onClick={() => validateReport(r.id)} className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm">
-                                            Validate
-                                          </button>
-                                        )}
-                                        {role === 'validateur' && r.status !== 'validated' && (
+                                        {/* Troisième colonne : boutons */}
+                                        <div className="flex flex-col gap-2 ml-4">
                                           <button
-                                            onClick={() => {
-                                              const comment = prompt('Ajouter un commentaire:');
-                                              if (comment !== null) {
-                                                addComment(r.id, comment);
-                                              }
-                                            }}
-                                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
+                                            onClick={() => loadReportIntoDraft(r.id)}
+                                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
                                           >
-                                            Add Comment
+                                            {getButtonLabel(role, r.status)}
                                           </button>
-                                        )}
-                                        {role === 'saisisseur' && r.status === 'validated' && (
-                                          <>
-                                            {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
-                                              <button
-                                                onClick={() => continueReport(r.id, 'intermediate_report')}
-                                                className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
-                                              >
-                                                Déclarer un rapport intermédiaire
-                                              </button>
-                                            )}
-                                            {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
-                                              <button
-                                                onClick={() => continueReport(r.id, 'final_report')}
-                                                className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
-                                              >
-                                                Déclarer un rapport final
-                                              </button>
-                                            )}
-                                          </>
-                                        )}
-                                      </div>
+                                          <button
+                                            onClick={() => exportReportJSON(r)}
+                                            className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                                          >
+                                            Download
+                                          </button>
+
+                                          {/* Les boutons suivants sont **complètement masqués** pour les auditeurs */}
+                                          {role !== 'auditeur' && (
+                                            <>
+                                              {role === 'validateur' && r.status === 'draft' && (
+                                                <button
+                                                  onClick={() => validateReport(r.id)}
+                                                  className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
+                                                >
+                                                  Validate
+                                                </button>
+                                              )}
+                                              {role === 'validateur' && r.status !== 'validated' && (
+                                                <button
+                                                  onClick={() => {
+                                                    const comment = prompt('Ajouter un commentaire:');
+                                                    if (comment !== null) {
+                                                      addComment(r.id, comment);
+                                                    }
+                                                  }}
+                                                  className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
+                                                >
+                                                  Add Comment
+                                                </button>
+                                              )}
+                                              {role === 'saisisseur' && r.status === 'validated' && (
+                                                <>
+                                                  {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
+                                                    <button
+                                                      onClick={() => continueReport(r.id, 'intermediate_report')}
+                                                      className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                    >
+                                                      Déclarer un rapport intermédiaire
+                                                    </button>
+                                                  )}
+                                                  {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
+                                                    <button
+                                                      onClick={() => continueReport(r.id, 'final_report')}
+                                                      className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                    >
+                                                      Déclarer un rapport final
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
                                     </div>
                                   ))}
                               </div>
@@ -3701,8 +3772,7 @@ export default function DoraIncidentApp() {
                       </div>
                     </div>
 
-
-                  {role !== 'validateur' && (
+                  {role !== 'validateur' && role !== 'auditeur' && (
                       <div className="mt-6 flex justify-end">
                         <button onClick={() =>{
                         setView('report');
