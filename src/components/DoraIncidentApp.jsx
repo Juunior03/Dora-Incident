@@ -1317,7 +1317,7 @@ export default function DoraIncidentApp() {
         const reportData = item.report_data;
         const primaryContact = {
           ...defaultDraft.primaryContact,
-          ...(reportData.primaryContact || {}),
+          ...(reportData.primaryContact),
         };
         primaryContact.name = primaryContact.name || '';
         primaryContact.email = primaryContact.email || '';
@@ -1325,7 +1325,7 @@ export default function DoraIncidentApp() {
         primaryContact.countryCode = primaryContact.countryCode || '+33';
         const secondaryContact = {
           ...defaultDraft.secondaryContact,
-          ...(reportData.secondaryContact || {}),
+          ...(reportData.secondaryContact),
         };
         secondaryContact.name = secondaryContact.name || '';
         secondaryContact.email = secondaryContact.email || '';
@@ -1544,16 +1544,6 @@ export default function DoraIncidentApp() {
 
       ensureCountryCode(mergedDraft);
       return mergedDraft;
-    }
-
-    function setStepBasedOnReportType(draft) {
-      if (draft.incidentSubmission === 'intermediate_report' || draft.incidentSubmission === 'final_report') {
-        setStep(2); // Aller directement à la section "Incident"
-        setFromContinueButton(true); // Masquer le bouton "Back"
-      } else {
-        setStep(0); // Aller à la section "Identity" pour les rapports initiaux
-        setFromContinueButton(false); // Afficher le bouton "Back"
-      }
     }
 
   function clearDraft() {
