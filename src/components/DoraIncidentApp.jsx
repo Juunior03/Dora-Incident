@@ -1191,9 +1191,20 @@ export default function DoraIncidentApp() {
       });
     }
 
-  function addAffectedEntity() {
-    setDraft(d => ({ ...d, affectedEntity: [...d.affectedEntity, { entityType: 'AFFECTED_ENTITY', name: '', code: '' }] }))
-  }
+    function addAffectedEntity() {
+      setDraft(d => {
+        const newDraft = structuredClone(d);
+        newDraft.affectedEntity.push({
+          entityType: 'AFFECTED_ENTITY',
+          name: '',
+          code: '',
+          affectedEntityType: d.submittingEntity.affectedEntityType || [], // Héritage du type
+          LEI: ''
+        });
+        return newDraft;
+      });
+    }
+
   function updateAffectedEntity(index, field, value) {
       setDraft(d => {
         const next = structuredClone(d);
@@ -1523,9 +1534,15 @@ export default function DoraIncidentApp() {
         status: data.status
       };
 
-      // S'assurer que countryCode est défini
-      ensureCountryCode(mergedDraft);
+      // Synchroniser affectedEntityType entre submittingEntity, affectedEntity et ultimateParentUndertaking
+      const affectedEntityType = mergedDraft.submittingEntity.affectedEntityType || [];
+      mergedDraft.ultimateParentUndertaking.affectedEntityType = affectedEntityType;
+      mergedDraft.affectedEntity = mergedDraft.affectedEntity.map(entity => ({
+        ...entity,
+        affectedEntityType: affectedEntityType,
+      }));
 
+      ensureCountryCode(mergedDraft);
       return mergedDraft;
     }
 
@@ -1850,7 +1867,6 @@ export default function DoraIncidentApp() {
                           </div>
                         </div>
 
-
                         <div className="mt-6">
                           <p className="block text-xs font-medium mb-2">Affected entity types</p>
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
@@ -1869,7 +1885,22 @@ export default function DoraIncidentApp() {
                                     const updatedValues = currentValues.includes(type.value)
                                       ? currentValues.filter(value => value !== type.value)
                                       : [...currentValues, type.value];
+
+                                    // Mettre à jour submittingEntity
                                     updateDraft('submittingEntity.affectedEntityType', updatedValues);
+
+                                    // Mettre à jour ultimateParentUndertaking
+                                    updateDraft('ultimateParentUndertaking.affectedEntityType', updatedValues);
+
+                                    // Mettre à jour toutes les affectedEntity
+                                    setDraft(prevDraft => {
+                                      const newDraft = structuredClone(prevDraft);
+                                      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
+                                        ...entity,
+                                        affectedEntityType: updatedValues,
+                                      }));
+                                      return newDraft;
+                                    });
                                   }}
                                   className="rounded"
                                   disabled={isFieldDisabled(role, draft.status)}
