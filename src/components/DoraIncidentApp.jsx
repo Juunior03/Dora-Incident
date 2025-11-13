@@ -833,6 +833,30 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    /**
+     * Met à jour les types d'entités affectées de manière cohérente.
+     * @param {Object} draft - Le draft actuel.
+     * @param {Array} updatedValues - Les nouvelles valeurs de affectedEntityType.
+     * @returns {Object} - Un nouveau draft avec les types synchronisés.
+     */
+    function syncAffectedEntityTypes(draft, updatedValues) {
+      const newDraft = structuredClone(draft);
+
+      // Mettre à jour submittingEntity
+      newDraft.submittingEntity.affectedEntityType = updatedValues;
+
+      // Mettre à jour ultimateParentUndertaking
+      newDraft.ultimateParentUndertaking.affectedEntityType = updatedValues;
+
+      // Mettre à jour toutes les affectedEntity
+      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
+        ...entity,
+        affectedEntityType: updatedValues,
+      }));
+
+      return newDraft;
+    }
+
     // Valide le format d'un email
     function isValidEmail(email) {
       return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
@@ -1859,46 +1883,33 @@ export default function DoraIncidentApp() {
 
                         <div className="mt-6">
                           <p className="block text-xs font-medium mb-2">Affected entity types</p>
-                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                            {ENTITY_TYPES.map(type => (
-                              <label
-                                key={type.value}
-                                htmlFor={`affected-entity-type-${type.value}`}
-                                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
-                              >
-                                <input
-                                  id={`affected-entity-type-${type.value}`}
-                                  type="checkbox"
-                                  checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
-                                  onChange={() => {
-                                    const currentValues = draft.submittingEntity.affectedEntityType || [];
-                                    const updatedValues = currentValues.includes(type.value)
-                                      ? currentValues.filter(value => value !== type.value)
-                                      : [...currentValues, type.value];
+                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                              {ENTITY_TYPES.map(type => (
+                                <label
+                                  key={type.value}
+                                  htmlFor={`affected-entity-type-${type.value}`}
+                                  className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
+                                >
+                                  <input
+                                    id={`affected-entity-type-${type.value}`}
+                                    type="checkbox"
+                                    checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
+                                    onChange={() => {
+                                      const currentValues = draft.submittingEntity.affectedEntityType || [];
+                                      const updatedValues = currentValues.includes(type.value)
+                                        ? currentValues.filter(value => value !== type.value)
+                                        : [...currentValues, type.value];
 
-                                    // Mettre à jour submittingEntity
-                                    updateDraft('submittingEntity.affectedEntityType', updatedValues);
-
-                                    // Mettre à jour ultimateParentUndertaking
-                                    updateDraft('ultimateParentUndertaking.affectedEntityType', updatedValues);
-
-                                    // Mettre à jour toutes les affectedEntity
-                                    setDraft(prevDraft => {
-                                      const newDraft = structuredClone(prevDraft);
-                                      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
-                                        ...entity,
-                                        affectedEntityType: updatedValues,
-                                      }));
-                                      return newDraft;
-                                    });
-                                  }}
-                                  className="rounded"
-                                  disabled={isFieldDisabled(role, draft.status)}
-                                />
-                                <span>{type.label}</span>
-                              </label>
-                            ))}
-                          </div>
+                                      // Utiliser la fonction de synchronisation
+                                      setDraft(syncAffectedEntityTypes(draft, updatedValues));
+                                    }}
+                                    className="rounded"
+                                    disabled={isFieldDisabled(role, draft.status)}
+                                  />
+                                  <span>{type.label}</span>
+                                </label>
+                              ))}
+                            </div>
                         </div>
                         </div>
 
