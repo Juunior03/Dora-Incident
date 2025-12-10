@@ -1104,6 +1104,24 @@ export default function DoraIncidentApp() {
       showFilters: false
   });
 
+  const [submittingEntitySettings, setSubmittingEntitySettings] = useState({
+      name: draft.submittingEntity.name || '',
+      code: draft.submittingEntity.code || '',
+      affectedEntityType: draft.submittingEntity.affectedEntityType || [],
+      isLocked: !!draft.submittingEntity.isParametersSet  // Ajout du flag de verrouillage
+    });
+
+
+    // Ajoutez ceci juste après
+    useEffect(() => {
+      // Initialiser avec les valeurs actuelles du draft
+      setSubmittingEntitySettings({
+        name: draft.submittingEntity.name,
+        code: draft.submittingEntity.code,
+        affectedEntityType: draft.submittingEntity.affectedEntityType,
+      });
+    }, [draft.submittingEntity]);
+
   const getButtonClasses = (currentView, targetView) => {
       const baseClasses = "px-3 py-2 rounded-xl transition-all";
       const activeClasses = "bg-white/90 dark:bg-white/10 shadow";
@@ -1714,18 +1732,32 @@ export default function DoraIncidentApp() {
         </div>
         <div className="flex items-center gap-3">
           {role === 'saisisseur' && (
-              <button
-                  onClick={() => setView('report')}
-                  className={getButtonClasses(view, 'report')}
-                >
-                  Report
-                </button>
+          <button
+              onClick={() => setView('report')}
+              className={getButtonClasses(view, 'report')}
+            >
+              Report
+            </button>
           )}
           <button
               onClick={() => setView('dashboard')}
               className={getButtonClasses(view, 'dashboard')}
           >
             Dashboard
+          </button>
+
+          <button
+              onClick={() => {
+                setSubmittingEntitySettings({
+                  name: draft.submittingEntity.name,
+                  code: draft.submittingEntity.code,
+                  affectedEntityType: draft.submittingEntity.affectedEntityType,
+                });
+                setView('settings');
+              }}
+              className={getButtonClasses(view, 'settings')}
+            >
+              Paramètres
           </button>
 
           {user && (
@@ -1857,8 +1889,40 @@ export default function DoraIncidentApp() {
                         <div className="border-t dark:border-gray-700 pt-4">
                           <h4 className="text-sm font-medium mb-3">Submitting Entity</h4>
                           <div className="grid grid-cols-2 gap-2">
-                            <input placeholder="Name" value={draft.submittingEntity.name} onChange={e => updateDraft('submittingEntity.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
-                            <input placeholder="Identification Code" value={draft.submittingEntity.code} onChange={e => updateDraft('submittingEntity.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)} />
+                            <input
+                                placeholder="Name"
+                                value={draft.submittingEntity.name}
+                                onChange={e => {
+                                  if (!draft.submittingEntity.isParametersSet) {
+                                    updateDraft('submittingEntity.name', e.target.value);
+                                  }
+                                }}
+                                className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                readOnly={draft.submittingEntity.isParametersSet}
+                                style={draft.submittingEntity.isParametersSet ? {
+                                  backgroundColor: '#f3f4f6',
+                                  cursor: 'not-allowed',
+                                  color: '#6b7280'
+                                } : {}}
+                                title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
+                            />
+                            <input
+                                placeholder="Identification Code"
+                                value={draft.submittingEntity.code}
+                                onChange={e => {
+                                  if (!draft.submittingEntity.isParametersSet) {
+                                    updateDraft('submittingEntity.code', e.target.value);
+                                  }
+                                }}
+                                className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                readOnly={draft.submittingEntity.isParametersSet}
+                                style={draft.submittingEntity.isParametersSet ? {
+                                  backgroundColor: '#f3f4f6',
+                                  cursor: 'not-allowed',
+                                  color: '#6b7280'
+                                } : {}}
+                                title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
+                            />
                           </div>
 
                           <div className="mt-6">
@@ -1875,42 +1939,68 @@ export default function DoraIncidentApp() {
                           </div>
 
                           <div className="grid grid-cols-3 gap-2">
-                            <input placeholder="Name" value={draft.ultimateParentUndertaking.name} onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
-                            <input placeholder="Identification Code" value={draft.ultimateParentUndertaking.code} onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
-                            <input placeholder="LEI Code" value={draft.ultimateParentUndertaking.LEI} onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)} className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}/>
+                            <input
+                              placeholder="Name"
+                              value={draft.ultimateParentUndertaking.name}
+                              onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)}
+                              className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                            />
+                            <input
+                              placeholder="Identification Code"
+                              value={draft.ultimateParentUndertaking.code}
+                              onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)}
+                              className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                            />
+                            <input
+                              placeholder="LEI Code"
+                              value={draft.ultimateParentUndertaking.LEI}
+                              onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)}
+                              className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                            />
                           </div>
                         </div>
 
-                        <div className="mt-6">
-                          <p className="block text-xs font-medium mb-2">Affected entity types</p>
-                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                              {ENTITY_TYPES.map(type => (
-                                <label
-                                  key={type.value}
-                                  htmlFor={`affected-entity-type-${type.value}`}
-                                  className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
-                                >
-                                  <input
-                                    id={`affected-entity-type-${type.value}`}
-                                    type="checkbox"
-                                    checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
-                                    onChange={() => {
-                                      const currentValues = draft.submittingEntity.affectedEntityType || [];
-                                      const updatedValues = currentValues.includes(type.value)
-                                        ? currentValues.filter(value => value !== type.value)
-                                        : [...currentValues, type.value];
+                            <div className="mt-6">
+                              <p className="block text-xs font-medium mb-2">Affected entity types</p>
+                              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                {ENTITY_TYPES.map(type => (
+                                  <label
+                                    key={type.value}
+                                    htmlFor={`affected-entity-type-${type.value}`}
+                                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
+                                    style={draft.submittingEntity.isParametersSet ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                                  >
+                                    <input
+                                      id={`affected-entity-type-${type.value}`}
+                                      type="checkbox"
+                                      checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
+                                      onChange={() => {
+                                        if (draft.submittingEntity.isParametersSet) return;
 
-                                      // Utiliser la fonction de synchronisation
-                                      setDraft(syncAffectedEntityTypes(draft, updatedValues));
-                                    }}
-                                    className="rounded"
-                                    disabled={isFieldDisabled(role, draft.status)}
-                                  />
-                                  <span>{type.label}</span>
-                                </label>
-                              ))}
+                                        const currentValues = draft.submittingEntity.affectedEntityType || [];
+                                        const updatedValues = currentValues.includes(type.value)
+                                          ? currentValues.filter(value => value !== type.value)
+                                          : [...currentValues, type.value];
+
+                                        // Mettre à jour uniquement la submittingEntity
+                                        const updatedDraft = {
+                                          ...draft,
+                                          submittingEntity: {
+                                            ...draft.submittingEntity,
+                                            affectedEntityType: updatedValues
+                                          }
+                                        };
+
+                                        setDraft(updatedDraft);
+                                      }}
+                                      className="rounded"
+                                      disabled={draft.submittingEntity.isParametersSet || isFieldDisabled(role, draft.status)}
+                                    />
+                                    <span>{type.label}</span>
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                        </div>
                         </div>
 
                         <div className="mt-4">
@@ -3508,312 +3598,434 @@ export default function DoraIncidentApp() {
             </motion.div>
           )}
             {!isReportView && (
-                <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
-                  <h2 className="text-xl font-semibold">Dashboard</h2>
-                  <p className="text-sm opacity-70 mb-4">Manage your saved DORA reports</p>
+              <>
+                {view === 'dashboard' && (
+                    <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
+                      <h2 className="text-xl font-semibold">Dashboard</h2>
+                      <p className="text-sm opacity-70 mb-4">Manage your saved DORA reports</p>
 
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                      {/* Incidents Status */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 col-span-2">
-                          {/* Total Incidents */}
-                      <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
-                        <div className="text-sm">Total Incidents</div>
-                        <div className="text-2xl font-bold">{incidentStats.totalIncidents}</div>
-                      </div>
-                        {/* Closed Incidents */}
-                        <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/30">
-                          <div className="text-sm">Incidents Fermés</div>
-                          <div className="text-2xl font-bold">{incidentStats.closedIncidents}</div>
-                        </div>
+                      <div className="grid grid-cols-3 gap-2 mb-6">
+                          {/* Incidents Status */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 col-span-2">
+                              {/* Total Incidents */}
+                          <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                            <div className="text-sm">Total Incidents</div>
+                            <div className="text-2xl font-bold">{incidentStats.totalIncidents}</div>
+                          </div>
+                            {/* Closed Incidents */}
+                            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/30">
+                              <div className="text-sm">Incidents Fermés</div>
+                              <div className="text-2xl font-bold">{incidentStats.closedIncidents}</div>
+                            </div>
 
-                        {/* Open Incidents */}
-                        <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
-                          <div className="text-sm">Incidents En Cours</div>
-                          <div className="text-2xl font-bold">{incidentStats.openIncidents}</div>
-                        </div>
-                      </div>
-
-                    <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                      <div className="text-sm">Actions</div>
-                      <div className="mt-2 flex flex-col gap-2">
-                        <button
-                          onClick={async () => {
-                            const allReports = await fetchReportsFromSupabase();
-                            niceDownload('dora-all-reports.json', allReports.map(r => cleanReportForExport({ ...emptyDraft(r.incidentId), ...r })));
-                          }}
-                          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors"
-                        >
-                          Export All JSON
-                        </button>
-
-                      </div>
-                    </div>
-                  </div>
-
-                    <div>
-                      {/* Barre de recherche et filtres */}
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              value={filters.searchTerm}
-                              onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                              placeholder="Rechercher un incident..."
-                              className="w-full p-2 pl-10 rounded-full border dark:border-gray-600 bg-white dark:bg-gray-800"
-                            />
-                            <div className="absolute left-3 top-2.5 text-gray-400">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                              </svg>
+                            {/* Open Incidents */}
+                            <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+                              <div className="text-sm">Incidents En Cours</div>
+                              <div className="text-2xl font-bold">{incidentStats.openIncidents}</div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => setFilters({...filters, showFilters: !filters.showFilters})}
-                            className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors flex items-center gap-2"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                            Filtres
-                          </button>
+
+                        <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                          <div className="text-sm">Actions</div>
+                          <div className="mt-2 flex flex-col gap-2">
+                            <button
+                              onClick={async () => {
+                                const allReports = await fetchReportsFromSupabase();
+                                niceDownload('dora-all-reports.json', allReports.map(r => cleanReportForExport({ ...emptyDraft(r.incidentId), ...r })));
+                              }}
+                              className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors"
+                            >
+                              Export All JSON
+                            </button>
+
+                          </div>
                         </div>
-                        {/* Filtres avancés (masquables) */}
-                        {filters.showFilters && (
-                          <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      </div>
 
-                              {/* Filtre par type de rapport */}
-                                <div>
-                                  <label htmlFor="incidentSubmission" className="block text-sm font-medium mb-1">
-                                    Type de rapport
-                                  </label>
-                                  <select
-                                    id="incidentSubmission"
-                                    value={filters.incidentSubmission}
-                                    onChange={(e) => setFilters({ ...filters, incidentSubmission: e.target.value })}
-                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                  >
-                                    <option value="">Tous</option>
-                                    <option value="initial_notification">Initial Notification</option>
-                                    <option value="intermediate_report">Intermediate Report</option>
-                                    <option value="final_report">Final Report</option>
-                                  </select>
+                        <div>
+                          {/* Barre de recherche et filtres */}
+                          <div className="mb-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="relative flex-1">
+                                <input
+                                  type="text"
+                                  value={filters.searchTerm}
+                                  onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
+                                  placeholder="Rechercher un incident..."
+                                  className="w-full p-2 pl-10 rounded-full border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                />
+                                <div className="absolute left-3 top-2.5 text-gray-400">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
                                 </div>
-
-                                {/* Filtre par statut de l'incident */}
-                                <div>
-                                  <label htmlFor="incidentStatus" className="block text-sm font-medium mb-1">
-                                    Statut de l'incident
-                                  </label>
-                                  <select
-                                    id="incidentStatus"
-                                    value={filters.incidentStatus}
-                                    onChange={(e) => setFilters({ ...filters, incidentStatus: e.target.value })}
-                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                  >
-                                    <option value="">Tous</option>
-                                    <option value="open">Incident en cours</option>
-                                    <option value="closed">Incident fermé</option>
-                                  </select>
-                                </div>
-
-                                {/* Filtre par critères de classification */}
-                                <fieldset className="p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                  <legend className="block text-sm font-medium mb-1">Critères de classification</legend>
-                                  {CLASSIFICATION_CRITERIA.map(criteria => (
-                                    <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                      <input
-                                        type="checkbox"
-                                        checked={filters.classificationCriterion.includes(criteria.value)}
-                                        onChange={() => {
-                                          const updatedCriteria = filters.classificationCriterion.includes(criteria.value)
-                                            ? filters.classificationCriterion.filter(v => v !== criteria.value)
-                                            : [...filters.classificationCriterion, criteria.value];
-                                          setFilters({ ...filters, classificationCriterion: updatedCriteria });
-                                        }}
-                                        className="rounded"
-                                      />
-                                      <span>{criteria.label}</span>
-                                    </label>
-                                  ))}
-                                </fieldset>
-
-                              {/* Filtre par plage de dates */}
-                                <fieldset className="grid grid-cols-1 gap-2">
-                                  <legend className="block text-sm font-medium mb-1">Plage de dates</legend>
-                                  <input
-                                    id="startDate"
-                                    type="date"
-                                    value={filters.dateRange.start}
-                                    onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } })}
-                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                  />
-                                  <input
-                                    id="endDate"
-                                    type="date"
-                                    value={filters.dateRange.end}
-                                    onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } })}
-                                    className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                                  />
-                                </fieldset>
-                            </div>
-
-                            {/* Bouton pour réinitialiser les filtres */}
-                            <div className="mt-4 flex justify-end">
+                              </div>
                               <button
-                                onClick={() => setFilters({
-                                  searchTerm: '',
-                                  incidentSubmission: '',
-                                  incidentStatus: '',
-                                  classificationCriterion: [],
-                                  dateRange: { start: '', end: '' },
-                                  showFilters: true
-                                })}
-                                className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                                onClick={() => setFilters({...filters, showFilters: !filters.showFilters})}
+                                className="px-4 py-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors flex items-center gap-2"
                               >
-                                Réinitialiser les filtres
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                Filtres
                               </button>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                            {/* Filtres avancés (masquables) */}
+                            {filters.showFilters && (
+                              <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                      {/* Liste des incidents */}
-                      <div>
-                        <h3 className="font-medium mb-3">Incidents</h3>
-                        <div className="space-y-4">
-                          {Object.keys(filteredIncidents).length === 0 && (
-                            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
-                              {Object.keys(groupedIncidents).length === 0
-                                ? 'Aucun incident trouvé - créez-en un depuis l\'onglet Rapport'
-                                : 'Aucun incident ne correspond à vos critères de recherche'}
-                            </div>
-                          )}
-                          {Object.entries(filteredIncidents).map(([financialEntityCode, incident]) => (
-                            <div key={financialEntityCode} className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                              <div className="flex justify-between items-center mb-4">
-                                <h4 className="font-medium text-lg">
-                                  Incident: {financialEntityCode}
-                                  {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
-                                  {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
-                                </h4>
+                                  {/* Filtre par type de rapport */}
+                                    <div>
+                                      <label htmlFor="incidentSubmission" className="block text-sm font-medium mb-1">
+                                        Type de rapport
+                                      </label>
+                                      <select
+                                        id="incidentSubmission"
+                                        value={filters.incidentSubmission}
+                                        onChange={(e) => setFilters({ ...filters, incidentSubmission: e.target.value })}
+                                        className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                      >
+                                        <option value="">Tous</option>
+                                        <option value="initial_notification">Initial Notification</option>
+                                        <option value="intermediate_report">Intermediate Report</option>
+                                        <option value="final_report">Final Report</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Filtre par statut de l'incident */}
+                                    <div>
+                                      <label htmlFor="incidentStatus" className="block text-sm font-medium mb-1">
+                                        Statut de l'incident
+                                      </label>
+                                      <select
+                                        id="incidentStatus"
+                                        value={filters.incidentStatus}
+                                        onChange={(e) => setFilters({ ...filters, incidentStatus: e.target.value })}
+                                        className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                      >
+                                        <option value="">Tous</option>
+                                        <option value="open">Incident en cours</option>
+                                        <option value="closed">Incident fermé</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Filtre par critères de classification */}
+                                    <fieldset className="p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                      <legend className="block text-sm font-medium mb-1">Critères de classification</legend>
+                                      {CLASSIFICATION_CRITERIA.map(criteria => (
+                                        <label key={criteria.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                                          <input
+                                            type="checkbox"
+                                            checked={filters.classificationCriterion.includes(criteria.value)}
+                                            onChange={() => {
+                                              const updatedCriteria = filters.classificationCriterion.includes(criteria.value)
+                                                ? filters.classificationCriterion.filter(v => v !== criteria.value)
+                                                : [...filters.classificationCriterion, criteria.value];
+                                              setFilters({ ...filters, classificationCriterion: updatedCriteria });
+                                            }}
+                                            className="rounded"
+                                          />
+                                          <span>{criteria.label}</span>
+                                        </label>
+                                      ))}
+                                    </fieldset>
+
+                                  {/* Filtre par plage de dates */}
+                                    <fieldset className="grid grid-cols-1 gap-2">
+                                      <legend className="block text-sm font-medium mb-1">Plage de dates</legend>
+                                      <input
+                                        id="startDate"
+                                        type="date"
+                                        value={filters.dateRange.start}
+                                        onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, start: e.target.value } })}
+                                        className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                      />
+                                      <input
+                                        id="endDate"
+                                        type="date"
+                                        value={filters.dateRange.end}
+                                        onChange={(e) => setFilters({ ...filters, dateRange: { ...filters.dateRange, end: e.target.value } })}
+                                        className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                      />
+                                    </fieldset>
+                                </div>
+
+                                {/* Bouton pour réinitialiser les filtres */}
+                                <div className="mt-4 flex justify-end">
+                                  <button
+                                    onClick={() => setFilters({
+                                      searchTerm: '',
+                                      incidentSubmission: '',
+                                      incidentStatus: '',
+                                      classificationCriterion: [],
+                                      dateRange: { start: '', end: '' },
+                                      showFilters: true
+                                    })}
+                                    className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                                  >
+                                    Réinitialiser les filtres
+                                  </button>
+                                </div>
                               </div>
-                              <div className="space-y-3">
-                                {/* Filtrer les rapports affichés en fonction du type de rapport sélectionné */}
-                                {incident.reports
-                                  .filter(r => !filters.incidentSubmission || r.incidentSubmission === filters.incidentSubmission)
-                                  .map(r => (
-                                    <div key={r.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700 flex justify-between">
-                                      {/* Première colonne : informations du rapport */}
-                                      <div className="flex-1">
-                                        <div className="text-sm font-medium">
-                                          {r.incidentSubmission?.replaceAll('_', ' ') || '-'}
-                                        </div>
-                                        <div className="text-xs opacity-70 mt-1">
-                                          <strong>Description:</strong> {r.incident?.incidentDescription?.slice(0, 100) || '—'}
-                                        </div>
-                                        <div className="text-xs opacity-60 mt-2">
-                                          Saved: {new Date(r.savedAt).toLocaleString()}
-                                        </div>
-                                      </div>
+                            )}
+                          </div>
 
-                                      {/* Deuxième colonne : commentaires */}
-                                      {r.status !== 'validated' && r.comments && r.comments.length > 0 && (
-                                        <div className="flex-1 ml-4">
-                                          <h4 className="font-medium">Commentaires :</h4>
-                                          <ul className="mt-2 text-sm list-disc pl-4">
-                                            {r.comments.map((comment, index) => (
-                                              <li key={comment.id} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                                                {comment.comment}
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
+                          {/* Liste des incidents */}
+                          <div>
+                            <h3 className="font-medium mb-3">Incidents</h3>
+                            <div className="space-y-4">
+                              {Object.keys(filteredIncidents).length === 0 && (
+                                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                                  {Object.keys(groupedIncidents).length === 0
+                                    ? 'Aucun incident trouvé - créez-en un depuis l\'onglet Rapport'
+                                    : 'Aucun incident ne correspond à vos critères de recherche'}
+                                </div>
+                              )}
+                              {Object.entries(filteredIncidents).map(([financialEntityCode, incident]) => (
+                                <div key={financialEntityCode} className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
+                                  <div className="flex justify-between items-center mb-4">
+                                    <h4 className="font-medium text-lg">
+                                      Incident: {financialEntityCode}
+                                      {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
+                                      {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
+                                    </h4>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {/* Filtrer les rapports affichés en fonction du type de rapport sélectionné */}
+                                    {incident.reports
+                                      .filter(r => !filters.incidentSubmission || r.incidentSubmission === filters.incidentSubmission)
+                                      .map(r => (
+                                        <div key={r.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700 flex justify-between">
+                                          {/* Première colonne : informations du rapport */}
+                                          <div className="flex-1">
+                                            <div className="text-sm font-medium">
+                                              {r.incidentSubmission?.replaceAll('_', ' ') || '-'}
+                                            </div>
+                                            <div className="text-xs opacity-70 mt-1">
+                                              <strong>Description:</strong> {r.incident?.incidentDescription?.slice(0, 100) || '—'}
+                                            </div>
+                                            <div className="text-xs opacity-60 mt-2">
+                                              Saved: {new Date(r.savedAt).toLocaleString()}
+                                            </div>
+                                          </div>
+
+                                          {/* Deuxième colonne : commentaires */}
+                                          {r.status !== 'validated' && r.comments && r.comments.length > 0 && (
+                                            <div className="flex-1 ml-4">
+                                              <h4 className="font-medium">Commentaires :</h4>
+                                              <ul className="mt-2 text-sm list-disc pl-4">
+                                                {r.comments.map((comment, index) => (
+                                                  <li key={comment.id} className="mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                                    {comment.comment}
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
 
 
-                                        {/* Troisième colonne : boutons */}
-                                        <div className="flex flex-col gap-2 ml-4">
-                                          <button
-                                            onClick={() => loadReportIntoDraft(r.id)}
-                                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
-                                          >
-                                            {getButtonLabel(role, r.status)}
-                                          </button>
-                                          <button
-                                            onClick={() => exportReportJSON(r)}
-                                            className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm"
-                                          >
-                                            Download
-                                          </button>
+                                            {/* Troisième colonne : boutons */}
+                                            <div className="flex flex-col gap-2 ml-4">
+                                              <button
+                                                onClick={() => loadReportIntoDraft(r.id)}
+                                                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
+                                              >
+                                                {getButtonLabel(role, r.status)}
+                                              </button>
+                                              <button
+                                                onClick={() => exportReportJSON(r)}
+                                                className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                                              >
+                                                Download
+                                              </button>
 
-                                          {/* Les boutons suivants sont **complètement masqués** pour les auditeurs */}
-                                          {role !== 'auditeur' && (
-                                            <>
-                                              {role === 'validateur' && r.status === 'draft' && (
-                                                <button
-                                                  onClick={() => validateReport(r.id)}
-                                                  className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
-                                                >
-                                                  Validate
-                                                </button>
-                                              )}
-                                              {role === 'validateur' && r.status !== 'validated' && (
-                                                <button
-                                                  onClick={() => {
-                                                    const comment = prompt('Ajouter un commentaire:');
-                                                    if (comment !== null) {
-                                                      addComment(r.id, comment);
-                                                    }
-                                                  }}
-                                                  className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
-                                                >
-                                                  Add Comment
-                                                </button>
-                                              )}
-                                              {role === 'saisisseur' && r.status === 'validated' && (
+                                              {/* Les boutons suivants sont **complètement masqués** pour les auditeurs */}
+                                              {role !== 'auditeur' && (
                                                 <>
-                                                  {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
+                                                  {role === 'validateur' && r.status === 'draft' && (
                                                     <button
-                                                      onClick={() => continueReport(r.id, 'intermediate_report')}
-                                                      className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                      onClick={() => validateReport(r.id)}
+                                                      className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
                                                     >
-                                                      Déclarer un rapport intermédiaire
+                                                      Validate
                                                     </button>
                                                   )}
-                                                  {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
+                                                  {role === 'validateur' && r.status !== 'validated' && (
                                                     <button
-                                                      onClick={() => continueReport(r.id, 'final_report')}
-                                                      className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                      onClick={() => {
+                                                        const comment = prompt('Ajouter un commentaire:');
+                                                        if (comment !== null) {
+                                                          addComment(r.id, comment);
+                                                        }
+                                                      }}
+                                                      className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm"
                                                     >
-                                                      Déclarer un rapport final
+                                                      Add Comment
                                                     </button>
+                                                  )}
+                                                  {role === 'saisisseur' && r.status === 'validated' && (
+                                                    <>
+                                                      {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
+                                                        <button
+                                                          onClick={() => continueReport(r.id, 'intermediate_report')}
+                                                          className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                        >
+                                                          Déclarer un rapport intermédiaire
+                                                        </button>
+                                                      )}
+                                                      {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
+                                                        <button
+                                                          onClick={() => continueReport(r.id, 'final_report')}
+                                                          className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
+                                                        >
+                                                          Déclarer un rapport final
+                                                        </button>
+                                                      )}
+                                                    </>
                                                   )}
                                                 </>
                                               )}
-                                            </>
-                                          )}
+                                            </div>
                                         </div>
-                                    </div>
-                                  ))}
-                              </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+
+                      {role !== 'validateur' && role !== 'auditeur' && (
+                          <div className="mt-6 flex justify-end">
+                            <button onClick={() =>{
+                            setView('report');
+                            }}className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
+                              Create or Update Report
+                            </button>
+                          </div>
+                      )}
+                    </motion.div>
+                )}
+
+                {view === 'settings' && (
+                  <motion.div
+                    key="settings"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow"
+                  >
+                    <h2 className="text-2xl font-semibold mb-6">Paramètres</h2>
+
+                    {/* Section pour le profil "saisisseur" */}
+                    {role === 'saisisseur' && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Configuration de l'entité soumise</h3>
+
+                        {/* Nom de l'entité - TOUJOURS MODIFIABLE */}
+                        <div className="mb-4">
+                          <label htmlFor="submittingEntityName" className="block text-sm font-medium mb-1">
+                            Nom de l'entité soumise
+                          </label>
+                          <input
+                            id="submittingEntityName"
+                            type="text"
+                            value={submittingEntitySettings.name}
+                            onChange={(e) => setSubmittingEntitySettings({ ...submittingEntitySettings, name: e.target.value })}
+                            className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                          />
+                        </div>
+
+                        {/* Code de l'entité - TOUJOURS MODIFIABLE */}
+                        <div className="mb-4">
+                          <label htmlFor="submittingEntityCode" className="block text-sm font-medium mb-1">
+                            Code de l'entité soumise
+                          </label>
+                          <input
+                            id="submittingEntityCode"
+                            type="text"
+                            value={submittingEntitySettings.code}
+                            onChange={(e) => setSubmittingEntitySettings({ ...submittingEntitySettings, code: e.target.value })}
+                            className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                          />
+                        </div>
+
+                        {/* Types d'entités affectées - TOUJOURS MODIFIABLES */}
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium mb-2">Types d'entités affectées</label>
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            {ENTITY_TYPES.map(type => (
+                              <label
+                                key={type.value}
+                                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={submittingEntitySettings.affectedEntityType?.includes(type.value)}
+                                  onChange={() => {
+                                    const currentValues = submittingEntitySettings.affectedEntityType || [];
+                                    const updatedValues = currentValues.includes(type.value)
+                                      ? currentValues.filter(value => value !== type.value)
+                                      : [...currentValues, type.value];
+                                    setSubmittingEntitySettings({ ...submittingEntitySettings, affectedEntityType: updatedValues });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span>{type.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Boutons d'action */}
+                        <div className="flex justify-end gap-2 mt-6">
+                          <button
+                            onClick={() => {
+                              // Mettre à jour UNIQUEMENT la submittingEntity
+                              const updatedDraft = {
+                                ...draft,
+                                submittingEntity: {
+                                  ...draft.submittingEntity,
+                                  name: submittingEntitySettings.name,
+                                  code: submittingEntitySettings.code,
+                                  affectedEntityType: submittingEntitySettings.affectedEntityType,
+                                  isParametersSet: true  // Marquer comme défini
+                                }
+                                // ultimateParentUndertaking N'EST PAS MODIFIÉ
+                              };
+
+                              setDraft(updatedDraft);
+                              setView('dashboard');
+                            }}
+                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                          >
+                            Appliquer
+                          </button>
+                          <button
+                            onClick={() => setView('dashboard')}
+                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+                          >
+                            Annuler
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                  {role !== 'validateur' && role !== 'auditeur' && (
-                      <div className="mt-6 flex justify-end">
-                        <button onClick={() =>{
-                        setView('report');
-                        }}className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                          Create or Update Report
-                        </button>
+                    {/* Section pour les profils "validateur" ou "auditeur" */}
+                    {(role === 'validateur' || role === 'auditeur') && (
+                      <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/30">
+                        <h3 className="text-lg font-medium mb-2">Paramètres pour {role}</h3>
+                        <p className="text-sm mb-4">
+                          {role === 'validateur'
+                            ? 'En tant que validateur, vous pouvez consulter les paramètres définis.'
+                            : 'En tant qu\'auditeur, vous avez accès à un mode lecture seule.'}
+                        </p>
                       </div>
-                  )}
-                </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </>
           )}
         </AnimatePresence>
       </main>
