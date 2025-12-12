@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext.jsx'
 import { v4 as uuidv4 } from 'uuid';
 import PropTypes from 'prop-types';
+import { getSettings, saveSettings } from '../utils/supabaseSettings.js'
 
 const nowISO = () => new Date().toISOString()
 
@@ -1083,6 +1084,8 @@ const nowISO = () => new Date().toISOString()
     }
 
 export default function DoraIncidentApp() {
+  const { user, role, signOut } = useAuth();
+
   const [view, setView] = useState('dashboard')
   const [draft, setDraft] = useState(emptyDraft())
   const [reports, setReports] = useState([])
@@ -1105,22 +1108,37 @@ export default function DoraIncidentApp() {
   });
 
   const [submittingEntitySettings, setSubmittingEntitySettings] = useState({
-      name: draft.submittingEntity.name || '',
-      code: draft.submittingEntity.code || '',
-      affectedEntityType: draft.submittingEntity.affectedEntityType || [],
-      isLocked: !!draft.submittingEntity.isParametersSet  // Ajout du flag de verrouillage
+      name: '',
+      code: '',
+      affectedEntityType: [],
+      isLocked: false,
     });
 
 
-    // Ajoutez ceci juste après
-    useEffect(() => {
-      // Initialiser avec les valeurs actuelles du draft
-      setSubmittingEntitySettings({
-        name: draft.submittingEntity.name,
-        code: draft.submittingEntity.code,
-        affectedEntityType: draft.submittingEntity.affectedEntityType,
-      });
-    }, [draft.submittingEntity]);
+    async function handleSaveSettings() {
+      if (!user?.id) return;
+
+      const settingsToSave = {
+        name: submittingEntitySettings.name,
+        code: submittingEntitySettings.code,
+        affectedEntityType: submittingEntitySettings.affectedEntityType,
+        isParametersSet: true
+      };
+
+      // Sauvegarde Supabase
+      await saveSettings(user.id, settingsToSave);
+
+      // Mise à jour du state local
+      setSubmittingEntitySettings(prev => ({
+        ...prev,
+        isLocked: true
+      }));
+
+      // Application propre au draft
+      setDraft(prev => applySettingsToDraft(prev, settingsToSave));
+
+      alert("Paramètres enregistrés avec succès.");
+    }
 
   const getButtonClasses = (currentView, targetView) => {
       const baseClasses = "px-3 py-2 rounded-xl transition-all";
@@ -1178,9 +1196,6 @@ export default function DoraIncidentApp() {
       // Pour les validateurs, en lecture seule uniquement si le statut est "validated"
       return status === 'validated' || (role === 'validateur' && status === 'draft');
     };
-
-
-  const { user, role, signOut } = useAuth();
 
     useEffect(() => {
       async function loadReports() {
@@ -1567,6 +1582,32 @@ export default function DoraIncidentApp() {
       }
     }
 
+// Chargement des paramètres pour l'utilisateur connecté
+    useEffect(() => {
+      if (!user?.id) return;
+
+    async function loadUserSettings() {
+      if (!user?.id) return;
+
+      const settings = await getSettings(user.id);
+      if (!settings) return;
+
+      // Mise à jour des paramètres locaux
+      const normalized = {
+        name: settings.name ?? '',
+        code: settings.code ?? '',
+        affectedEntityType: settings.affected_entity_type ?? [],
+        isLocked: settings.is_parameters_set ?? false
+      };
+      setSubmittingEntitySettings(normalized);
+
+      // Application propre au draft
+      setDraft(prev => applySettingsToDraft(prev, normalized));
+    }
+
+      loadUserSettings();
+    }, [user]);
+
     function createMergedDraft(data) {
       const defaultDraft = emptyDraft(data.report_data.incidentId);
       const mergedDraft = {
@@ -1589,9 +1630,15 @@ export default function DoraIncidentApp() {
     }
 
   function clearDraft() {
-    setDraft(emptyDraft())
-    setErrors([])
+      const newDraft = emptyDraft();
+
+      // Apply current saved settings to the new draft
+      const updatedDraft = applySettingsToDraft(newDraft, submittingEntitySettings);
+
+      setDraft(updatedDraft);
+      setStep(0);
   }
+
 
   function hasReportOfTypeForIncident(incidentId, type) {
       return reports.some(report => report.incidentId === incidentId && report.incidentSubmission === type);
@@ -1719,6 +1766,31 @@ export default function DoraIncidentApp() {
       return incidents;
     }
 
+    function applySettingsToDraft(prevDraft, settings) {
+      const newDraft = structuredClone(prevDraft);
+
+      newDraft.submittingEntity = {
+        ...newDraft.submittingEntity,
+        name: settings.name,
+        code: settings.code,
+        affectedEntityType: settings.affectedEntityType,
+        isParametersSet: true
+      };
+
+      newDraft.ultimateParentUndertaking = {
+        ...newDraft.ultimateParentUndertaking,
+        affectedEntityType: settings.affectedEntityType
+      };
+
+      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
+        ...entity,
+        affectedEntityType: settings.affectedEntityType
+      }));
+
+      return newDraft;
+    }
+
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
       <ConfettiCanvas trigger={confettiTrigger} />
@@ -1748,11 +1820,6 @@ export default function DoraIncidentApp() {
 
           <button
               onClick={() => {
-                setSubmittingEntitySettings({
-                  name: draft.submittingEntity.name,
-                  code: draft.submittingEntity.code,
-                  affectedEntityType: draft.submittingEntity.affectedEntityType,
-                });
                 setView('settings');
               }}
               className={getButtonClasses(view, 'settings')}
@@ -3981,27 +4048,12 @@ export default function DoraIncidentApp() {
                         {/* Boutons d'action */}
                         <div className="flex justify-end gap-2 mt-6">
                           <button
-                            onClick={() => {
-                              // Mettre à jour UNIQUEMENT la submittingEntity
-                              const updatedDraft = {
-                                ...draft,
-                                submittingEntity: {
-                                  ...draft.submittingEntity,
-                                  name: submittingEntitySettings.name,
-                                  code: submittingEntitySettings.code,
-                                  affectedEntityType: submittingEntitySettings.affectedEntityType,
-                                  isParametersSet: true  // Marquer comme défini
-                                }
-                                // ultimateParentUndertaking N'EST PAS MODIFIÉ
-                              };
-
-                              setDraft(updatedDraft);
-                              setView('dashboard');
-                            }}
-                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                              onClick={handleSaveSettings}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                           >
-                            Appliquer
+                              Enregistrer les paramètres
                           </button>
+
                           <button
                             onClick={() => setView('dashboard')}
                             className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
