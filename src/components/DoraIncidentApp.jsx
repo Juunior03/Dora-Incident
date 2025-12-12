@@ -4070,12 +4070,12 @@ export default function DoraIncidentApp() {
                     )}
 
                     {/* Section pour les profils "validateur" ou "auditeur" */}
-                    {(role === 'validateur' || role === 'auditeur') && (
+                    {['validateur', 'auditeur'].includes(role) && (
                       <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/30">
                         <p className="text-sm mb-4">
                           {role === 'validateur'
-                            ? 'Fonctionnalités à venir'
-                            : 'Fonctionnalités à venir'}
+                            ? 'Fonctionnalités spécifiques aux valideurs à venir'
+                            : 'Fonctionnalités spécifiques aux auditeurs à venir'}
                         </p>
                       </div>
                     )}
