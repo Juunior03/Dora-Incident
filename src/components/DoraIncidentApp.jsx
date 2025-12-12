@@ -20,7 +20,7 @@ const nowISO = () => new Date().toISOString()
     }
 
     function cleanReportForExport(report) {
-      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, ...cleanedReport } = report;
+      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = report;
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -51,6 +51,11 @@ const nowISO = () => new Date().toISOString()
       // Ordonner les clés des entités affectées
       if (Array.isArray(cleanedReport.affectedEntity)) {
         cleanedReport.affectedEntity = orderAffectedEntityKeys(cleanedReport.affectedEntity);
+      }
+
+      if (cleanedReport.submittingEntity) {
+        const { isParametersSet, ...submittingEntity } = cleanedReport.submittingEntity;
+        cleanedReport.submittingEntity = submittingEntity;
       }
 
       return cleanedReport;
@@ -967,6 +972,31 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    function applySettingsToDraft(prevDraft, settings) {
+      const newDraft = structuredClone(prevDraft);
+
+      newDraft.submittingEntity = {
+        ...newDraft.submittingEntity,
+        name: settings.name,
+        code: settings.code,
+        affectedEntityType: settings.affectedEntityType,
+        isParametersSet: true
+      };
+
+      newDraft.ultimateParentUndertaking = {
+        ...newDraft.ultimateParentUndertaking,
+        affectedEntityType: settings.affectedEntityType
+      };
+
+      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
+        ...entity,
+        affectedEntityType: settings.affectedEntityType
+      }));
+
+      return newDraft;
+    }
+
+
     function emptyDraft(incidentId = null) {
         console.log('--- Dans emptyDraft ---');
         console.log('incidentId:', incidentId);
@@ -1765,31 +1795,6 @@ export default function DoraIncidentApp() {
       }
       return incidents;
     }
-
-    function applySettingsToDraft(prevDraft, settings) {
-      const newDraft = structuredClone(prevDraft);
-
-      newDraft.submittingEntity = {
-        ...newDraft.submittingEntity,
-        name: settings.name,
-        code: settings.code,
-        affectedEntityType: settings.affectedEntityType,
-        isParametersSet: true
-      };
-
-      newDraft.ultimateParentUndertaking = {
-        ...newDraft.ultimateParentUndertaking,
-        affectedEntityType: settings.affectedEntityType
-      };
-
-      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
-        ...entity,
-        affectedEntityType: settings.affectedEntityType
-      }));
-
-      return newDraft;
-    }
-
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
@@ -4020,8 +4025,8 @@ export default function DoraIncidentApp() {
 
                         {/* Types d'entités affectées - TOUJOURS MODIFIABLES */}
                         <div className="mb-6">
-                          <label className="block text-sm font-medium mb-2">Types d'entités affectées</label>
-                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                          <label htmlFor="affectedEntityTypes" className="block text-sm font-medium mb-2">Types d'entités affectées</label>
+                          <div id="affectedEntityTypes" className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ENTITY_TYPES.map(type => (
                               <label
                                 key={type.value}
@@ -4067,11 +4072,10 @@ export default function DoraIncidentApp() {
                     {/* Section pour les profils "validateur" ou "auditeur" */}
                     {(role === 'validateur' || role === 'auditeur') && (
                       <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/30">
-                        <h3 className="text-lg font-medium mb-2">Paramètres pour {role}</h3>
                         <p className="text-sm mb-4">
                           {role === 'validateur'
-                            ? 'En tant que validateur, vous pouvez consulter les paramètres définis.'
-                            : 'En tant qu\'auditeur, vous avez accès à un mode lecture seule.'}
+                            ? 'Fonctionnalités à venir'
+                            : 'Fonctionnalités à venir'}
                         </p>
                       </div>
                     )}
