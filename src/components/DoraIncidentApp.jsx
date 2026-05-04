@@ -3629,7 +3629,7 @@ export default function DoraIncidentApp() {
 
                         <div className="mt-4">
                           <h4 className="font-medium">Preview JSON</h4>
-                          <pre className="mt-2 max-h-64 overflow-auto text-xs bg-black/5 dark:bg-black/30 p-3 rounded">{JSON.stringify(draft, null, 2)}</pre>
+                          <pre className="mt-2 max-h-64 overflow-auto text-xs bg-black/5 dark:bg-black/30 p-3 rounded">{JSON.stringify(cleanReportForExport(draft), null, 2)}</pre>
                         </div>
 
                         <div className="mt-4 flex gap-2">
@@ -4087,7 +4087,7 @@ export default function DoraIncidentApp() {
       </main>
 
       <footer className="max-w-7xl mx-auto mt-6 text-center text-xs opacity-60">
-        C'est DIEU qui donne mdr
+        © Developped by Sécurité des systèmes d'information (SSI)
       </footer>
     </div>
   )
