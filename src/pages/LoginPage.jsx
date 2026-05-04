@@ -1,6 +1,6 @@
 // src/pages/LoginPage.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // 👈 On ajoute l'import de 'Link'
 import { useAuth } from '../context/AuthContext.jsx';
 import { FaUser, FaLock } from 'react-icons/fa';
 
@@ -20,6 +20,17 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(''); // On efface les erreurs précédentes à chaque nouvelle tentative
+
+    // --- VÉRIFICATION DU DOMAINE ---
+    const domaineAutorise = "@gmail.com"; // 👈 Domaine autorisé
+
+    if (!email.toLowerCase().endsWith(domaineAutorise)) {
+      setError(`Erreur de connexion`);
+      return; // On arrête la fonction ici, on n'appelle pas Supabase
+    }
+    // -------------------------------
+
     try {
       await signIn(email, password);
       globalThis.location.reload();
@@ -33,7 +44,9 @@ const LoginPage = () => {
     <div className="login-container">
       <div className="login-card">
         <h1 className="login-title">User Login</h1>
+
         {error && <div className="error-message">{error}</div>}
+
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <FaUser className="input-icon" />
@@ -57,6 +70,18 @@ const LoginPage = () => {
               required
             />
           </div>
+
+          {/* --- NOUVEAU : Le lien de mot de passe oublié --- */}
+          <div className="flex justify-end w-full mb-4">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </div>
+          {/* ------------------------------------------------ */}
+
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? 'Connexion en cours...' : 'Login'}
           </button>
