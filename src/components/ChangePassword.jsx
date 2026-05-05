@@ -3,9 +3,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { FaLock, FaCheckCircle, FaRegCircle } from 'react-icons/fa';
+import { FaLock, FaCheckCircle, FaRegCircle, FaUnlockAlt } from 'react-icons/fa';
 
 export default function ChangePassword() {
+  // --- NOUVEAU : État pour l'ancien mot de passe ---
+  const [oldPassword, setOldPassword] = useState('');
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,7 +18,6 @@ export default function ChangePassword() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
-  // --- NOUVEAU : État pour suivre la validation des règles ---
   const [validations, setValidations] = useState({
     length: false,
     cases: false,
@@ -23,19 +25,16 @@ export default function ChangePassword() {
     special: false,
   });
 
-  // --- NOUVEAU : Vérification en temps réel ---
   useEffect(() => {
     setValidations({
-      length: newPassword.length >= 8,
+      length: newPassword.length >= 15,
       cases: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword),
       number: /\d/.test(newPassword),
-      special: /[@$!%*?&_#\-]/.test(newPassword), // Tu peux ajouter d'autres caractères ici
+      special: /[@$!%*?&_#\-]/.test(newPassword),
     });
   }, [newPassword]);
 
-  // On vérifie si TOUTES les règles sont à "true"
   const isPasswordValid = Object.values(validations).every(Boolean);
-  // ---------------------------------------------
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
@@ -47,23 +46,44 @@ export default function ChangePassword() {
       return;
     }
 
-    // Sécurité supplémentaire au cas où l'utilisateur forcerait le bouton
     if (!isPasswordValid) {
-      setError("Le mot de passe ne respecte pas tous les critères.");
+      setError("Le nouveau mot de passe ne respecte pas tous les critères.");
       return;
     }
 
     setLoading(true);
 
+    // --- ÉTAPE 1 : Récupérer l'email de l'utilisateur actuel ---
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setError("Erreur : Impossible d'identifier l'utilisateur.");
+      setLoading(false);
+      return;
+    }
+
+    // --- ÉTAPE 2 : Vérifier l'ancien mot de passe (en tentant une connexion) ---
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: oldPassword,
+    });
+
+    if (verifyError) {
+      setError("L'ancien mot de passe est incorrect.");
+      setLoading(false);
+      return; // On bloque tout !
+    }
+
+    // --- ÉTAPE 3 : Si l'ancien est bon, on met à jour avec le nouveau ---
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
     });
 
     if (updateError) {
-      setError("Erreur : " + updateError.message);
+      setError("Erreur lors de la mise à jour : " + updateError.message);
       setLoading(false);
     } else {
-      setMessage("Mot de passe mis à jour ! Déconnexion en cours...");
+      setMessage("Mot de passe mis à jour ! Veuillez vous reconnecter avec le nouveau mot de passe...");
       setTimeout(async () => {
         await signOut();
         navigate('/login');
@@ -71,7 +91,6 @@ export default function ChangePassword() {
     }
   };
 
-  // --- NOUVEAU : Petit sous-composant pour l'affichage d'une règle ---
   const ValidationItem = ({ isValid, text }) => (
     <li className={`flex items-center text-sm mt-1 transition-colors duration-200 ${isValid ? 'text-green-600' : 'text-gray-400'}`}>
       {isValid ? <FaCheckCircle className="mr-2" /> : <FaRegCircle className="mr-2" />}
@@ -87,6 +106,26 @@ export default function ChangePassword() {
       {message && <div className="bg-green-50 text-green-600 p-3 rounded mb-4 text-sm border border-green-200">{message}</div>}
 
       <form onSubmit={handleUpdatePassword} className="space-y-4">
+
+        {/* --- NOUVEAU CHAMP : Ancien mot de passe --- */}
+        <div>
+          <label className="block text-gray-600 text-sm mb-1">Mot de passe actuel</label>
+          <div className="relative">
+            <FaUnlockAlt className="absolute left-3 top-3 text-gray-400" />
+            <input
+              type="password"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              className="pl-10 p-2 w-full rounded bg-gray-50 text-gray-800 border border-gray-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Ligne de séparation esthétique */}
+        <hr className="border-gray-200 my-4" />
+
+        {/* --- CHAMP : Nouveau mot de passe --- */}
         <div>
           <label className="block text-gray-600 text-sm mb-1">Nouveau mot de passe</label>
           <div className="relative">
@@ -100,18 +139,17 @@ export default function ChangePassword() {
             />
           </div>
 
-          {/* --- NOUVEAU : Affichage de la checklist dynamique --- */}
           <ul className="mt-3 mb-2 px-1">
             <ValidationItem isValid={validations.length} text="Au moins 8 caractères" />
             <ValidationItem isValid={validations.cases} text="Une majuscule et une minuscule" />
             <ValidationItem isValid={validations.number} text="Au moins un chiffre" />
             <ValidationItem isValid={validations.special} text="Un caractère spécial (@, !, #, etc.)" />
           </ul>
-          {/* ----------------------------------------------------- */}
         </div>
 
+        {/* --- CHAMP : Confirmer nouveau mot de passe --- */}
         <div>
-          <label className="block text-gray-600 text-sm mb-1">Confirmer le mot de passe</label>
+          <label className="block text-gray-600 text-sm mb-1">Confirmer le nouveau mot de passe</label>
           <div className="relative">
             <FaLock className="absolute left-3 top-3 text-gray-400" />
             <input
@@ -126,7 +164,6 @@ export default function ChangePassword() {
               required
             />
           </div>
-          {/* Petit indicateur rouge si les mots de passe ne correspondent pas pendant la frappe */}
           {confirmPassword && newPassword !== confirmPassword && (
              <p className="text-red-500 text-xs mt-1">Les mots de passe ne correspondent pas.</p>
           )}
@@ -134,10 +171,10 @@ export default function ChangePassword() {
 
         <button
           type="submit"
-          disabled={loading || !isPasswordValid || !confirmPassword || newPassword !== confirmPassword}
+          disabled={loading || !isPasswordValid || !confirmPassword || newPassword !== confirmPassword || !oldPassword}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
-          {loading ? 'Mise à jour...' : 'Confirmer la modification'}
+          {loading ? 'Vérification en cours...' : 'Confirmer la modification'}
         </button>
       </form>
     </div>
