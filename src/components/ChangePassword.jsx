@@ -140,7 +140,7 @@ export default function ChangePassword() {
           </div>
 
           <ul className="mt-3 mb-2 px-1">
-            <ValidationItem isValid={validations.length} text="Au moins 8 caractères" />
+            <ValidationItem isValid={validations.length} text="Au moins 15 caractères" />
             <ValidationItem isValid={validations.cases} text="Une majuscule et une minuscule" />
             <ValidationItem isValid={validations.number} text="Au moins un chiffre" />
             <ValidationItem isValid={validations.special} text="Un caractère spécial (@, !, #, etc.)" />
