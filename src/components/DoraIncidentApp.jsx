@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { v4 as uuidv4 } from 'uuid';
 import PropTypes from 'prop-types';
 import { getSettings, saveSettings } from '../utils/supabaseSettings.js'
+import ChangePassword from './ChangePassword';
+import { FaKey } from 'react-icons/fa';
 
 const nowISO = () => new Date().toISOString()
 
@@ -1115,6 +1117,7 @@ const nowISO = () => new Date().toISOString()
 
 export default function DoraIncidentApp() {
   const { user, role, signOut } = useAuth();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [view, setView] = useState('dashboard')
   const [draft, setDraft] = useState(emptyDraft())
@@ -1849,6 +1852,22 @@ export default function DoraIncidentApp() {
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.displayName || user.email}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                     </div>
+
+                    {/* Ligne de séparation (optionnelle) */}
+                        <hr className="my-1 border-gray-100" />
+
+                        {/* Nouveau bouton */}
+                        <button
+                          onClick={() => {
+                            setIsPasswordModalOpen(true);
+                            // Ici, tu peux aussi ajouter la fonction qui ferme ton menu déroulant s'il reste ouvert
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                        >
+                          <FaKey className="text-gray-400" />
+                          Modifier le mot de passe
+                        </button>
+
                     <button
                       onClick={() => {
                         signOut();
@@ -4089,6 +4108,25 @@ export default function DoraIncidentApp() {
       <footer className="max-w-7xl mx-auto mt-6 text-center text-xs opacity-60">
         © Developped by Sécurité des systèmes d'information (SSI)
       </footer>
+
+      {/* --- MODAL CHANGEMENT DE MOT DE PASSE --- */}
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative">
+              {/* Bouton pour fermer la fenêtre */}
+              <button
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                &times;
+              </button>
+
+              {/* Notre composant de formulaire */}
+              <ChangePassword />
+            </div>
+  </div>
+)}
+
     </div>
   )
 }
