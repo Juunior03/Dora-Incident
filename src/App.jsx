@@ -6,12 +6,14 @@ import DoraIncidentApp from './components/DoraIncidentApp'
 import LoginPage from './pages/LoginPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import IdleTimeout from './components/IdleTimeout';
 
 function App() {
   return (
     <ThemeProvider>
         <AuthProvider>
           <Router>
+              <IdleTimeout timeoutInMinutes={15} />
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
