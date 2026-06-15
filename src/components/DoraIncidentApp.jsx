@@ -22,7 +22,9 @@ const nowISO = () => new Date().toISOString()
     }
 
     function cleanReportForExport(report) {
-      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = report;
+      // 1. On clone profondément pour ne pas muter le draft original
+      const clonedReport = structuredClone(report);
+      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = clonedReport;
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -349,10 +351,13 @@ const nowISO = () => new Date().toISOString()
 
     function processPhoneNumber(contact) {
       if (typeof contact.phone === 'string' && contact.phone.startsWith('+')) {
-        const countryCodeMatch = contact.phone.match(/^\+\d+/);
-        if (countryCodeMatch) {
-          contact.countryCode = countryCodeMatch[0];
-          contact.phone = contact.phone.substring(countryCodeMatch[0].length);
+        // On cherche un match exact avec les codes connus au lieu d'une Regex
+        const knownCodes = ['+33', '+32', '+40', '+41', '+49', '+44', '+1', '+7', '+81', '+86'];
+        const matchedCode = knownCodes.find(code => contact.phone.startsWith(code));
+
+        if (matchedCode) {
+          contact.countryCode = matchedCode;
+          contact.phone = contact.phone.substring(matchedCode.length);
         }
       }
     }
@@ -1401,10 +1406,13 @@ export default function DoraIncidentApp() {
         return [];
       }
 
+      const knownCodes = ['+33', '+32', '+40', '+41', '+49', '+44', '+1', '+7', '+81', '+86'];
+
       // Mapping des données (sans filtre supplémentaire)
       return data.map(item => {
         const defaultDraft = emptyDraft(item.incident_id);
         const reportData = item.report_data;
+
         const primaryContact = {
           ...defaultDraft.primaryContact,
           ...(reportData.primaryContact),
@@ -1413,6 +1421,7 @@ export default function DoraIncidentApp() {
         primaryContact.email = primaryContact.email || '';
         primaryContact.phone = primaryContact.phone || '';
         primaryContact.countryCode = primaryContact.countryCode || '+33';
+
         const secondaryContact = {
           ...defaultDraft.secondaryContact,
           ...(reportData.secondaryContact),
@@ -1421,24 +1430,49 @@ export default function DoraIncidentApp() {
         secondaryContact.email = secondaryContact.email || '';
         secondaryContact.phone = secondaryContact.phone || '';
         secondaryContact.countryCode = secondaryContact.countryCode || '+33';
+
         // S'assurer que countryCode est toujours une chaîne de caractères
         primaryContact.countryCode = String(primaryContact.countryCode);
         secondaryContact.countryCode = String(secondaryContact.countryCode);
+
         // Extraire l'indicatif du pays du numéro de téléphone si nécessaire
         if (typeof primaryContact.phone === 'string' && primaryContact.phone.startsWith('+')) {
-          const countryCodeMatch = primaryContact.phone.match(/^\+\d+/);
-          if (countryCodeMatch) {
-            primaryContact.countryCode = countryCodeMatch[0];
-            primaryContact.phone = primaryContact.phone.substring(countryCodeMatch[0].length);
+          const matchedCode = knownCodes.find(code => primaryContact.phone.startsWith(code));
+          if (matchedCode) {
+            primaryContact.countryCode = matchedCode;
+            primaryContact.phone = primaryContact.phone.substring(matchedCode.length);
           }
         }
+
         if (typeof secondaryContact.phone === 'string' && secondaryContact.phone.startsWith('+')) {
-          const countryCodeMatch = secondaryContact.phone.match(/^\+\d+/);
-          if (countryCodeMatch) {
-            secondaryContact.countryCode = countryCodeMatch[0];
-            secondaryContact.phone = secondaryContact.phone.substring(countryCodeMatch[0].length);
+          const matchedCode = knownCodes.find(code => secondaryContact.phone.startsWith(code));
+          if (matchedCode) {
+            secondaryContact.countryCode = matchedCode;
+            secondaryContact.phone = secondaryContact.phone.substring(matchedCode.length);
           }
         }
+
+        if (reportData.incident) {
+          const dateFields = [
+            'detectionDateTime',
+            'classificationDateTime',
+            'incidentOccurrenceDateTime',
+            'rootCauseAddressingDateTime',
+            'incidentResolutionDateTime',
+            'recurringIncidentDate'
+          ];
+          for (const field of dateFields) {
+            if (reportData.incident[field]) {
+              reportData.incident[field] = normalizeDateForInput(reportData.incident[field]);
+            }
+          }
+        }
+
+        if (reportData.impactAssessment?.serviceImpact?.serviceRestorationDateTime) {
+          reportData.impactAssessment.serviceImpact.serviceRestorationDateTime =
+            normalizeDateForInput(reportData.impactAssessment.serviceImpact.serviceRestorationDateTime);
+        }
+
         return {
           ...defaultDraft,
           ...reportData,
@@ -1451,6 +1485,14 @@ export default function DoraIncidentApp() {
           savedAt: reportData.savedAt || item.created_at
         };
       });
+    }
+
+    // Fonction pour s'assurer que la date passe bien dans un <input type="datetime-local">
+    function normalizeDateForInput(dateStr) {
+      if (typeof dateStr !== 'string') return dateStr;
+      // Ne garde que la partie YYYY-MM-DDTHH:mm en ignorant les secondes et le fuseau (Z)
+      const match = dateStr.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+      return match ? match[1] : dateStr;
     }
 
     async function validateReport(reportId) {
