@@ -1,12 +1,10 @@
-# On utilise uniquement Nginx pour servir les fichiers statiques
-FROM nginx:alpine
+# Utilisation de l'image officielle sécurisée (sans droits root)
+FROM nginxinc/nginx-unprivileged:alpine
 
-# On copie la configuration Nginx (si tu en as une spécifique)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# On copie le dossier 'dist' (le résultat de ton 'npm run build' local)
-# vers le dossier public de Nginx
 COPY dist/ /usr/share/nginx/html/
 
-EXPOSE 80
+# Les ports inférieurs à 1024 nécessitent d'être root.
+# Cette image utilise donc le port 8080 par défaut.
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
