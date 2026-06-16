@@ -19,7 +19,7 @@ const ForgotPasswordPage = () => {
     const domaineAutorise = "@actionlogement.fr"; //
 
     if (!email.toLowerCase().endsWith(domaineAutorise)) {
-      setError(`Seules les adresses ${domaineAutorise} sont autorisées.`);
+      setError(`Erreur, renseignez un mail avec le domaine autorisé`);
       return;
     }
     // -------------------------------
