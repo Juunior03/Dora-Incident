@@ -23,7 +23,7 @@ const LoginPage = () => {
     setError(''); // On efface les erreurs précédentes à chaque nouvelle tentative
 
     // --- VÉRIFICATION DU DOMAINE ---
-    const domaineAutorise = "@gmail.com"; // 👈 Domaine autorisé
+    const domaineAutorise = "@actionlogement.fr"; // 👈 Domaine autorisé
 
     if (!email.toLowerCase().endsWith(domaineAutorise)) {
       setError(`Erreur de connexion`);

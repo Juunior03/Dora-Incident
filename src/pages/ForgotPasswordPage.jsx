@@ -16,7 +16,7 @@ const ForgotPasswordPage = () => {
     setMessage('');
 
     // --- VÉRIFICATION DU DOMAINE ---
-    const domaineAutorise = "@gmail.com"; //
+    const domaineAutorise = "@actionlogement.fr"; //
 
     if (!email.toLowerCase().endsWith(domaineAutorise)) {
       setError(`Seules les adresses ${domaineAutorise} sont autorisées.`);
