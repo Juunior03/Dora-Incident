@@ -1129,6 +1129,76 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    const DurationInput = ({ id, label, value, onChangePath, updateDraft, disabled }) => {
+      const handleChange = (e) => {
+        let val = e.target.value.replaceAll(/\D/g, '');
+        let formattedValue = '';
+        if (val.length > 0) {
+          formattedValue = val.substring(0, 2);
+          if (val.length > 2) {
+            formattedValue += ':' + val.substring(2, 4);
+            if (val.length > 4) {
+              formattedValue += ':' + val.substring(4, 6);
+            }
+          }
+        }
+        updateDraft(onChangePath, formattedValue);
+      };
+
+      return (
+        <div>
+          <label htmlFor={id} className="text-sm font-medium">{label}</label>
+          <input
+            id={id}
+            type="text"
+            value={value}
+            onChange={handleChange}
+            placeholder="DD:HH:MM"
+            maxLength={8}
+            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+            disabled={disabled}
+          />
+        </div>
+      );
+    };
+
+    DurationInput.propTypes = {
+      id: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+      value: PropTypes.string,
+      onChangePath: PropTypes.string.isRequired,
+      updateDraft: PropTypes.func.isRequired,
+      disabled: PropTypes.bool
+    };
+
+    const StepNavigationButtons = ({ onBack, onNext, nextLabel, hideBack }) => (
+      <div className="mt-6 flex justify-between">
+        {!hideBack ? (
+          <button
+            onClick={onBack}
+            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            Back
+          </button>
+        ) : <div />}
+        <div className="flex gap-2">
+          <button
+            onClick={onNext}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            {nextLabel}
+          </button>
+        </div>
+      </div>
+    );
+
+    StepNavigationButtons.propTypes = {
+      onBack: PropTypes.func.isRequired,
+      onNext: PropTypes.func.isRequired,
+      nextLabel: PropTypes.string.isRequired,
+      hideBack: PropTypes.bool
+    };
+
 export default function DoraIncidentApp() {
   const { user, role, signOut } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -2524,24 +2594,7 @@ export default function DoraIncidentApp() {
                           />
                         </div>
 
-                        <div className="mt-6 flex justify-between">
-                          {!fromContinueButton && (
-                            <button
-                            onClick={() => setStep(1)}
-                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
-                          >
-                            Back
-                          </button>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setStep(3)}
-                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                            >
-                              Next → Review
-                            </button>
-                          </div>
-                        </div>
+                        <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
 
                       </div>
                     </div>
@@ -2793,63 +2846,24 @@ export default function DoraIncidentApp() {
                     )}
 
                     <div className="mt-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Incident Duration */}
-                        <div>
-                          <label htmlFor="incidentDuration" className="text-sm font-medium">Incident Duration (DD:HH:MM)</label>
-                          <input
+                        <div className="grid grid-cols-2 gap-4">
+                          <DurationInput
                             id="incidentDuration"
-                            type="text"
+                            label="Incident Duration (DD:HH:MM)"
                             value={draft.incident.incidentDuration}
-                            onChange={(e) => {
-                              let value = e.target.value.replaceAll(/\D/g, '');
-                              let formattedValue = '';
-                              if (value.length > 0) {
-                                formattedValue = value.substring(0, 2);
-                                if (value.length > 2) {
-                                  formattedValue += ':' + value.substring(2, 4);
-                                  if (value.length > 4) {
-                                    formattedValue += ':' + value.substring(4, 6);
-                                  }
-                                }
-                              }
-                              updateDraft('incident.incidentDuration', formattedValue);
-                            }}
-                            placeholder="DD:HH:MM"
-                            maxLength={8}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            onChangePath="incident.incidentDuration"
+                            updateDraft={updateDraft}
                             disabled={isFieldDisabled(role, draft.status)}
                           />
-                        </div>
-
-                        {/* Service Downtime */}
-                        <div>
-                          <label htmlFor="serviceDowntime" className="text-sm font-medium">Service Downtime (DD:HH:MM)</label>
-                          <input
+                          <DurationInput
                             id="serviceDowntime"
-                            type="text"
+                            label="Service Downtime (DD:HH:MM)"
                             value={draft.impactAssessment.serviceImpact.serviceDowntime}
-                            onChange={(e) => {
-                              let value = e.target.value.replaceAll(/\D/g, '');
-                              let formattedValue = '';
-                              if (value.length > 0) {
-                                formattedValue = value.substring(0, 2);
-                                if (value.length > 2) {
-                                  formattedValue += ':' + value.substring(2, 4);
-                                  if (value.length > 4) {
-                                    formattedValue += ':' + value.substring(4, 6);
-                                  }
-                                }
-                              }
-                              updateDraft('impactAssessment.serviceImpact.serviceDowntime', formattedValue);
-                            }}
-                            placeholder="DD:HH:MM"
-                            maxLength={8}
-                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            onChangePath="impactAssessment.serviceImpact.serviceDowntime"
+                            updateDraft={updateDraft}
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
-                      </div>
                     </div>
 
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("duration_and_service_downtime") && (
@@ -3226,24 +3240,7 @@ export default function DoraIncidentApp() {
                       </div>
                     )}
 
-                        <div className="mt-6 flex justify-between">
-                          {!fromContinueButton && (
-                            <button
-                            onClick={() => setStep(1)}
-                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
-                          >
-                            Back
-                          </button>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setStep(3)}
-                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                            >
-                              Next → Review
-                            </button>
-                          </div>
-                        </div>
+                        <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
 
                     </div>
                   )}
@@ -3650,24 +3647,7 @@ export default function DoraIncidentApp() {
                           />
                         </div>
 
-                        <div className="mt-6 flex justify-between">
-                          {!fromContinueButton && (
-                            <button
-                            onClick={() => setStep(1)}
-                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
-                          >
-                            Back
-                          </button>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setStep(3)}
-                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                            >
-                              Next → Review
-                            </button>
-                          </div>
-                        </div>
+                        <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
 
                       </div>
                     )}
