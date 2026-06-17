@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types'; // NOUVEAU : Import pour la validation des props
 
 const IdleTimeout = ({ timeoutInMinutes = 15 }) => {
   const { user, signOut } = useAuth();
@@ -36,7 +37,7 @@ const IdleTimeout = ({ timeoutInMinutes = 15 }) => {
 
     // On écoute chaque mouvement/frappe sur la page
     events.forEach((event) => {
-      window.addEventListener(event, resetTimer);
+      globalThis.addEventListener(event, resetTimer); // CORRECTION : utilisation de globalThis
     });
 
     // Nettoyage (Cleanup) quand le composant est détruit
@@ -45,12 +46,17 @@ const IdleTimeout = ({ timeoutInMinutes = 15 }) => {
         clearTimeout(timeoutRef.current);
       }
       events.forEach((event) => {
-        window.removeEventListener(event, resetTimer);
+        globalThis.removeEventListener(event, resetTimer); // CORRECTION : utilisation de globalThis
       });
     };
   }, [user, signOut, navigate, timeoutInMinutes]); // On relance si l'utilisateur change
 
   return null; // Ce composant est invisible
+};
+
+// CORRECTION : Validation stricte du type de la prop
+IdleTimeout.propTypes = {
+  timeoutInMinutes: PropTypes.number,
 };
 
 export default IdleTimeout;

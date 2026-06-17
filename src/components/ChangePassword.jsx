@@ -4,11 +4,23 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { FaLock, FaCheckCircle, FaRegCircle, FaUnlockAlt } from 'react-icons/fa';
+import PropTypes from 'prop-types'; // NOUVEAU : Import pour la validation des props
+
+// --- CORRECTION 1 & 2 : Composant extrait du parent et typage des props ---
+const ValidationItem = ({ isValid, text }) => (
+  <li className={`flex items-center text-sm mt-1 transition-colors duration-200 ${isValid ? 'text-green-600' : 'text-gray-400'}`}>
+    {isValid ? <FaCheckCircle className="mr-2" /> : <FaRegCircle className="mr-2" />}
+    {text}
+  </li>
+);
+
+ValidationItem.propTypes = {
+  isValid: PropTypes.bool.isRequired,
+  text: PropTypes.string.isRequired,
+};
 
 export default function ChangePassword() {
-  // --- NOUVEAU : État pour l'ancien mot de passe ---
   const [oldPassword, setOldPassword] = useState('');
-
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +42,7 @@ export default function ChangePassword() {
       length: newPassword.length >= 15,
       cases: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword),
       number: /\d/.test(newPassword),
-      special: /[@$!%*?&_-]/.test(newPassword),
+      special: /[@$!%*?&_-]/.test(newPassword), // L'antislash inutile a déjà été retiré
     });
   }, [newPassword]);
 
@@ -53,7 +65,6 @@ export default function ChangePassword() {
 
     setLoading(true);
 
-    // --- ÉTAPE 1 : Récupérer l'email de l'utilisateur actuel ---
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -62,7 +73,6 @@ export default function ChangePassword() {
       return;
     }
 
-    // --- ÉTAPE 2 : Vérifier l'ancien mot de passe (en tentant une connexion) ---
     const { error: verifyError } = await supabase.auth.signInWithPassword({
       email: user.email,
       password: oldPassword,
@@ -71,10 +81,9 @@ export default function ChangePassword() {
     if (verifyError) {
       setError("L'ancien mot de passe est incorrect.");
       setLoading(false);
-      return; // On bloque tout !
+      return;
     }
 
-    // --- ÉTAPE 3 : Si l'ancien est bon, on met à jour avec le nouveau ---
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
     });
@@ -91,13 +100,6 @@ export default function ChangePassword() {
     }
   };
 
-  const ValidationItem = ({ isValid, text }) => (
-    <li className={`flex items-center text-sm mt-1 transition-colors duration-200 ${isValid ? 'text-green-600' : 'text-gray-400'}`}>
-      {isValid ? <FaCheckCircle className="mr-2" /> : <FaRegCircle className="mr-2" />}
-      {text}
-    </li>
-  );
-
   return (
     <div className="w-full">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Modifier mon mot de passe</h2>
@@ -107,12 +109,13 @@ export default function ChangePassword() {
 
       <form onSubmit={handleUpdatePassword} className="space-y-4">
 
-        {/* --- NOUVEAU CHAMP : Ancien mot de passe --- */}
+        {/* --- CORRECTION 3 : htmlFor et id ajoutés --- */}
         <div>
-          <label className="block text-gray-600 text-sm mb-1">Mot de passe actuel</label>
+          <label htmlFor="oldPassword" className="block text-gray-600 text-sm mb-1">Mot de passe actuel</label>
           <div className="relative">
             <FaUnlockAlt className="absolute left-3 top-3 text-gray-400" />
             <input
+              id="oldPassword"
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
@@ -122,15 +125,15 @@ export default function ChangePassword() {
           </div>
         </div>
 
-        {/* Ligne de séparation esthétique */}
         <hr className="border-gray-200 my-4" />
 
-        {/* --- CHAMP : Nouveau mot de passe --- */}
+        {/* --- CORRECTION 3 : htmlFor et id ajoutés --- */}
         <div>
-          <label className="block text-gray-600 text-sm mb-1">Nouveau mot de passe</label>
+          <label htmlFor="newPassword" className="block text-gray-600 text-sm mb-1">Nouveau mot de passe</label>
           <div className="relative">
             <FaLock className="absolute left-3 top-3 text-gray-400" />
             <input
+              id="newPassword"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -147,12 +150,13 @@ export default function ChangePassword() {
           </ul>
         </div>
 
-        {/* --- CHAMP : Confirmer nouveau mot de passe --- */}
+        {/* --- CORRECTION 3 : htmlFor et id ajoutés --- */}
         <div>
-          <label className="block text-gray-600 text-sm mb-1">Confirmer le nouveau mot de passe</label>
+          <label htmlFor="confirmPassword" className="block text-gray-600 text-sm mb-1">Confirmer le nouveau mot de passe</label>
           <div className="relative">
             <FaLock className="absolute left-3 top-3 text-gray-400" />
             <input
+              id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

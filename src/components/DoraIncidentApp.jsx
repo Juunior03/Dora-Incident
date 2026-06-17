@@ -21,6 +21,15 @@ const nowISO = () => new Date().toISOString()
       });
     }
 
+    // Fonction utilitaire placée en dehors du composant (Outer scope)
+    function normalizeDateForInput(dateStr) {
+      if (typeof dateStr !== 'string') return dateStr;
+      // Utilisation de RegExp.exec() au lieu de String.match()
+      const regex = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/;
+      const match = regex.exec(dateStr);
+      return match ? match[1] : dateStr;
+    }
+
     function cleanReportForExport(report) {
       // 1. On clone profondément pour ne pas muter le draft original
       const clonedReport = structuredClone(report);
@@ -1485,14 +1494,6 @@ export default function DoraIncidentApp() {
           savedAt: reportData.savedAt || item.created_at
         };
       });
-    }
-
-    // Fonction pour s'assurer que la date passe bien dans un <input type="datetime-local">
-    function normalizeDateForInput(dateStr) {
-      if (typeof dateStr !== 'string') return dateStr;
-      // Ne garde que la partie YYYY-MM-DDTHH:mm en ignorant les secondes et le fuseau (Z)
-      const match = dateStr.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-      return match ? match[1] : dateStr;
     }
 
     async function validateReport(reportId) {
