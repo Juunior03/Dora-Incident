@@ -1199,6 +1199,51 @@ const nowISO = () => new Date().toISOString()
       hideBack: PropTypes.bool
     };
 
+    const RootCauseCheckboxGroup = ({
+      title,
+      prefix,
+      labelPrefixToRemove,
+      options,
+      selectedValues,
+      updateDraft,
+      disabled
+    }) => {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="block text-xs font-medium mb-2">{title}</p>
+          {options
+            .filter(option => option.value.startsWith(prefix))
+            .map(option => (
+              <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
+                <input
+                  type="checkbox"
+                  checked={selectedValues.includes(option.value)}
+                  onChange={() => {
+                    const updatedValues = selectedValues.includes(option.value)
+                      ? selectedValues.filter(value => value !== option.value)
+                      : [...selectedValues, option.value];
+                    updateDraft('incident.rootCausesDetailedClassification', updatedValues);
+                  }}
+                  className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                  disabled={disabled}
+                />
+                <span>{option.label.replace(labelPrefixToRemove, "")}</span>
+              </label>
+            ))}
+        </div>
+      );
+    };
+
+    RootCauseCheckboxGroup.propTypes = {
+      title: PropTypes.string.isRequired,
+      prefix: PropTypes.string.isRequired,
+      labelPrefixToRemove: PropTypes.string.isRequired,
+      options: PropTypes.array.isRequired,
+      selectedValues: PropTypes.array.isRequired,
+      updateDraft: PropTypes.func.isRequired,
+      disabled: PropTypes.bool
+    };
+
 export default function DoraIncidentApp() {
   const { user, role, signOut } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -3281,137 +3326,67 @@ export default function DoraIncidentApp() {
 
                             {/* Malicious Actions */}
                             {draft.incident.rootCauseHLClassification.includes("malicious_actions") && (
-                              <div className="flex flex-col gap-2">
-                                  <p className="block text-xs font-medium mb-2">Malicious Actions</p>
-                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                    .filter(option => option.value.startsWith("malicious_actions_"))
-                                    .map(option => (
-                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                          onChange={() => {
-                                            const currentValues = draft.incident.rootCausesDetailedClassification;
-                                            const updatedValues = currentValues.includes(option.value)
-                                              ? currentValues.filter(value => value !== option.value)
-                                              : [...currentValues, option.value];
-                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                          }}
-                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                          disabled={isFieldDisabled(role, draft.status)}
-                                        />
-                                        <span>{option.label.replace("Malicious actions: ", "")}</span>
-                                      </label>
-                                    ))}
-                              </div>
+                              <RootCauseCheckboxGroup
+                                title="Malicious Actions"
+                                prefix="malicious_actions_"
+                                labelPrefixToRemove="Malicious actions: "
+                                options={ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS}
+                                selectedValues={draft.incident.rootCausesDetailedClassification}
+                                updateDraft={updateDraft}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
                             )}
 
                             {/* Process Failure */}
                             {draft.incident.rootCauseHLClassification.includes("process_failure") && (
-                                <div className="flex flex-col gap-2">
-                                  <p className="block text-xs font-medium mb-2">Process Failure</p>
-                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                    .filter(option => option.value.startsWith("process_failure_"))
-                                    .map(option => (
-                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                          onChange={() => {
-                                            const currentValues = draft.incident.rootCausesDetailedClassification;
-                                            const updatedValues = currentValues.includes(option.value)
-                                              ? currentValues.filter(value => value !== option.value)
-                                              : [...currentValues, option.value];
-                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                          }}
-                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                          disabled={isFieldDisabled(role, draft.status)}
-                                        />
-                                        <span>{option.label.replace("Process failure: ", "")}</span>
-                                      </label>
-                                    ))}
-                                </div>
+                              <RootCauseCheckboxGroup
+                                title="Process Failure"
+                                prefix="process_failure_"
+                                labelPrefixToRemove="Process failure: "
+                                options={ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS}
+                                selectedValues={draft.incident.rootCausesDetailedClassification}
+                                updateDraft={updateDraft}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
                             )}
 
                             {/* System Failure */}
                             {draft.incident.rootCauseHLClassification.includes("system_failure_malfunction") && (
-                                <div className="flex flex-col gap-2">
-                                  <p className="block text-xs font-medium mb-2">System Failure</p>
-                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                    .filter(option => option.value.startsWith("system_failure_"))
-                                    .map(option => (
-                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                          onChange={() => {
-                                            const currentValues = draft.incident.rootCausesDetailedClassification;
-                                            const updatedValues = currentValues.includes(option.value)
-                                              ? currentValues.filter(value => value !== option.value)
-                                              : [...currentValues, option.value];
-                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                          }}
-                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                          disabled={isFieldDisabled(role, draft.status)}
-                                        />
-                                        <span>{option.label.replace("System failure: ", "")}</span>
-                                      </label>
-                                    ))}
-                                </div>
+                              <RootCauseCheckboxGroup
+                                title="System Failure"
+                                prefix="system_failure_"
+                                labelPrefixToRemove="System failure: "
+                                options={ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS}
+                                selectedValues={draft.incident.rootCausesDetailedClassification}
+                                updateDraft={updateDraft}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
                             )}
 
                             {/* Human Error */}
                             {draft.incident.rootCauseHLClassification.includes("human_error") && (
-                                <div className="flex flex-col gap-2">
-                                  <p className="block text-xs font-medium mb-2">Human Error</p>
-                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                    .filter(option => option.value.startsWith("human_error_"))
-                                    .map(option => (
-                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                          onChange={() => {
-                                            const currentValues = draft.incident.rootCausesDetailedClassification;
-                                            const updatedValues = currentValues.includes(option.value)
-                                              ? currentValues.filter(value => value !== option.value)
-                                              : [...currentValues, option.value];
-                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                          }}
-                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                          disabled={isFieldDisabled(role, draft.status)}
-                                        />
-                                        <span>{option.label.replace("Human error: ", "")}</span>
-                                      </label>
-                                    ))}
-                                </div>
+                              <RootCauseCheckboxGroup
+                                title="Human Error"
+                                prefix="human_error_"
+                                labelPrefixToRemove="Human error: "
+                                options={ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS}
+                                selectedValues={draft.incident.rootCausesDetailedClassification}
+                                updateDraft={updateDraft}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
                             )}
 
                             {/* External Event */}
                             {draft.incident.rootCauseHLClassification.includes("external_event") && (
-                                <div className="flex flex-col gap-2">
-                                  <p className="block text-xs font-medium mb-2">External Event</p>
-                                  {ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS
-                                    .filter(option => option.value.startsWith("external_event_"))
-                                    .map(option => (
-                                      <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={draft.incident.rootCausesDetailedClassification.includes(option.value)}
-                                          onChange={() => {
-                                            const currentValues = draft.incident.rootCausesDetailedClassification;
-                                            const updatedValues = currentValues.includes(option.value)
-                                              ? currentValues.filter(value => value !== option.value)
-                                              : [...currentValues, option.value];
-                                            updateDraft('incident.rootCausesDetailedClassification', updatedValues);
-                                          }}
-                                          className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
-                                          disabled={isFieldDisabled(role, draft.status)}
-                                        />
-                                        <span>{option.label.replace("External event: ", "")}</span>
-                                      </label>
-                                    ))}
-                                </div>
+                              <RootCauseCheckboxGroup
+                                title="External Event"
+                                prefix="external_event_"
+                                labelPrefixToRemove="External event: "
+                                options={ROOT_CAUSES_DETAILED_CLASSIFICATION_OPTIONS}
+                                selectedValues={draft.incident.rootCausesDetailedClassification}
+                                updateDraft={updateDraft}
+                                disabled={isFieldDisabled(role, draft.status)}
+                              />
                             )}
                           </div>
                         </div>
