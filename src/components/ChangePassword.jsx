@@ -30,7 +30,7 @@ export default function ChangePassword() {
       length: newPassword.length >= 15,
       cases: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword),
       number: /\d/.test(newPassword),
-      special: /[@$!%*?&_#\-]/.test(newPassword),
+      special: /[@$!%*?&_-]/.test(newPassword),
     });
   }, [newPassword]);
 
