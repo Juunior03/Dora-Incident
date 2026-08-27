@@ -1,10 +1,9 @@
-# Utilisation de l'image officielle sécurisée (sans droits root)
-FROM nginxinc/nginx-unprivileged:alpine
+# Utilisation de l'image hébergée sur le registre interne
+FROM docker-registry.alsdmz.lan/nginx:1.21-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY dist/ /usr/share/nginx/html/
 
-# Les ports inférieurs à 1024 nécessitent d'être root.
-# Cette image utilise donc le port 8080 par défaut.
-EXPOSE 8080
+# L'image standard écoute sur le port 80 par défaut
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
