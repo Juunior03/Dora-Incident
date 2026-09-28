@@ -29,9 +29,15 @@ const ResetPasswordPage = () => {
     setMessage('');
     setLoading(true);
 
-    // 1. Validation basique (tu peux remettre ta regex ici si tu veux)
-    if (newPassword.length < 8) {
-        setError("Le mot de passe doit contenir au moins 8 caractères.");
+    // 1. Même politique que ChangePassword
+    const isPasswordValid =
+      newPassword.length >= 15 &&
+      /[A-Z]/.test(newPassword) &&
+      /[a-z]/.test(newPassword) &&
+      /\d/.test(newPassword) &&
+      /[@$!%*?&_-]/.test(newPassword);
+    if (!isPasswordValid) {
+        setError("Le mot de passe doit contenir au moins 15 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&_-).");
         setLoading(false);
         return;
     }

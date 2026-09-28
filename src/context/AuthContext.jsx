@@ -10,33 +10,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(false);
 
   useEffect(() => {
     getCSRFToken();
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-          try {
-            const { data } = await supabase
-              .from('users')
-              .select('role')
-              .eq('id', currentUser.id)
-              .maybeSingle();
-            if (data) {
-              setRole(data.role);
-            } else {
-              setRole('saisisseur');
-            }
-          } catch (err) {
-            console.error("Erreur lors de la récupération du rôle:", err);
-            setRole('saisisseur'); // Rôle par défaut en cas d'erreur
-          }
-        } else {
-          setRole(null);
-        }
+        setUser(session?.user ?? null);
       } catch (err) {
         console.error("Erreur lors de la récupération de la session:", err);
       } finally {
@@ -46,13 +27,41 @@ export const AuthProvider = ({ children }) => {
     checkSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+        setUser(session?.user ?? null);
         setLoading(false); // S'assurer que loading passe à false
       }
     );
     return () => subscription.unsubscribe();
   }, []);
+
+  // Charge le rôle à chaque changement d'utilisateur (connexion, restauration de session)
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) {
+      setRole(null);
+      return;
+    }
+    let cancelled = false;
+    const loadRole = async () => {
+      setRoleLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!cancelled) setRole(data ? data.role : 'saisisseur');
+      } catch (err) {
+        console.error("Erreur lors de la récupération du rôle:", err);
+        if (!cancelled) setRole(null); // Aucun droit en cas d'erreur
+      } finally {
+        if (!cancelled) setRoleLoading(false);
+      }
+    };
+    loadRole();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const signIn = useCallback(async (email, password) => {
     try {
@@ -93,10 +102,10 @@ export const AuthProvider = ({ children }) => {
   const contextValue = useMemo(() => ({
     user,
     role,
-    loading,
+    loading: loading || roleLoading,
     signIn,
     signOut,
-  }), [user, role, loading, signIn, signOut]);
+  }), [user, role, loading, roleLoading, signIn, signOut]);
 
   return (
     <AuthContext.Provider value={contextValue}>

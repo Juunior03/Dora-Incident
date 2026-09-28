@@ -203,9 +203,9 @@ const nowISO = () => new Date().toISOString()
       return incident;
     }
 
+    // Les données doivent déjà être nettoyées via cleanReportForExport
     function niceDownload(filename, data) {
-      const cleanedData = cleanReportForExport(data);
-      const blob = new Blob([JSON.stringify(cleanedData, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -223,23 +223,6 @@ const nowISO = () => new Date().toISOString()
 
       // Nettoyer le rapport fusionné pour l'export
       const cleanedReport = cleanReportForExport(mergedReport);
-
-      // Vérification supplémentaire pour éviter la double concaténation
-      if (cleanedReport.primaryContact && typeof cleanedReport.primaryContact.phone === 'string') {
-        // Si le numéro commence déjà par un +, on ne fait rien
-        if (!cleanedReport.primaryContact.phone.startsWith('+')) {
-          cleanedReport.primaryContact.phone = (cleanedReport.primaryContact.countryCode || '+33') + cleanedReport.primaryContact.phone;
-        }
-        delete cleanedReport.primaryContact.countryCode;
-      }
-
-      if (cleanedReport.secondaryContact && typeof cleanedReport.secondaryContact.phone === 'string') {
-        // Si le numéro commence déjà par un +, on ne fait rien
-        if (!cleanedReport.secondaryContact.phone.startsWith('+')) {
-          cleanedReport.secondaryContact.phone = (cleanedReport.secondaryContact.countryCode || '+33') + cleanedReport.secondaryContact.phone;
-        }
-        delete cleanedReport.secondaryContact.countryCode;
-      }
 
       const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
       const filename = `dora-incident-${financialEntityCode}.json`;
@@ -264,15 +247,6 @@ const nowISO = () => new Date().toISOString()
     function isObject(item) {
       return (item && typeof item === 'object' && !Array.isArray(item));
     }
-
-    const getSecureRandomValue = (() => {
-      const crypto = globalThis.crypto || globalThis.msCrypto;
-      return () => {
-        const array = new Uint32Array(1);
-        crypto.getRandomValues(array);
-        return array[0] / 4294967295;
-      };
-    })();
 
     function ConfettiCanvas({ trigger }) {
       useEffect(() => {
@@ -839,6 +813,13 @@ const nowISO = () => new Date().toISOString()
       }
     }
 
+    // Un champ est renseigné s'il n'est ni absent, ni une chaîne vide
+    function isFilled(value) {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'string') return value.trim() !== '';
+      return true;
+    }
+
     /**
      * Valide une liste de champs selon des règles données.
      * @param {Object} report - Le rapport à valider.
@@ -848,35 +829,11 @@ const nowISO = () => new Date().toISOString()
     function validateFields(report, fields, errors) {
       for (const { path, check, message } of fields) {
         const value = path.reduce((obj, key) => obj?.[key], report);
-        const isValid = check ? check(value) : value !== undefined && value !== null;
+        const isValid = check ? check(value) : isFilled(value);
         if (!isValid) {
           errors.push(message);
         }
       }
-    }
-
-    /**
-     * Met à jour les types d'entités affectées de manière cohérente.
-     * @param {Object} draft - Le draft actuel.
-     * @param {Array} updatedValues - Les nouvelles valeurs de affectedEntityType.
-     * @returns {Object} - Un nouveau draft avec les types synchronisés.
-     */
-    function syncAffectedEntityTypes(draft, updatedValues) {
-      const newDraft = structuredClone(draft);
-
-      // Mettre à jour submittingEntity
-      newDraft.submittingEntity.affectedEntityType = updatedValues;
-
-      // Mettre à jour ultimateParentUndertaking
-      newDraft.ultimateParentUndertaking.affectedEntityType = updatedValues;
-
-      // Mettre à jour toutes les affectedEntity
-      newDraft.affectedEntity = newDraft.affectedEntity.map(entity => ({
-        ...entity,
-        affectedEntityType: updatedValues,
-      }));
-
-      return newDraft;
     }
 
     // Valide le format d'un email
@@ -884,59 +841,6 @@ const nowISO = () => new Date().toISOString()
       return /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
     }
 
-
-    function getNestedObject(obj, path) {
-      const parts = path.split('.');
-      let cur = obj;
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        const p = parts[i];
-        if (!(p in cur)) cur[p] = {};
-        cur = cur[p];
-      }
-
-      return { obj: cur, field: parts.at(-1) };
-    }
-
-    function resetGeographicalSpreadThresholds(draft) {
-      const thresholdPath = 'incident.classificationTypes.0.countryCodeMaterialityThresholds';
-      const thresholdParts = thresholdPath.split('.');
-      let thresholdCur = draft;
-
-      for (let i = 0; i < thresholdParts.length - 1; i++) {
-        const p = thresholdParts[i];
-        if (!(p in thresholdCur)) thresholdCur[p] = {};
-        thresholdCur = thresholdCur[p];
-      }
-
-      thresholdCur[thresholdParts.at(-1)] = [];
-    }
-
-    function toggleValueInArray(obj, field, value) {
-      if (!obj[field]) obj[field] = [];
-      if (obj[field].includes(value)) {
-        obj[field] = obj[field].filter(v => v !== value);
-      } else {
-        obj[field].push(value);
-      }
-    }
-
-    function toggleArrayValue(path, value) {
-      setDraft(prev => {
-        const next = structuredClone(prev);
-        const { obj: cur, field } = getNestedObject(next, path);
-
-        toggleValueInArray(cur, field, value);
-
-        if (path === 'incident.classificationTypes.0.classificationCriterion' && value === 'geographical_spread') {
-          if (!cur[field].includes(value)) {
-            resetGeographicalSpreadThresholds(next);
-          }
-        }
-
-        return next;
-      });
-    }
 
     function getButtonLabel(role, status) {
       if (role === 'auditeur') {
@@ -1014,8 +918,6 @@ const nowISO = () => new Date().toISOString()
 
 
     function emptyDraft(incidentId = null) {
-        console.log('--- Dans emptyDraft ---');
-        console.log('incidentId:', incidentId);
       return {
         id: null,
         incidentId: incidentId || `incident_${Date.now()}`,
@@ -1069,6 +971,7 @@ const nowISO = () => new Date().toISOString()
           originatesFromThirdPartyProvider: '',
           incidentDiscovery: '',
           competentAuthorityCode: '',
+          otherInformation: '',
           incidentType: {
               incidentClassification: [],
               threatTechniques: [],
@@ -1362,19 +1265,14 @@ export default function DoraIncidentApp() {
     };
 
     useEffect(() => {
+      if (!user?.id || !role) return;
       async function loadReports() {
         const reportsFromSupabase = await fetchReportsFromSupabase();
         setReports(reportsFromSupabase);
       }
       loadReports();
-    }, []);
+    }, [user?.id, role]);
 
-
-    useEffect(() => {
-      console.log('Vérification de draft et user :');
-      console.log('draft:', draft);
-      console.log('user:', user);
-    }, [draft, user]);
 
     useEffect(() => {
       const incidents = groupReportsByIncident(reports);
@@ -2195,18 +2093,21 @@ export default function DoraIncidentApp() {
                               value={draft.ultimateParentUndertaking.name}
                               onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)}
                               className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             <input
                               placeholder="Identification Code"
                               value={draft.ultimateParentUndertaking.code}
                               onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)}
                               className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                             <input
                               placeholder="LEI Code"
                               value={draft.ultimateParentUndertaking.LEI}
                               onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)}
                               className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                              disabled={isFieldDisabled(role, draft.status)}
                             />
                           </div>
                         </div>
@@ -2271,7 +2172,7 @@ export default function DoraIncidentApp() {
 
                           <div className="space-y-2 mt-2">
                               {draft.affectedEntity.map((ae, idx) => (
-                                <div key={`affected-entity-${idx}-${ae.name}`} className="p-3 rounded-lg border bg-white">
+                                <div key={`affected-entity-${idx}`} className="p-3 rounded-lg border bg-white">
                                   <div className="flex gap-2">
                                     <input
                                       placeholder="Name"
@@ -2348,8 +2249,8 @@ export default function DoraIncidentApp() {
                             <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
                             <div className="flex gap-2">
                               <select
-                                  value={draft.secondaryContact.countryCode || '+33'}
-                                  onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
+                                  value={draft.primaryContact.countryCode || '+33'}
+                                  onChange={(e) => updateDraft('primaryContact.countryCode', e.target.value)}
                                   className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
                                   disabled={isFieldDisabled(role, draft.status)}
                                 >
@@ -3536,11 +3437,7 @@ export default function DoraIncidentApp() {
                           </p>
                           <textarea
                             value={draft.incident.classificationTypes[0].economicImpactMaterialityThreshold || ''}
-                            onChange={e => {
-                              const updatedClassificationTypes = [...draft.incident.classificationTypes];
-                              updatedClassificationTypes[0].economicImpactMaterialityThreshold = e.target.value;
-                              updateDraft('incident.classificationTypes', updatedClassificationTypes);
-                            }}
+                            onChange={e => updateDraft('incident.classificationTypes.0.economicImpactMaterialityThreshold', e.target.value)}
                             rows={3}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
                             placeholder="Détaillez les seuils atteints par l'incident pour le critère 'Impact économique' (articles 7 et 14 du Règlement (UE) 2022/2554)."
