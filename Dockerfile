@@ -26,6 +26,6 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
 # 2. Rétrograder les privilèges vers l'utilisateur standard
 USER nginx
 
-# 3. Utiliser un port supérieur à 1024 (obligatoire sans les droits root)
-EXPOSE 8080
+# 3. Port 80 : Docker (>= 20.10) autorise les ports < 1024 sans root
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
