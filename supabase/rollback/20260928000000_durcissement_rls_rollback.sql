@@ -1,5 +1,6 @@
 -- Retour arrière de la migration 20260928000000_durcissement_rls.sql
--- Restaure exactement les policies et les droits d'avant la migration.
+-- Restaure exactement les policies et les droits d'avant la migration,
+-- tels que relevés sur l'instance self-hosted le 28/09/2026.
 -- ATTENTION : cela rétablit aussi les failles d'accès décrites dans la migration.
 
 begin;
@@ -39,6 +40,7 @@ create policy "Enable update for all users" on public.reports
 
 drop policy if exists "auditeurs_cannot_modify_reports" on public.reports;
 create policy "auditeurs_cannot_modify_reports" on public.reports
+  to authenticated
   using ((select users.role from public.users where users.id = auth.uid()) <> 'auditeur');
 
 drop policy if exists "Saisisseurs can create new reports" on public.reports;
@@ -58,11 +60,11 @@ create policy "validateurs_can_update_reports_to_validated" on public.reports
 
 drop policy if exists "Allow validators to add comments" on public.comments;
 create policy "Allow validators to add comments" on public.comments
-  for insert with check ((select users.role from public.users where users.id = auth.uid()) = 'validateur');
+  for insert to authenticated with check ((select users.role from public.users where users.id = auth.uid()) = 'validateur');
 
 drop policy if exists "Allow reading comments for report owners and validators" on public.comments;
 create policy "Allow reading comments for report owners and validators" on public.comments
-  for select using (auth.uid() = created_by
+  for select to authenticated using (auth.uid() = created_by
                     or auth.uid() in (select reports.created_by from public.reports
                                       where reports.id = comments.report_id));
 
@@ -72,14 +74,16 @@ create policy "Allow inserts for trigger" on public.users
 
 drop policy if exists "Allow select for authenticated users" on public.users;
 create policy "Allow select for authenticated users" on public.users
-  for select using (auth.uid() = id);
+  for select to authenticated using (auth.uid() = id);
 
 drop policy if exists "Allow users to manage their own settings" on public.submitting_entity_settings;
 create policy "Allow users to manage their own settings" on public.submitting_entity_settings
+  to authenticated
   using (auth.uid() = user_id);
 
 drop policy if exists "Enable read/write access to submitting_entity_settings for auth" on public.submitting_entity_settings;
 create policy "Enable read/write access to submitting_entity_settings for auth" on public.submitting_entity_settings
+  to authenticated
   using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
