@@ -8,10 +8,20 @@ import { messageErreur } from './erreursBase';
 
 const TAILLE_LOT = 200;
 
+// Libellés affichés dans le rapport : les noms des tables restent internes
+const LIBELLES = {
+  ri_teneur_registre: 'B_01.01 – Entité tenant le registre', ri_entites: 'B_01.02 – Entités du périmètre',
+  ri_succursales: 'B_01.03 – Succursales', ri_prestataires: 'B_05.01 – Prestataires TIC', ri_fonctions: 'B_06.01 – Fonctions',
+  ri_contrats: 'B_02.01 – Contrats', ri_contrats_services: 'B_02.02 – Services contractés',
+  ri_accords_intragroupe: 'B_02.03 – Accords intra-groupe', ri_signataires_reception: 'B_03.01 – Signataires (réception)',
+  ri_signataires_fourniture: 'B_03.03 – Signataires (fourniture)', ri_sous_traitance: 'B_05.02 – Sous-traitance',
+  ri_evaluations: 'B_07.01 – Évaluations des services', ri_definitions: 'B_99.01 – Définitions internes',
+};
+
 const garder = (objet, champs) => Object.fromEntries(champs.map((c) => [c, objet[c] ?? null]));
 
 async function ecrireLot(table, lignes, conflit, reference, rapport) {
-  const etape = { table, lus: lignes.length, ecrits: 0, erreurs: [] };
+  const etape = { libelle: LIBELLES[table], lus: lignes.length, ecrits: 0, erreurs: [] };
   rapport.push(etape);
   const valides = lignes.filter((l) => !l._erreur);
   for (const l of lignes.filter((x) => x._erreur)) etape.erreurs.push({ reference: reference(l), message: l._erreur });
@@ -46,7 +56,7 @@ async function chargerPrestataires() {
 /**
  * @param donnees résultat de analyserClasseur().donnees
  * @param onEtape (libellé) => void, pour afficher la progression
- * @returns rapport : [{ table, lus, ecrits, erreurs: [{ reference, message }] }]
+ * @returns rapport : [{ libelle, lus, ecrits, erreurs: [{ reference, message }] }]
  */
 export async function importerDonnees(donnees, onEtape = () => {}) {
   const rapport = [];
@@ -72,7 +82,7 @@ export async function importerDonnees(donnees, onEtape = () => {}) {
 
   // Entreprises mères ultimes : rattachées une fois tous les prestataires enregistrés
   let idPrestataire = await chargerPrestataires();
-  const meres = { table: 'ri_prestataires (entreprise mère ultime)', lus: 0, ecrits: 0, erreurs: [], complement: true };
+  const meres = { libelle: 'Rattachement aux entreprises mères ultimes', lus: 0, ecrits: 0, erreurs: [], complement: true };
   for (const p of donnees.prestataires.filter((x) => x.mere_code)) {
     meres.lus += 1;
     const id = idPrestataire(p.code, p.type_code);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { anomaliesGleif, collecterLei, interrogerGleif } from './gleif';
+import { messageTechnique } from '../../utils/messageTechnique';
 
 const GRAVITES = {
   bloquant: { label: 'Bloquant', classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' },
@@ -20,7 +21,7 @@ function messageErreurRapport(error) {
   if (error.code === 'PGRST205' || /could not find the table/i.test(texte)) {
     return "Le registre n'est pas encore installé dans la base : appliquez la migration 20260930000000_registre_information.sql.";
   }
-  return error.message;
+  return messageTechnique(error);
 }
 
 export default function RapportAnomalies({ onNaviguer }) {

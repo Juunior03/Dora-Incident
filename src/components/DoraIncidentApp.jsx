@@ -8,6 +8,7 @@ import { getSettings, saveSettings } from '../utils/supabaseSettings.js'
 import ChangePassword from './ChangePassword';
 import { FaKey } from 'react-icons/fa';
 import RegistreInformation from './registre/RegistreInformation';
+import { messageTechnique } from '../utils/messageTechnique';
 
 const nowISO = () => new Date().toISOString()
 
@@ -1381,7 +1382,7 @@ export default function DoraIncidentApp() {
 
         if (error) {
           console.error('Erreur lors de la sauvegarde dans Supabase :', error);
-          return { ok: false, errors: [error.message] };
+          return { ok: false, errors: [messageTechnique(error)] };
         } else {
           const report = { id: data[0].id, ...candidate, status: data[0].status };
 
@@ -1410,7 +1411,7 @@ export default function DoraIncidentApp() {
         }
       } catch (err) {
         console.error('Erreur inattendue lors de la sauvegarde :', err);
-        return { ok: false, errors: [err.message] };
+        return { ok: false, errors: [messageTechnique(err)] };
       }
     }
 
@@ -1526,7 +1527,7 @@ export default function DoraIncidentApp() {
 
         if (error) {
           console.error('Erreur lors de la récupération du rapport:', error);
-          return { ok: false, error: error.message };
+          return { ok: false, error: messageTechnique(error) };
         }
 
         // Déterminer le type de rapport suivant
@@ -1551,7 +1552,7 @@ export default function DoraIncidentApp() {
 
         if (updateError) {
           console.error('Erreur lors de la validation:', updateError);
-          return { ok: false, error: updateError.message };
+          return { ok: false, error: messageTechnique(updateError) };
         } else {
           // Rafraîchir les rapports pour refléter le changement de statut
           const reportsFromSupabase = await fetchReportsFromSupabase();
@@ -1560,7 +1561,7 @@ export default function DoraIncidentApp() {
         }
       } catch (err) {
         console.error('Erreur inattendue lors de la validation:', err);
-        return { ok: false, error: err.message };
+        return { ok: false, error: messageTechnique(err) };
       }
     }
 
@@ -1587,7 +1588,7 @@ export default function DoraIncidentApp() {
         if (error) {
           console.error('Erreur lors de l\'ajout du commentaire:', error);
           alert('Vous n\'êtes pas autorisé à ajouter un commentaire ou une erreur est survenue.');
-          return { ok: false, error: error.message };
+          return { ok: false, error: messageTechnique(error) };
         } else {
           // Rafraîchir les rapports pour inclure les nouveaux commentaires
           const reportsFromSupabase = await fetchReportsFromSupabase();
@@ -1596,7 +1597,7 @@ export default function DoraIncidentApp() {
         }
       } catch (err) {
         console.error('Erreur inattendue lors de l\'ajout du commentaire:', err);
-        return { ok: false, error: err.message };
+        return { ok: false, error: messageTechnique(err) };
       }
     }
 
