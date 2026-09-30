@@ -1,5 +1,6 @@
 // Configuration des écrans du registre d'information DORA
 // Listes fermées et colonnes : règlement d'exécution (UE) 2024/2956, annexes I et III.
+import { ACTIVITES_AUTORISEES } from './activitesAutorisees';
 
 const numbered = (labels, start = 1) =>
   labels.map((label, i) => ({ value: start + i, label: `${start + i}. ${label}` }));
@@ -164,6 +165,8 @@ export const SECTIONS = [
     ],
   },
   {
+    // Codes de colonnes affichés selon la taxonomie de reporting DPM 4.0 (0010 à 0100),
+    // qui diffère du règlement 2024/2956 à partir de la criticité (0060 à 0110 dans le texte)
     key: 'fonctions',
     table: 'ri_fonctions',
     code: 'B_06.01',
@@ -171,15 +174,15 @@ export const SECTIONS = [
     pk: ['identifiant'],
     fields: [
       { name: 'identifiant', label: 'Identifiant (F1, F2…)', code: 'B_06.01.0010', type: 'text', required: true, list: true, upper: true },
-      { name: 'activite_autorisee', label: 'Activité autorisée', code: 'B_06.01.0020', type: 'text', required: true, list: true, help: "Activité de l'annexe II, ou « fonctions de soutien »" },
+      { name: 'activite_autorisee', label: 'Activité autorisée', code: 'B_06.01.0020', type: 'select', groups: ACTIVITES_AUTORISEES, required: true, list: true, help: "Activité de l'annexe II, ou « fonctions de soutien » si la fonction n'est liée à aucune activité autorisée" },
       { name: 'nom', label: 'Nom de la fonction', code: 'B_06.01.0030', type: 'text', required: true, list: true },
       { name: 'lei_entite', label: 'Entité', code: 'B_06.01.0040', type: 'fk', fk: fkEntite, required: true },
-      { name: 'criticite', label: 'Critique ou importante ?', code: 'B_06.01.0060', type: 'select', options: numbered(['Oui', 'Non', 'Évaluation non réalisée']), required: true, list: true },
-      { name: 'raisons_criticite', label: 'Raisons (300 caractères max.)', code: 'B_06.01.0070', type: 'textarea', maxLength: 300 },
-      { name: 'date_derniere_evaluation', label: 'Date de la dernière évaluation', code: 'B_06.01.0080', type: 'date', required: true, default: TOUJOURS, help: '9999-12-31 si non évaluée' },
-      { name: 'rto_heures', label: 'RTO (heures)', code: 'B_06.01.0090', type: 'number', required: true, help: '1 si moins d’une heure, 0 si non défini' },
-      { name: 'rpo_heures', label: 'RPO (heures)', code: 'B_06.01.0100', type: 'number', required: true, help: '1 si moins d’une heure, 0 si non défini' },
-      { name: 'incidence_interruption', label: "Incidence de l'interruption", code: 'B_06.01.0110', type: 'select', options: FAIBLE_MOYEN_ELEVE_NR, required: true },
+      { name: 'criticite', label: 'Critique ou importante ?', code: 'B_06.01.0050', type: 'select', options: numbered(['Oui', 'Non', 'Évaluation non réalisée']), required: true, list: true },
+      { name: 'raisons_criticite', label: 'Raisons (300 caractères max.)', code: 'B_06.01.0060', type: 'textarea', maxLength: 300 },
+      { name: 'date_derniere_evaluation', label: 'Date de la dernière évaluation', code: 'B_06.01.0070', type: 'date', required: true, default: TOUJOURS, help: '9999-12-31 si non évaluée' },
+      { name: 'rto_heures', label: 'RTO (heures)', code: 'B_06.01.0080', type: 'number', required: true, help: '1 si moins d’une heure, 0 si non défini' },
+      { name: 'rpo_heures', label: 'RPO (heures)', code: 'B_06.01.0090', type: 'number', required: true, help: '1 si moins d’une heure, 0 si non défini' },
+      { name: 'incidence_interruption', label: "Incidence de l'interruption", code: 'B_06.01.0100', type: 'select', options: FAIBLE_MOYEN_ELEVE_NR, required: true },
     ],
   },
   {

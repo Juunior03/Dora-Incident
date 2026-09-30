@@ -47,7 +47,7 @@ function versBase(field, raw) {
     case 'number':
       return Number(value);
     case 'select':
-      return typeof field.options[0]?.value === 'number' ? Number(value) : value;
+      return typeof field.options?.[0]?.value === 'number' ? Number(value) : value;
     case 'bool':
     case 'boolRequired':
       return value === 'true';
@@ -75,12 +75,22 @@ function Champ({ field, value, onChange, disabled, fkOptions }) {
     if (field.type === 'bool' || field.type === 'boolRequired') {
       options = [{ value: 'true', label: 'Oui' }, { value: 'false', label: 'Non' }];
     }
+    const toutes = field.groups ? field.groups.flatMap((g) => g.options) : options;
+    // Valeur déjà enregistrée mais absente de la liste (ex. saisie libre antérieure) : on la garde visible
+    const horsListe = value !== '' && !toutes.some((o) => String(o.value) === value);
     control = (
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={inputClasses} disabled={disabled}>
         <option value="">{field.required ? 'Choisir…' : '—'}</option>
-        {options.map((o) => (
-          <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
-        ))}
+        {horsListe && <option value={value}>{value} (valeur hors liste, à remplacer)</option>}
+        {field.groups
+          ? field.groups.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+          ))
+          : options.map((o) => (
+            <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+          ))}
       </select>
     );
   } else if (field.type === 'textarea') {
@@ -163,7 +173,10 @@ function EditeurSection({ section, lectureSeule, onChangement }) {
   const libelle = (field, value) => {
     if (value === null || value === undefined || value === '') return '—';
     if (field.type === 'fk') return fkOptions[field.name]?.find((o) => o.value === value)?.label ?? value;
-    if (field.type === 'select') return field.options.find((o) => o.value === value)?.label ?? value;
+    if (field.type === 'select') {
+      const toutes = field.groups ? field.groups.flatMap((g) => g.options) : field.options;
+      return toutes.find((o) => o.value === value)?.label ?? value;
+    }
     if (field.type === 'bool' || field.type === 'boolRequired') return value ? 'Oui' : 'Non';
     if (field.type === 'countries') return value.join(', ');
     return String(value);
