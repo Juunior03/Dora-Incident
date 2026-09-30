@@ -1,10 +1,10 @@
 // Activités autorisées (B_06.01.0020) — annexe II du règlement d'exécution (UE) 2024/2956.
-// Codes issus du modèle maître de l'EBA (exercice à blanc 2024, liste LIST0601020) :
-// à confirmer avec la taxonomie de reporting DORA en vigueur avant l'export XBRL-CSV.
-// La valeur stockée est le code EBA (ex. « eba_TA:x163 ») ; « fonctions_de_soutien »
-// correspond au cas prévu par le règlement d'une fonction non liée à une activité autorisée.
+// Codes vérifiés avec la liste EBA « List of possible values for all data fields with drop
+// downs » (mise à jour du 3 mars 2025, DPM 4.0, onglet B0601, liste LISTB06010020 : 131 codes).
+// La valeur stockée est le code EBA (ex. « eba_TA:x163 »), repris tel quel à l'export.
 
-export const FONCTIONS_DE_SOUTIEN = 'fonctions_de_soutien';
+// Fonction non liée à une activité autorisée (« supporting function »)
+export const FONCTIONS_DE_SOUTIEN = 'eba_TA:x276';
 
 const groupe = (label, items) => ({
   label,
@@ -96,6 +96,10 @@ export const ACTIVITES_AUTORISEES = [
     ['x199', 'Gestion de fonds collectifs de retraite (article 2, paragraphe 3, point b) iii) et iv))'],
     ['x200', 'Opérations visées à l’article 2, paragraphe 3, point b) v)'],
     ['x201', 'Opérations visées à l’article 2, paragraphe 3, point c)'],
+  ]),
+  groupe('Réassurance', [
+    ['qx277', 'Activités de réassurance non-vie'],
+    ['qx278', 'Activités de réassurance vie'],
   ]),
   groupe('Distribution d’assurance et retraite professionnelle', [
     ['x202', 'Distribution d’assurances'],
