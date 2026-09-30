@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { strToU8, zipSync } from 'fflate';
 import { supabase } from '../../supabaseClient';
-import { construirePaquet, MODELES } from './exportAcpr';
+import { construirePaquet, MODELES } from './paquetEba';
 
 const TABLES = {
   teneur: 'ri_teneur_registre', entites: 'ri_entites', succursales: 'ri_succursales',
