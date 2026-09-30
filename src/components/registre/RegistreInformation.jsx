@@ -4,8 +4,10 @@ import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { SECTIONS, MESSAGES_CONTRAINTES } from './registreConfig';
 import RapportAnomalies from './RapportAnomalies';
+import ExportAcpr from './ExportAcpr';
 
 const RAPPORT = 'anomalies';
+const EXPORT = 'export';
 
 const inputClasses = 'mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full disabled:opacity-60';
 
@@ -471,6 +473,15 @@ export default function RegistreInformation({ role }) {
           >
             Rapport d'anomalies
           </button>
+          <button
+            type="button"
+            onClick={() => ouvrirSection(EXPORT)}
+            className={`w-full text-left px-3 py-2 mb-3 rounded-lg text-sm font-medium transition-colors ${
+              active === EXPORT ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100'
+            }`}
+          >
+            Exporter pour l'ACPR
+          </button>
           <ul className="space-y-1 list-none p-0 m-0">
             {SECTIONS.map((s) => (
               <li key={s.key}>
@@ -501,9 +512,9 @@ export default function RegistreInformation({ role }) {
       </aside>
 
       <section className="col-span-9 p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
-        {active === RAPPORT ? (
-          <RapportAnomalies onNaviguer={ouvrirSection} />
-        ) : (
+        {active === RAPPORT && <RapportAnomalies onNaviguer={ouvrirSection} />}
+        {active === EXPORT && <ExportAcpr onOuvrirRapport={() => ouvrirSection(RAPPORT)} />}
+        {active !== RAPPORT && active !== EXPORT && (
           <EditeurSection
             key={`${section.key}|${anomalieCible?.reference ?? ''}|${anomalieCible?.message ?? ''}`}
             section={section}
