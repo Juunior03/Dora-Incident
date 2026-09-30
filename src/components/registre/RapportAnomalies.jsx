@@ -53,8 +53,14 @@ export default function RapportAnomalies({ onNaviguer }) {
     try {
       const refs = await collecterLei();
       const trouves = await interrogerGleif(refs.map((r) => r.lei));
-      setAnomaliesLei(anomaliesGleif(refs, trouves));
-      setGleif({ etat: 'fait', nombre: new Set(refs.map((r) => r.lei)).size, date: new Date() });
+      const resultat = anomaliesGleif(refs, trouves);
+      setAnomaliesLei(resultat);
+      setGleif({
+        etat: 'fait',
+        nombre: new Set(refs.map((r) => r.lei)).size,
+        problemes: resultat.length,
+        date: new Date(),
+      });
     } catch (e) {
       setAnomaliesLei([]);
       setGleif({
@@ -103,9 +109,26 @@ export default function RapportAnomalies({ onNaviguer }) {
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-sm">{gleif.message}</div>
       )}
       {gleif.etat === 'fait' && (
-        <p className="mb-4 text-xs opacity-70">
-          {gleif.nombre} LEI vérifiés auprès du GLEIF le {gleif.date.toLocaleString('fr-FR')}.
-        </p>
+        <div className={`mb-4 p-3 rounded-lg text-sm ${
+          gleif.nombre === 0
+            ? 'bg-gray-100 dark:bg-gray-800'
+            : gleif.problemes === 0
+              ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+              : 'bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+        }`}>
+          <p className="font-medium">
+            {gleif.nombre === 0 && 'Vérification GLEIF : aucun LEI à vérifier pour le moment.'}
+            {gleif.nombre > 0 && gleif.problemes === 0
+              && `Vérification GLEIF : les ${gleif.nombre} LEI du registre sont valides et actifs.`}
+            {gleif.nombre > 0 && gleif.problemes > 0
+              && `Vérification GLEIF : ${gleif.problemes} problème(s) sur ${gleif.nombre} LEI vérifiés, listés ci-dessous avec la mention « GLEIF ».`}
+          </p>
+          <p className="text-xs opacity-80 mt-1">
+            {gleif.nombre === 0
+              ? "Renseignez d'abord l'entité tenant le registre, les entités et les prestataires identifiés par un LEI."
+              : `Vérifié le ${gleif.date.toLocaleString('fr-FR')} auprès de la base publique du GLEIF.`}
+          </p>
+        </div>
       )}
 
       {!chargement && !erreur && (
