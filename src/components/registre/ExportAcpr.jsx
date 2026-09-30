@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import { strToU8, zipSync } from 'fflate';
 import { supabase } from '../../supabaseClient';
 import { construirePaquet, MODELES } from './paquetEba';
+import { messageErreur } from './erreursBase';
 
 const TABLES = {
   teneur: 'ri_teneur_registre', entites: 'ri_entites', succursales: 'ri_succursales',
@@ -58,7 +59,7 @@ export default function ExportAcpr({ onOuvrirRapport }) {
         supabase.rpc('ri_anomalies'),
       ]);
       if (t.error) {
-        setErreur(t.error.message);
+        setErreur(messageErreur(t.error));
         setTeneur(null);
         return;
       }
@@ -95,7 +96,7 @@ export default function ExportAcpr({ onOuvrirRapport }) {
       telecharger(paquet.nom, octets);
       setResultat(paquet);
     } catch (e) {
-      setErreur(`Export impossible : ${e.message}`);
+      setErreur(`Export impossible : ${e.code ? messageErreur(e) : e.message}`);
     } finally {
       setEnCours(false);
     }

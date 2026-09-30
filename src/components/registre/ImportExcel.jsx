@@ -3,6 +3,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { analyserClasseur } from './importAnalyse';
 import { importerDonnees } from './importEcriture';
+import { messageErreur } from './erreursBase';
 
 const LIBELLES = {
   teneur: ['B_01.01', 'Entité tenant le registre'], entites: ['B_01.02', 'Entités du périmètre'],
@@ -58,7 +59,7 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
       setEtat('fini');
       onTermine();
     } catch (err) {
-      setErreur(`Import interrompu : ${err.message}`);
+      setErreur(`Import interrompu : ${messageErreur(err)}`);
       setEtat('pret');
     }
   };
@@ -153,11 +154,11 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
             </button>
           </div>
           <table className="mt-4 w-full text-sm">
-            <thead><tr className="text-left border-b dark:border-gray-700"><th className="py-1">Table</th><th className="text-right">Lues</th><th className="text-right">Enregistrées</th><th className="text-right pr-2">Refusées</th></tr></thead>
+            <thead><tr className="text-left border-b dark:border-gray-700"><th className="py-1">Tableau</th><th className="text-right">Lues</th><th className="text-right">Enregistrées</th><th className="text-right pr-2">Refusées</th></tr></thead>
             <tbody>
               {rapport.map((e) => (
-                <tr key={e.table} className="border-b dark:border-gray-800">
-                  <td className={`py-1 ${e.complement ? 'pl-4 opacity-70' : ''}`}>{e.table}</td><td className="text-right">{e.lus}</td><td className="text-right">{e.ecrits}</td>
+                <tr key={e.libelle} className="border-b dark:border-gray-800">
+                  <td className={`py-1 ${e.complement ? 'pl-4 opacity-70' : ''}`}>{e.libelle}</td><td className="text-right">{e.lus}</td><td className="text-right">{e.ecrits}</td>
                   <td className={`text-right pr-2 ${e.erreurs.length ? 'text-red-700 dark:text-red-300 font-medium' : ''}`}>{e.erreurs.length}</td>
                 </tr>
               ))}
@@ -166,11 +167,11 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
           {erreursImport > 0 && (
             <div className="mt-4 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg">
               <table className="w-full text-xs">
-                <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Table</th><th className="p-2">Ligne</th><th className="p-2">Raison du refus</th></tr></thead>
+                <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Tableau</th><th className="p-2">Ligne</th><th className="p-2">Raison du refus</th></tr></thead>
                 <tbody>
                   {rapport.flatMap((e) => e.erreurs.map((x) => (
-                    <tr key={`${e.table}|${x.reference}|${x.message}`} className="border-b dark:border-gray-800">
-                      <td className="p-2">{e.table}</td><td className="p-2 break-all">{x.reference}</td><td className="p-2">{x.message}</td>
+                    <tr key={`${e.libelle}|${x.reference}|${x.message}`} className="border-b dark:border-gray-800">
+                      <td className="p-2">{e.libelle}</td><td className="p-2 break-all">{x.reference}</td><td className="p-2">{x.message}</td>
                     </tr>
                   )))}
                 </tbody>
