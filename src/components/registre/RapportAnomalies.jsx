@@ -165,7 +165,7 @@ export default function RapportAnomalies({ onNaviguer }) {
             </thead>
             <tbody>
               {affichees.map((a) => (
-                <tr key={`${a.source || 'base'}|${a.modele}|${a.colonne}|${a.reference}|${a.message}`} className="border-b dark:border-gray-800 align-top">
+                <tr key={a.rejet_id || `${a.source || 'base'}|${a.modele}|${a.colonne}|${a.reference}|${a.message}`} className="border-b dark:border-gray-800 align-top">
                   <td className="py-2 pr-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${GRAVITES[a.gravite].classes}`}>{GRAVITES[a.gravite].label}</span>
                   </td>
@@ -178,7 +178,7 @@ export default function RapportAnomalies({ onNaviguer }) {
                   <td className="py-2 text-right">
                     {a.section && (
                       <button onClick={() => onNaviguer(a.section, a)} className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
-                        Aller au tableau
+                        {a.rejet_id ? 'Compléter la ligne' : 'Aller au tableau'}
                       </button>
                     )}
                   </td>

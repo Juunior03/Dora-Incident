@@ -120,9 +120,18 @@ Champ.propTypes = {
 
 // Retrouve la ligne visée par une anomalie du rapport, ou prépare la ligne manquante.
 // Les références suivent le format de ri_anomalies() : « contrat / code prestataire / … / type ».
-function cibleAnomalie(sectionKey, anomalie, lignes, fkOptions) {
+function cibleAnomalie(sectionKey, anomalie, lignes, fkOptions, section) {
   const ref = anomalie?.reference;
   if (!anomalie) return {};
+  if (anomalie.rejet_id) {
+    // Ligne importée en attente : ses valeurs pré-remplissent le formulaire, sur la ligne
+    // existante si elle est déjà au registre (même clé), sinon sur une nouvelle ligne
+    const donnees = anomalie.rejet_donnees || {};
+    const parCle = section.pk.every((c) => donnees[c] !== null && donnees[c] !== undefined)
+      ? lignes.find((l) => section.pk.every((c) => String(l[c]) === String(donnees[c]))) : null;
+    const ligne = section.single ? lignes[0] ?? null : parCle ?? cibleAnomalie(sectionKey, { ...anomalie, rejet_id: null }, lignes, fkOptions, section).ligne ?? null;
+    return { ligne, prefill: donnees, rejet: true };
+  }
   const parts = ref ? ref.split(' / ') : [];
   const idPrestataire = (code) =>
     (fkOptions.prestataire_id || []).find((o) => o.row?.code === code)?.value;
@@ -206,16 +215,42 @@ function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetou
   }, [charger]);
 
   const cible = useMemo(
-    () => (chargement ? {} : cibleAnomalie(section.key, anomalie, lignes, fkOptions)),
-    [chargement, section.key, anomalie, lignes, fkOptions],
+    () => (chargement ? {} : cibleAnomalie(section.key, anomalie, lignes, fkOptions, section)),
+    [chargement, section, anomalie, lignes, fkOptions],
   );
   const [anomalieOuverte, setAnomalieOuverte] = useState(null);
+  const [rejetTraite, setRejetTraite] = useState(null); // null | 'enregistre' | 'ecarte'
   useEffect(() => {
     if (!anomalie || chargement || anomalieOuverte === anomalie) return;
     setAnomalieOuverte(anomalie);
-    if (cible.ligne) ouvrir(cible.ligne);
+    if (cible.rejet && !lectureSeule) ouvrirAvecValeurs(cible.ligne, cible.prefill);
+    else if (cible.ligne) ouvrir(cible.ligne);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anomalie, chargement, cible]);
+
+  // Formulaire de la ligne (ou d'une nouvelle ligne) complété par les valeurs lues dans le fichier
+  const ouvrirAvecValeurs = (ligne, valeursFichier) => {
+    setErreur('');
+    const valeurs = Object.fromEntries(section.fields.map((f) => {
+      const v = valeursFichier?.[f.name];
+      return [f.name, v !== null && v !== undefined ? versFormulaire(f, v) : versFormulaire(f, ligne?.[f.name])];
+    }));
+    setEdition({ original: ligne, valeurs });
+  };
+
+  const retirerRejet = async () => {
+    const { error } = await supabase.from('ri_import_rejets').delete().eq('id', anomalie.rejet_id);
+    if (error) setErreur(messageErreur(error));
+    return !error;
+  };
+
+  const ecarterRejet = async () => {
+    if (!globalThis.confirm("Écarter définitivement cette ligne importée ? Ses valeurs ne seront pas reprises dans le registre.")) return;
+    if (await retirerRejet()) {
+      setEdition(null);
+      setRejetTraite('ecarte');
+    }
+  };
 
   const ouvrirLigneManquante = () => {
     setErreur('');
@@ -272,6 +307,8 @@ function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetou
       return;
     }
     setEdition(null);
+    // Ligne en attente corrigée : elle a rejoint le registre, on la retire de l'attente
+    if (cible.rejet && !rejetTraite && (await retirerRejet())) setRejetTraite('enregistre');
     await charger();
     onChangement();
   };
@@ -307,7 +344,20 @@ function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetou
         )}
       </div>
 
-      {anomalie && (
+      {anomalie && rejetTraite && (
+        <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm flex justify-between items-start gap-4">
+          <p>
+            {rejetTraite === 'enregistre'
+              ? 'Ligne enregistrée dans le registre et retirée des lignes en attente.'
+              : 'Ligne importée écartée : elle ne figure plus dans le rapport d’anomalies.'}
+          </p>
+          <button onClick={onRetourRapport} className="px-3 py-1 rounded-lg bg-white/70 dark:bg-gray-800 hover:bg-white shrink-0">
+            Retour au rapport
+          </button>
+        </div>
+      )}
+
+      {anomalie && !rejetTraite && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 text-sm flex justify-between items-start gap-4">
           <div>
             <p className="font-medium">
@@ -315,15 +365,31 @@ function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetou
               {anomalie.reference && <span className="font-normal"> · {anomalie.reference}</span>}
             </p>
             <p className="mt-1">{anomalie.message}</p>
-            {!chargement && !cible.ligne && !cible.prefill && !lectureSeule && (
+            {!chargement && cible.rejet && !lectureSeule && (
+              <p className="mt-1 opacity-80">
+                Le formulaire ci-dessous reprend les valeurs du fichier{cible.ligne ? ' sur la ligne déjà présente au registre' : ''} :
+                complétez ou corrigez les champs signalés puis enregistrez.
+              </p>
+            )}
+            {!chargement && !cible.rejet && !cible.ligne && !cible.prefill && !lectureSeule && (
               <p className="mt-1 opacity-80">Utilisez « Ajouter » pour créer la ligne manquante.</p>
             )}
-            {!chargement && cible.ligne && (
+            {!chargement && !cible.rejet && cible.ligne && (
               <p className="mt-1 opacity-80">La ligne concernée est ouverte ci-dessous.</p>
             )}
           </div>
           <div className="flex flex-col gap-2 shrink-0">
-            {!lectureSeule && !chargement && !cible.ligne && cible.prefill && !edition && (
+            {!lectureSeule && !chargement && cible.rejet && !edition && (
+              <button onClick={() => ouvrirAvecValeurs(cible.ligne, cible.prefill)} className="px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                Reprendre la ligne importée
+              </button>
+            )}
+            {!lectureSeule && !chargement && cible.rejet && (
+              <button onClick={ecarterRejet} className="px-3 py-1 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100">
+                Écarter cette ligne
+              </button>
+            )}
+            {!lectureSeule && !chargement && !cible.rejet && !cible.ligne && cible.prefill && !edition && (
               <button onClick={ouvrirLigneManquante} className="px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
                 Ajouter la ligne manquante
               </button>

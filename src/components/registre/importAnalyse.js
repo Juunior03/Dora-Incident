@@ -456,10 +456,11 @@ export function analyserClasseur(feuilles, libellesActivitesEba = {}) {
       if (manquants.length) {
         erreursLigne.push({ onglet: sheet, ligne: i + 1, message: `champ(s) obligatoire(s) manquant(s) : ${manquants.join(', ')}` });
       }
-      // Toute ligne en erreur est écartée en entier plutôt qu'importée incomplète
+      // Une ligne en erreur n'entre pas dans le registre : elle est gardée avec son motif pour
+      // être mise en attente de correction (les valeurs illisibles restent vides)
       if (erreursLigne.length) {
         erreurs.push(...erreursLigne);
-        continue;
+        enregistrement._motif = erreursLigne.map((e) => e.message).join(' ; ');
       }
       enregistrements.push(enregistrement);
     }
@@ -476,6 +477,7 @@ function normaliserDonnees(brut, erreurs) {
     const cle = [r.reference_contrat, r.lei_entite, r.prestataire_code, r.fonction_id, r.type_service].join('|');
     const existant = services.get(cle);
     if (existant) {
+      if (r._motif) existant._motif = existant._motif ? `${existant._motif} ; ${r._motif}` : r._motif;
       if (r.pays_stockage && !existant.pays_stockage.includes(r.pays_stockage)) existant.pays_stockage.push(r.pays_stockage);
       if (r.pays_traitement && !existant.pays_traitement.includes(r.pays_traitement)) existant.pays_traitement.push(r.pays_traitement);
       continue;
@@ -488,6 +490,7 @@ function normaliserDonnees(brut, erreurs) {
   }
   // Succursales utilisatrices (B_04.01) reportées sur les services correspondants
   for (const r of brut['B_04.01'] || []) {
+    if (r._motif) continue; // déjà signalée dans la liste des problèmes
     const succursale = r.succursale_code && normaliser(r.succursale_code) !== 'not applicable' ? r.succursale_code : null;
     if (!succursale) continue;
     let trouve = false;
@@ -531,8 +534,8 @@ function normaliserDonnees(brut, erreurs) {
     signatairesReception: brut['B_03.01'] || [],
     signatairesFourniture: brut['B_03.03'] || [],
     // Le rang 1 est déduit des services : seuls les sous-traitants sont importés
-    sousTraitance: (brut['B_05.02'] || []).filter((r) => r.rang >= 2),
+    sousTraitance: (brut['B_05.02'] || []).filter((r) => r.rang >= 2 || (r._motif && r.rang == null)),
     evaluations: parDefaut(brut['B_07.01'] || [], { date_dernier_audit: '9999-12-31' }),
-    definitions: brut['B_99.01'] || [],
+    definitions: (brut['B_99.01'] || []).filter((r) => !r._motif),
   };
 }
