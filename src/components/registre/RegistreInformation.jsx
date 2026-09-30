@@ -138,7 +138,59 @@ Champ.propTypes = {
   fkOptions: PropTypes.array,
 };
 
-function EditeurSection({ section, lectureSeule, onChangement }) {
+// Retrouve la ligne visée par une anomalie du rapport, ou prépare la ligne manquante.
+// Les références suivent le format de ri_anomalies() : « contrat / code prestataire / … / type ».
+function cibleAnomalie(sectionKey, anomalie, lignes, fkOptions) {
+  const ref = anomalie?.reference;
+  if (!anomalie) return {};
+  const parts = ref ? ref.split(' / ') : [];
+  const idPrestataire = (code) =>
+    (fkOptions.prestataire_id || []).find((o) => o.row?.code === code)?.value;
+  const trouver = (predicat) => lignes.find(predicat) ?? null;
+
+  switch (sectionKey) {
+    case 'teneur':
+      return { ligne: lignes[0] ?? null };
+    case 'entites':
+      return { ligne: trouver((l) => l.lei === ref) };
+    case 'prestataires':
+      return { ligne: trouver((l) => l.code === ref) };
+    case 'fonctions':
+      return { ligne: trouver((l) => l.identifiant === ref) };
+    case 'contrats':
+      return { ligne: trouver((l) => l.reference === ref) };
+    case 'services': {
+      if (parts.length <= 1) return { ligne: null, prefill: ref ? { reference_contrat: ref } : null };
+      const [contrat, code] = parts;
+      const type = parts.at(-1);
+      const fonction = parts.length === 4 ? parts[2] : null;
+      const id = idPrestataire(code);
+      return {
+        ligne: trouver((l) => l.reference_contrat === contrat && l.prestataire_id === id
+          && l.type_service === type && (!fonction || l.fonction_id === fonction)),
+      };
+    }
+    case 'evaluations': {
+      const [contrat, code, type] = parts;
+      const id = idPrestataire(code);
+      return {
+        ligne: trouver((l) => l.reference_contrat === contrat && l.prestataire_id === id && l.type_service === type),
+        prefill: { reference_contrat: contrat, prestataire_id: id, type_service: type },
+      };
+    }
+    case 'sous_traitance': {
+      const [contrat, type] = parts;
+      return { ligne: trouver((l) => l.reference_contrat === contrat && l.type_service === type) };
+    }
+    case 'signataires_reception':
+    case 'signataires_fourniture':
+      return { ligne: null, prefill: ref ? { reference_contrat: ref } : null };
+    default:
+      return {};
+  }
+}
+
+function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetourRapport }) {
   const [lignes, setLignes] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
@@ -162,7 +214,7 @@ function EditeurSection({ section, lectureSeule, onChangement }) {
     const options = {};
     for (const f of champsFk) {
       const res = await supabase.from(f.fk.table).select('*');
-      options[f.name] = (res.data || []).map((r) => ({ value: r[f.fk.value], label: f.fk.label(r) }));
+      options[f.name] = (res.data || []).map((r) => ({ value: r[f.fk.value], label: f.fk.label(r), row: r }));
     }
     setFkOptions(options);
     setChargement(false);
@@ -172,6 +224,27 @@ function EditeurSection({ section, lectureSeule, onChangement }) {
     setEdition(null);
     charger();
   }, [charger]);
+
+  const cible = useMemo(
+    () => (chargement ? {} : cibleAnomalie(section.key, anomalie, lignes, fkOptions)),
+    [chargement, section.key, anomalie, lignes, fkOptions],
+  );
+  const [anomalieOuverte, setAnomalieOuverte] = useState(null);
+  useEffect(() => {
+    if (!anomalie || chargement || anomalieOuverte === anomalie) return;
+    setAnomalieOuverte(anomalie);
+    if (cible.ligne) ouvrir(cible.ligne);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anomalie, chargement, cible]);
+
+  const ouvrirLigneManquante = () => {
+    setErreur('');
+    const valeurs = formulaireVide(section);
+    for (const [cle, valeur] of Object.entries(cible.prefill || {})) {
+      if (valeur !== undefined && valeur !== null) valeurs[cle] = String(valeur);
+    }
+    setEdition({ original: null, valeurs });
+  };
 
   const libelle = (field, value) => {
     if (value === null || value === undefined || value === '') return '—';
@@ -254,6 +327,34 @@ function EditeurSection({ section, lectureSeule, onChangement }) {
         )}
       </div>
 
+      {anomalie && (
+        <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 text-sm flex justify-between items-start gap-4">
+          <div>
+            <p className="font-medium">
+              Anomalie à corriger — {anomalie.modele}{anomalie.colonne && !anomalie.colonne.startsWith('B_') ? `.${anomalie.colonne}` : ''}
+              {anomalie.reference && <span className="font-normal"> · {anomalie.reference}</span>}
+            </p>
+            <p className="mt-1">{anomalie.message}</p>
+            {!chargement && !cible.ligne && !cible.prefill && !lectureSeule && (
+              <p className="mt-1 opacity-80">Utilisez « Ajouter » pour créer la ligne manquante.</p>
+            )}
+            {!chargement && cible.ligne && (
+              <p className="mt-1 opacity-80">La ligne concernée est ouverte ci-dessous.</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 shrink-0">
+            {!lectureSeule && !chargement && !cible.ligne && cible.prefill && !edition && (
+              <button onClick={ouvrirLigneManquante} className="px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                Ajouter la ligne manquante
+              </button>
+            )}
+            <button onClick={onRetourRapport} className="px-3 py-1 rounded-lg bg-white/70 dark:bg-gray-800 hover:bg-white">
+              Retour au rapport
+            </button>
+          </div>
+        </div>
+      )}
+
       {erreur && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">{erreur}</div>
       )}
@@ -327,12 +428,20 @@ EditeurSection.propTypes = {
   section: PropTypes.object.isRequired,
   lectureSeule: PropTypes.bool.isRequired,
   onChangement: PropTypes.func.isRequired,
+  anomalie: PropTypes.object,
+  onRetourRapport: PropTypes.func,
 };
 
 export default function RegistreInformation({ role }) {
   const [active, setActive] = useState(SECTIONS[0].key);
   const [compteurs, setCompteurs] = useState({});
+  const [anomalieCible, setAnomalieCible] = useState(null);
   const lectureSeule = role !== 'saisisseur';
+
+  const ouvrirSection = (cle, anomalie = null) => {
+    setAnomalieCible(anomalie);
+    setActive(cle);
+  };
 
   const chargerCompteurs = useCallback(async () => {
     const resultats = await Promise.all(
@@ -355,7 +464,7 @@ export default function RegistreInformation({ role }) {
           <p className="text-xs opacity-60 mb-4">Règlement d'exécution (UE) 2024/2956</p>
           <button
             type="button"
-            onClick={() => setActive(RAPPORT)}
+            onClick={() => ouvrirSection(RAPPORT)}
             className={`w-full text-left px-3 py-2 mb-3 rounded-lg text-sm font-medium transition-colors ${
               active === RAPPORT ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100'
             }`}
@@ -367,7 +476,7 @@ export default function RegistreInformation({ role }) {
               <li key={s.key}>
                 <button
                   type="button"
-                  onClick={() => setActive(s.key)}
+                  onClick={() => ouvrirSection(s.key)}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm flex justify-between gap-2 transition-colors ${
                     active === s.key ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-100/50 dark:hover:bg-gray-800/50'
                   }`}
@@ -393,9 +502,16 @@ export default function RegistreInformation({ role }) {
 
       <section className="col-span-9 p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
         {active === RAPPORT ? (
-          <RapportAnomalies onNaviguer={setActive} />
+          <RapportAnomalies onNaviguer={ouvrirSection} />
         ) : (
-          <EditeurSection key={section.key} section={section} lectureSeule={lectureSeule} onChangement={chargerCompteurs} />
+          <EditeurSection
+            key={`${section.key}|${anomalieCible?.reference ?? ''}|${anomalieCible?.message ?? ''}`}
+            section={section}
+            lectureSeule={lectureSeule}
+            onChangement={chargerCompteurs}
+            anomalie={anomalieCible}
+            onRetourRapport={() => ouvrirSection(RAPPORT)}
+          />
         )}
       </section>
     </div>
