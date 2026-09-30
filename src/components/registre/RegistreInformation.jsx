@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { SECTIONS, MESSAGES_CONTRAINTES } from './registreConfig';
+import RapportAnomalies from './RapportAnomalies';
+
+const RAPPORT = 'anomalies';
 
 const inputClasses = 'mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full disabled:opacity-60';
 
@@ -350,6 +353,15 @@ export default function RegistreInformation({ role }) {
         <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
           <h3 className="font-medium mb-1">Registre d'information</h3>
           <p className="text-xs opacity-60 mb-4">Règlement d'exécution (UE) 2024/2956</p>
+          <button
+            type="button"
+            onClick={() => setActive(RAPPORT)}
+            className={`w-full text-left px-3 py-2 mb-3 rounded-lg text-sm font-medium transition-colors ${
+              active === RAPPORT ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100'
+            }`}
+          >
+            Rapport d'anomalies
+          </button>
           <ul className="space-y-1 list-none p-0 m-0">
             {SECTIONS.map((s) => (
               <li key={s.key}>
@@ -380,7 +392,11 @@ export default function RegistreInformation({ role }) {
       </aside>
 
       <section className="col-span-9 p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
-        <EditeurSection key={section.key} section={section} lectureSeule={lectureSeule} onChangement={chargerCompteurs} />
+        {active === RAPPORT ? (
+          <RapportAnomalies onNaviguer={setActive} />
+        ) : (
+          <EditeurSection key={section.key} section={section} lectureSeule={lectureSeule} onChangement={chargerCompteurs} />
+        )}
       </section>
     </div>
   );
