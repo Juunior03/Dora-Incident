@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import { getSettings, saveSettings } from '../utils/supabaseSettings.js'
 import ChangePassword from './ChangePassword';
 import { FaKey } from 'react-icons/fa';
+import RegistreInformation from './registre/RegistreInformation';
 
 const nowISO = () => new Date().toISOString()
 
@@ -1882,6 +1883,13 @@ export default function DoraIncidentApp() {
               className={getButtonClasses(view, 'dashboard')}
           >
             Dashboard
+          </button>
+
+          <button
+              onClick={() => setView('registre')}
+              className={getButtonClasses(view, 'registre')}
+          >
+            Registre
           </button>
 
           <button
@@ -3894,6 +3902,17 @@ export default function DoraIncidentApp() {
                           </div>
                       )}
                     </motion.div>
+                )}
+
+                {view === 'registre' && (
+                  <motion.div
+                    key="registre"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <RegistreInformation role={role} />
+                  </motion.div>
                 )}
 
                 {view === 'settings' && (
