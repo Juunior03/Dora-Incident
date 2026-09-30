@@ -153,7 +153,7 @@ export default function RapportAnomalies({ onNaviguer }) {
                   <td className="py-2 pr-4">{a.message}</td>
                   <td className="py-2 text-right">
                     {a.section && (
-                      <button onClick={() => onNaviguer(a.section)} className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
+                      <button onClick={() => onNaviguer(a.section, a)} className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
                         Aller au tableau
                       </button>
                     )}
