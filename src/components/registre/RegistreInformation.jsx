@@ -2,39 +2,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
-import { SECTIONS, MESSAGES_CONTRAINTES } from './registreConfig';
+import { SECTIONS } from './registreConfig';
+import { messageErreur } from './erreursBase';
 import RapportAnomalies from './RapportAnomalies';
 import ExportAcpr from './ExportAcpr';
+import ImportExcel from './ImportExcel';
 
 const RAPPORT = 'anomalies';
 const EXPORT = 'export';
+const IMPORT = 'import';
 
 const inputClasses = 'mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full disabled:opacity-60';
-
-// Traduit une erreur Supabase/PostgreSQL en message lisible
-function messageErreur(error) {
-  if (!error) return '';
-  const texte = `${error.message || ''} ${error.details || ''}`;
-  if (error.code === '42P01' || error.code === 'PGRST205' || /could not find the table/i.test(texte)) {
-    return "Le registre n'est pas encore installé dans la base : appliquez la migration 20260930000000_registre_information.sql.";
-  }
-  if (error.code === '42501' || /row-level security/i.test(texte)) {
-    return "Action non autorisée pour votre rôle.";
-  }
-  const contrainte = /constraint "([^"]+)"/.exec(texte)?.[1];
-  if (contrainte && MESSAGES_CONTRAINTES[contrainte]) {
-    return MESSAGES_CONTRAINTES[contrainte];
-  }
-  if (error.code === '23503') {
-    return /update or delete/i.test(texte)
-      ? 'Suppression impossible : cette ligne est utilisée ailleurs dans le registre.'
-      : "Une valeur sélectionnée n'existe pas (ou plus) dans le registre.";
-  }
-  if (error.code === '23505') return 'Cette ligne existe déjà dans le registre.';
-  if (error.code === '23502') return 'Un champ obligatoire est vide.';
-  if (error.code === '23514') return `Valeur refusée par un contrôle du registre (${contrainte || 'contrôle'}).`;
-  return error.message;
-}
 
 // Valeur stockée -> valeur de formulaire
 function versFormulaire(field, value) {
@@ -482,6 +460,15 @@ export default function RegistreInformation({ role }) {
           >
             Exporter pour l'ACPR
           </button>
+          <button
+            type="button"
+            onClick={() => ouvrirSection(IMPORT)}
+            className={`w-full text-left px-3 py-2 mb-3 rounded-lg text-sm font-medium transition-colors ${
+              active === IMPORT ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100'
+            }`}
+          >
+            Importer un fichier Excel
+          </button>
           <ul className="space-y-1 list-none p-0 m-0">
             {SECTIONS.map((s) => (
               <li key={s.key}>
@@ -514,7 +501,10 @@ export default function RegistreInformation({ role }) {
       <section className="col-span-9 p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
         {active === RAPPORT && <RapportAnomalies onNaviguer={ouvrirSection} />}
         {active === EXPORT && <ExportAcpr onOuvrirRapport={() => ouvrirSection(RAPPORT)} />}
-        {active !== RAPPORT && active !== EXPORT && (
+        {active === IMPORT && (
+          <ImportExcel lectureSeule={lectureSeule} onTermine={chargerCompteurs} onOuvrirRapport={() => ouvrirSection(RAPPORT)} />
+        )}
+        {![RAPPORT, EXPORT, IMPORT].includes(active) && (
           <EditeurSection
             key={`${section.key}|${anomalieCible?.reference ?? ''}|${anomalieCible?.message ?? ''}`}
             section={section}
