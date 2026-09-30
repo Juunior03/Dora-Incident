@@ -48,14 +48,15 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
   };
 
   const total = analyse ? Object.values(analyse.donnees).reduce((n, l) => n + l.length, 0) : 0;
+  const enAttente = (lignes) => lignes.filter((l) => l._motif).length;
+  const totalEnAttente = analyse ? Object.values(analyse.donnees).reduce((n, l) => n + enAttente(l), 0) : 0;
 
   const importer = async () => {
     if (!globalThis.confirm(`Importer ${total} ligne(s) dans le registre ? Les lignes déjà présentes avec la même clé seront mises à jour.`)) return;
     setEtat('import');
     setErreur('');
     try {
-      const r = await importerDonnees(analyse.donnees, setEtape);
-      setRapport(r);
+      setRapport(await importerDonnees(analyse.donnees, setEtape));
       setEtat('fini');
       onTermine();
     } catch (err) {
@@ -64,9 +65,10 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
     }
   };
 
-  const erreursImport = rapport ? rapport.reduce((n, e) => n + e.erreurs.length, 0) : 0;
+  const etapes = rapport?.etapes ?? [];
+  const erreursImport = etapes.reduce((n, e) => n + e.erreurs.length, 0);
   // Le rattachement aux entreprises mères complète des lignes déjà comptées : il n'entre pas dans le total
-  const ecrits = rapport ? rapport.filter((e) => !e.complement).reduce((n, e) => n + e.ecrits, 0) : 0;
+  const ecrits = etapes.filter((e) => !e.complement).reduce((n, e) => n + e.ecrits, 0);
 
   return (
     <div>
@@ -100,10 +102,11 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
             </p>
           ) : (
             <table className="mt-3 text-sm">
-              <thead><tr className="text-left border-b dark:border-gray-700"><th className="pr-6 py-1">Tableau</th><th className="text-right">Lignes à importer</th></tr></thead>
+              <thead><tr className="text-left border-b dark:border-gray-700"><th className="pr-6 py-1">Tableau</th><th className="text-right">Lignes lues</th><th className="text-right pl-6">dont à corriger</th></tr></thead>
               <tbody>
                 {Object.entries(analyse.donnees).map(([cle, lignes]) => (
-                  <tr key={cle}><td className="pr-6 py-0.5">{LIBELLES[cle][0]} – {LIBELLES[cle][1]}</td><td className="text-right">{lignes.length}</td></tr>
+                  <tr key={cle}><td className="pr-6 py-0.5">{LIBELLES[cle][0]} – {LIBELLES[cle][1]}</td><td className="text-right">{lignes.length}</td>
+                    <td className={`text-right pl-6 ${enAttente(lignes) ? 'text-orange-700 dark:text-orange-300 font-medium' : 'opacity-50'}`}>{enAttente(lignes) || '—'}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -113,8 +116,9 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
           {analyse.erreurs.length > 0 && (
             <div className="mt-4">
               <p className="font-medium text-sm text-red-700 dark:text-red-300">
-                {analyse.erreurs.length} problème(s) dans le fichier : ces lignes ne seront pas importées. Corrigez-les dans
-                Excel puis rechargez le fichier, ou importez le reste et complétez dans l'application.
+                {analyse.erreurs.length} problème(s) dans le fichier. Rien n'est perdu : les lignes concernées seront mises
+                en attente et signalées comme anomalies bloquantes, à compléter dans l'application. Vous pouvez aussi les
+                corriger dans Excel et recharger le fichier.
               </p>
               <div className="mt-2 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg">
                 <table className="w-full text-xs">
@@ -135,7 +139,7 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
             <div className="mt-4 flex justify-end">
               <button onClick={importer} disabled={etat === 'import'}
                 className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                {etat === 'import' ? `Import en cours… ${etape}` : `Importer ${total} ligne(s)`}
+                {etat === 'import' ? `Import en cours… ${etape}` : `Importer ${total} ligne(s)${totalEnAttente ? ` (dont ${totalEnAttente} à corriger)` : ''}`}
               </button>
             </div>
           )}
@@ -144,22 +148,30 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
 
       {rapport && (
         <div className="mt-6">
+          {rapport.attente.erreur && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">{rapport.attente.erreur}</div>
+          )}
           <div className={`p-3 rounded-lg text-sm ${erreursImport ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200' : 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200'}`}>
             <p className="font-medium">
-              Import terminé : {ecrits} ligne(s) enregistrée(s){erreursImport ? `, ${erreursImport} refusée(s) par la base` : ''}.
+              Import terminé : {ecrits} ligne(s) enregistrée(s) dans le registre
+              {!rapport.attente.erreur && rapport.attente.nombre > 0 && `, ${rapport.attente.nombre} ligne(s) en attente de correction`}.
             </p>
-            <p className="mt-1">Lancez ensuite le rapport d'anomalies pour vérifier la cohérence d'ensemble du registre.</p>
+            <p className="mt-1">
+              {!rapport.attente.erreur && rapport.attente.nombre > 0
+                ? "Les lignes en attente figurent en tête du rapport d'anomalies : ouvrez-les pour les compléter, elles rejoindront alors le registre."
+                : "Lancez ensuite le rapport d'anomalies pour vérifier la cohérence d'ensemble du registre."}
+            </p>
             <button onClick={onOuvrirRapport} className="mt-2 px-3 py-1 rounded-lg bg-white/70 dark:bg-gray-800 hover:bg-white">
               Ouvrir le rapport d'anomalies
             </button>
           </div>
           <table className="mt-4 w-full text-sm">
-            <thead><tr className="text-left border-b dark:border-gray-700"><th className="py-1">Tableau</th><th className="text-right">Lues</th><th className="text-right">Enregistrées</th><th className="text-right pr-2">Refusées</th></tr></thead>
+            <thead><tr className="text-left border-b dark:border-gray-700"><th className="py-1">Tableau</th><th className="text-right">Lues</th><th className="text-right">Enregistrées</th><th className="text-right pr-2">En attente</th></tr></thead>
             <tbody>
-              {rapport.map((e) => (
+              {etapes.map((e) => (
                 <tr key={e.libelle} className="border-b dark:border-gray-800">
                   <td className={`py-1 ${e.complement ? 'pl-4 opacity-70' : ''}`}>{e.libelle}</td><td className="text-right">{e.lus}</td><td className="text-right">{e.ecrits}</td>
-                  <td className={`text-right pr-2 ${e.erreurs.length ? 'text-red-700 dark:text-red-300 font-medium' : ''}`}>{e.erreurs.length}</td>
+                  <td className={`text-right pr-2 ${e.erreurs.length ? 'text-orange-700 dark:text-orange-300 font-medium' : ''}`}>{e.erreurs.length}</td>
                 </tr>
               ))}
             </tbody>
@@ -167,9 +179,9 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
           {erreursImport > 0 && (
             <div className="mt-4 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg">
               <table className="w-full text-xs">
-                <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Tableau</th><th className="p-2">Ligne</th><th className="p-2">Raison du refus</th></tr></thead>
+                <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Tableau</th><th className="p-2">Ligne</th><th className="p-2">À corriger</th></tr></thead>
                 <tbody>
-                  {rapport.flatMap((e) => e.erreurs.map((x) => (
+                  {etapes.flatMap((e) => e.erreurs.map((x) => (
                     <tr key={`${e.libelle}|${x.reference}|${x.message}`} className="border-b dark:border-gray-800">
                       <td className="p-2">{e.libelle}</td><td className="p-2 break-all">{x.reference}</td><td className="p-2">{x.message}</td>
                     </tr>
