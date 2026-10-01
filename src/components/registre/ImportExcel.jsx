@@ -122,11 +122,12 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
               </p>
               <div className="mt-2 max-h-64 overflow-y-auto border dark:border-gray-700 rounded-lg">
                 <table className="w-full text-xs">
-                  <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Onglet</th><th className="p-2">Ligne</th><th className="p-2">Colonne</th><th className="p-2">Problème</th></tr></thead>
+                  <thead><tr className="text-left border-b dark:border-gray-700"><th className="p-2">Onglet</th><th className="p-2">Ligne</th><th className="p-2">Problème</th></tr></thead>
                   <tbody>
                     {analyse.erreurs.map((e) => (
                       <tr key={`${e.onglet}|${e.ligne}|${e.colonne}|${e.message}`} className="border-b dark:border-gray-800">
-                        <td className="p-2">{e.onglet}</td><td className="p-2">{e.ligne ?? '—'}</td><td className="p-2">{e.colonne || '—'}</td><td className="p-2">{e.message}</td>
+                        <td className="p-2">{e.onglet}</td><td className="p-2">{e.ligne ?? '—'}</td>
+                        <td className="p-2">{e.message}{e.colonne && <span className="block opacity-50">Colonne {e.colonne}</span>}</td>
                       </tr>
                     ))}
                   </tbody>

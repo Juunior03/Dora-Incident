@@ -5,12 +5,31 @@ import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { anomaliesGleif, collecterLei, interrogerGleif } from './gleif';
 import { messageTechnique } from '../../utils/messageTechnique';
+import { codeColonne, libelleColonne } from './libellesRegistre';
 
 const GRAVITES = {
-  bloquant: { label: 'Bloquant', classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' },
-  avertissement: { label: 'Avertissement', classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200' },
-  information: { label: 'Information', classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' },
+  bloquant: { label: 'Bloquant', classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+    sens: "information obligatoire manquante ou incohérente : à corriger avant l'export ACPR" },
+  avertissement: { label: 'Avertissement', classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
+    sens: "incohérence probable : à vérifier, l'export reste possible" },
+  information: { label: 'Information', classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+    sens: 'point d’attention ou bonne pratique, sans obligation' },
 };
+
+// Références lisibles : noms des prestataires, entités et fonctions à la place de leurs codes
+async function chargerNoms() {
+  const [p, e, f] = await Promise.all([
+    supabase.from('ri_prestataires').select('code, nom_latin'),
+    supabase.from('ri_entites').select('lei, nom'),
+    supabase.from('ri_fonctions').select('identifiant, nom'),
+  ]);
+  const noms = new Map();
+  for (const x of e.data || []) noms.set(x.lei, x.nom);
+  for (const x of p.data || []) noms.set(x.code, x.nom_latin);
+  for (const x of f.data || []) noms.set(x.identifiant, `${x.identifiant} – ${x.nom}`);
+  return noms;
+}
+const referenceLisible = (ref, noms) => (ref ? ref.split(' / ').map((part) => noms.get(part) ?? part).join(' · ') : '—');
 const ORDRE = { bloquant: 1, avertissement: 2, information: 3 };
 
 function messageErreurRapport(error) {
@@ -31,11 +50,13 @@ export default function RapportAnomalies({ onNaviguer }) {
   const [erreur, setErreur] = useState('');
   const [filtre, setFiltre] = useState('');
   const [gleif, setGleif] = useState({ etat: 'jamais' }); // jamais | encours | fait | erreur
+  const [noms, setNoms] = useState(new Map());
 
   const analyser = useCallback(async () => {
     setChargement(true);
     setErreur('');
-    const { data, error } = await supabase.rpc('ri_anomalies');
+    const [{ data, error }, n] = await Promise.all([supabase.rpc('ri_anomalies'), chargerNoms()]);
+    setNoms(n);
     if (error) {
       setErreur(messageErreurRapport(error));
       setAnomaliesBase([]);
@@ -133,7 +154,7 @@ export default function RapportAnomalies({ onNaviguer }) {
       )}
 
       {!chargement && !erreur && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-2">
           <button onClick={() => setFiltre('')} className={`px-3 py-1 rounded-full text-sm ${filtre === '' ? 'ring-2 ring-indigo-500' : ''} bg-gray-100 dark:bg-gray-800`}>
             Toutes ({toutes.length})
           </button>
@@ -143,6 +164,13 @@ export default function RapportAnomalies({ onNaviguer }) {
             </button>
           ))}
         </div>
+      )}
+      {!chargement && !erreur && (
+        <ul className="mb-4 text-xs opacity-80 space-y-0.5">
+          {Object.entries(GRAVITES).map(([cle, g]) => (
+            <li key={cle}><span className="font-medium">{g.label}</span> : {g.sens}.</li>
+          ))}
+        </ul>
       )}
 
       {chargement ? (
@@ -157,8 +185,8 @@ export default function RapportAnomalies({ onNaviguer }) {
             <thead>
               <tr className="text-left border-b dark:border-gray-700">
                 <th className="py-2 pr-4 font-medium">Gravité</th>
-                <th className="py-2 pr-4 font-medium">Colonne</th>
-                <th className="py-2 pr-4 font-medium">Référence</th>
+                <th className="py-2 pr-4 font-medium">Champ concerné</th>
+                <th className="py-2 pr-4 font-medium">Ligne concernée</th>
                 <th className="py-2 pr-4 font-medium">Anomalie</th>
                 <th className="py-2" />
               </tr>
@@ -169,11 +197,12 @@ export default function RapportAnomalies({ onNaviguer }) {
                   <td className="py-2 pr-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${GRAVITES[a.gravite].classes}`}>{GRAVITES[a.gravite].label}</span>
                   </td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-xs">
-                    {a.modele}{a.colonne && !a.colonne.startsWith('B_') ? `.${a.colonne}` : ''}
+                  <td className="py-2 pr-4 text-xs">
+                    <span className="font-medium">{libelleColonne(a.modele, a.colonne) ?? codeColonne(a.modele, a.colonne)}</span>
+                    <span className="block opacity-50 whitespace-nowrap">{codeColonne(a.modele, a.colonne)}</span>
                     {a.source && <span className="block opacity-60">{a.source}</span>}
                   </td>
-                  <td className="py-2 pr-4 text-xs break-all">{a.reference || '—'}</td>
+                  <td className="py-2 pr-4 text-xs break-words" title={a.reference || undefined}>{referenceLisible(a.reference, noms)}</td>
                   <td className="py-2 pr-4">{a.message}</td>
                   <td className="py-2 text-right">
                     {a.section && (

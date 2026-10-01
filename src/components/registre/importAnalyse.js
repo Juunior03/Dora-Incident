@@ -9,6 +9,7 @@
 import { SECTIONS } from './registreConfig';
 import { ACTIVITES_AUTORISEES, FONCTIONS_DE_SOUTIEN } from './activitesAutorisees';
 import { LIBELLES_ACTIVITES_EBA } from './activitesLibellesEba';
+import { libelleChamp } from './libellesRegistre';
 
 // ---------------------------------------------------------------------------
 // Outils de normalisation
@@ -97,7 +98,7 @@ function lireOption(liste, valeur) {
   const options = LISTES[liste];
   if (typeof valeur === 'number') {
     const o = options.find(([n]) => n === valeur);
-    return o ? { valeur: o[0] } : { erreur: `option « ${brut} » inconnue` };
+    return o ? { valeur: o[0] } : { erreur: `« ${brut} » ne correspond à aucune option de la liste` };
   }
   const code = options.find(([, c]) => c.toLowerCase() === brut.toLowerCase());
   if (code) return { valeur: code[0] };
@@ -113,7 +114,7 @@ function lireOption(liste, valeur) {
   if (exact) return { valeur: exact[0] };
   const debut = [...new Set(candidats.filter(([, l]) => l.startsWith(n) || n.startsWith(l)).map(([num]) => num))];
   if (debut.length === 1) return { valeur: debut[0] };
-  return { erreur: `valeur « ${brut} » non reconnue` };
+  return { erreur: `« ${brut} » ne correspond à aucune option de la liste` };
 }
 
 const ACTIVITES = ACTIVITES_AUTORISEES.flatMap((g) => g.options);
@@ -128,7 +129,7 @@ function lireActivite(valeur, libellesEba) {
   const code = /^(?:eba_TA:)?(q?x\d+)$/i.exec(brut);
   if (code) {
     const v = `eba_TA:${code[1].toLowerCase()}`;
-    return ACTIVITES.some((a) => a.value === v) ? { valeur: v } : { erreur: `code d'activité « ${brut} » inconnu` };
+    return ACTIVITES.some((a) => a.value === v) ? { valeur: v } : { erreur: `« ${brut} » n'est pas un code d'activité connu` };
   }
   const n = normaliser(brut);
   if (['fonctions de soutien', 'fonction de soutien', ...ACTIVITES_EN.x276].includes(n)) return { valeur: FONCTIONS_DE_SOUTIEN };
@@ -137,7 +138,7 @@ function lireActivite(valeur, libellesEba) {
   if (ACTIVITES_PAR_LIBELLE_EN.has(n)) return { valeur: ACTIVITES_PAR_LIBELLE_EN.get(n) };
   const en = Object.entries(libellesEba || {}).find(([, l]) => normaliser(l) === n);
   if (en) return { valeur: en[0] };
-  return { erreur: `activité « ${brut} » non reconnue (utiliser le libellé ou le code EBA, ex. eba_TA:x163)` };
+  return { erreur: `« ${brut} » n'est pas une activité reconnue : utilisez le libellé de la liste ou le code EBA (ex. eba_TA:x163)` };
 }
 
 function lireTexte(v) {
@@ -149,25 +150,25 @@ function lireMajuscules(v) {
 function lireLei(v) {
   if (vide(v)) return { valeur: null };
   const lei = String(v).trim().toUpperCase();
-  return leiValide(lei) ? { valeur: lei } : { erreur: `LEI « ${lei} » invalide (20 caractères, chiffres de contrôle)` };
+  return leiValide(lei) ? { valeur: lei } : { erreur: `« ${lei} » n'est pas un LEI valide (20 caractères, dont 2 chiffres de contrôle à la fin) : vérifiez-le sur gleif.org` };
 }
 function lirePays(v) {
   if (vide(v)) return { valeur: null };
   const brut = String(v).trim();
   if (/^(eba_GA:)?qx2007$/i.test(brut) || normaliser(brut) === 'not applicable') return { valeur: null };
   const p = /^(?:eba_GA:)?([A-Za-z]{2})$/.exec(brut);
-  return p ? { valeur: p[1].toUpperCase() } : { erreur: `pays « ${brut} » invalide (code ISO à 2 lettres, ex. FR)` };
+  return p ? { valeur: p[1].toUpperCase() } : { erreur: `« ${brut} » n'est pas un code pays valide (2 lettres, ex. FR)` };
 }
 function lireDevise(v) {
   if (vide(v)) return { valeur: null };
   const brut = String(v).trim();
   const d = /^(?:eba_CU:|iso4217:)?([A-Za-z]{3})$/.exec(brut);
-  return d ? { valeur: d[1].toUpperCase() } : { erreur: `devise « ${brut} » invalide (code ISO à 3 lettres, ex. EUR)` };
+  return d ? { valeur: d[1].toUpperCase() } : { erreur: `« ${brut} » n'est pas un code de monnaie valide (3 lettres, ex. EUR)` };
 }
 function lireDate(v) {
   if (vide(v)) return { valeur: null };
   if (v instanceof Date) {
-    if (Number.isNaN(v.getTime())) return { erreur: 'date invalide' };
+    if (Number.isNaN(v.getTime())) return { erreur: 'date illisible' };
     return { valeur: v.toISOString().slice(0, 10) };
   }
   if (typeof v === 'number') { // numéro de série Excel
@@ -179,7 +180,7 @@ function lireDate(v) {
   if (m) return { valeur: `${m[1]}-${m[2]}-${m[3]}` };
   m = /^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/.exec(s);
   if (m) return { valeur: `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` };
-  return { erreur: `date « ${s} » invalide (format attendu : aaaa-mm-jj ou jj/mm/aaaa)` };
+  return { erreur: `« ${s} » n'est pas une date lisible (format attendu : jj/mm/aaaa)` };
 }
 function lireNombre(v, entier = false) {
   if (vide(v)) return { valeur: null };
@@ -188,8 +189,8 @@ function lireNombre(v, entier = false) {
     const s = String(v).trim().replace(/[\s\u00a0\u202f]/g, '').replace(/[€$£]/g, '');
     n = Number(/,\d{1,2}$/.test(s) ? s.replaceAll('.', '').replace(',', '.') : s.replaceAll(',', ''));
   }
-  if (!Number.isFinite(n)) return { erreur: `nombre « ${v} » invalide` };
-  if (entier && !Number.isInteger(n)) return { erreur: `nombre entier attendu (« ${v} »)` };
+  if (!Number.isFinite(n)) return { erreur: `« ${v} » n'est pas un nombre` };
+  if (entier && !Number.isInteger(n)) return { erreur: `« ${v} » : nombre entier attendu` };
   return { valeur: n };
 }
 function lireBooleen(v) {
@@ -205,7 +206,7 @@ function lireService(v) {
   const brut = String(v).trim();
   const m = /^(?:eba_TA:)?S(\d{1,2})\b/i.exec(brut) || /^(\d{1,2})\s*[.)\-–]?(\s|$)/.exec(brut);
   if (m && Number(m[1]) >= 1 && Number(m[1]) <= 19) return { valeur: `S${String(Number(m[1])).padStart(2, '0')}` };
-  return { erreur: `type de service « ${brut} » non reconnu (S01 à S19)` };
+  return { erreur: `« ${brut} » n'est pas un type de service valide (S01 à S19)` };
 }
 const TYPES_CODE = { qx2000: 'LEI', qx2002: 'EUID', qx2003: 'CRN', qx2004: 'VAT', qx2005: 'PNR', qx2001: 'NIN' };
 function lireTypeCode(v, { supplementaire = false } = {}) {
@@ -218,12 +219,12 @@ function lireTypeCode(v, { supplementaire = false } = {}) {
   const ok = supplementaire
     ? ['LEI', 'EUID', 'CRN', 'VAT', 'PNR', 'NIN'].includes(t)
     : t === 'LEI' || t === 'EUID' || /^[A-Z]{2}_(CRN|VAT|PNR|NIN)$/.test(t);
-  return ok ? { valeur: t } : { erreur: `type de code « ${brut} » non reconnu (LEI, EUID ou pays_type, ex. FR_VAT)` };
+  return ok ? { valeur: t } : { erreur: `« ${brut} » n'est pas un type de code reconnu (LEI, EUID, ou pays + type, ex. FR_VAT)` };
 }
 function lireIdentifiantFonction(v) {
   if (vide(v)) return { valeur: null };
   const s = String(v).trim().toUpperCase();
-  return /^F[1-9][0-9]*$/.test(s) ? { valeur: s } : { erreur: `identifiant de fonction « ${s} » invalide (F1, F2…)` };
+  return /^F[1-9][0-9]*$/.test(s) ? { valeur: s } : { erreur: `« ${s} » n'est pas un identifiant de fonction valide (F1, F2…)` };
 }
 
 // ---------------------------------------------------------------------------
@@ -384,7 +385,7 @@ function lireDefinitions(lignes, onglet, erreurs) {
     const texte = cellules.slice(position + 1).find((c) => c);
     if (!texte) return;
     if (!COLONNES_99.includes(colonneCourante)) {
-      erreurs.push({ onglet, ligne: i + 1, message: `colonne ${colonneCourante} non prévue dans B_99.01` });
+      erreurs.push({ onglet, ligne: i + 1, message: `Définition ignorée : la colonne ${colonneCourante} n'a pas d'options à définir dans B_99.01` });
       return;
     }
     definitions.push({ colonne: colonneCourante, option: Number(option[1]), definition: texte });
@@ -420,7 +421,7 @@ export function analyserClasseur(feuilles, libellesActivitesEba = {}) {
 
     const entete = trouverEntete(data, modele);
     if (!entete) {
-      erreurs.push({ onglet: sheet, ligne: null, message: 'ligne des codes de colonnes introuvable (ex. RT.02.02.0010 ou c0010)' });
+      erreurs.push({ onglet: sheet, ligne: null, message: "Onglet non lu : la ligne des codes de colonnes (ex. RT.02.02.0010 ou c0010) est introuvable. Gardez la ligne des codes du modèle au-dessus des données." });
       continue;
     }
     const codes = Object.values(entete.colonnes);
@@ -443,7 +444,7 @@ export function analyserClasseur(feuilles, libellesActivitesEba = {}) {
         const [champ, lire] = regle;
         const resultat = lire === 'activite' ? lireActivite(ligne[position], libellesActivitesEba) : lire(ligne[position]);
         if (resultat.erreur) {
-          erreursLigne.push({ onglet: sheet, ligne: i + 1, colonne: `${modele}.${codeCol}`, message: resultat.erreur });
+          erreursLigne.push({ onglet: sheet, ligne: i + 1, colonne: `${modele}.${codeCol}`, champ: libelleChamp(modele, champ), message: `${libelleChamp(modele, champ)} : ${resultat.erreur}` });
           illisibles.add(champ);
         } else {
           enregistrement[champ] = resultat.valeur;
@@ -454,7 +455,11 @@ export function analyserClasseur(feuilles, libellesActivitesEba = {}) {
       // Une ligne sans aucune valeur lisible pour les champs obligatoires est considérée comme vide
       if (!erreursLigne.length && manquants.length === obligatoires.length) continue;
       if (manquants.length) {
-        erreursLigne.push({ onglet: sheet, ligne: i + 1, message: `champ(s) obligatoire(s) manquant(s) : ${manquants.join(', ')}` });
+        const libelles = manquants.map((c) => libelleChamp(modele, c));
+        erreursLigne.push({
+          onglet: sheet, ligne: i + 1,
+          message: libelles.length > 1 ? `Champs obligatoires vides : ${libelles.join(', ')}` : `Champ obligatoire vide : ${libelles[0]}`,
+        });
       }
       // Une ligne en erreur n'entre pas dans le registre : elle est gardée avec son motif pour
       // être mise en attente de correction (les valeurs illisibles restent vides)
@@ -501,7 +506,7 @@ function normaliserDonnees(brut, erreurs) {
       }
     }
     if (!trouve) {
-      erreurs.push({ onglet: r._onglet, ligne: r._ligne, message: `aucun service contracté pour ${r.reference_contrat} / ${r.lei_entite} : succursale ignorée` });
+      erreurs.push({ onglet: r._onglet, ligne: r._ligne, message: `Succursale ${succursale} non reprise : aucun service contracté pour le contrat ${r.reference_contrat} et l'entité ${r.lei_entite}` });
     }
   }
   for (const s of services.values()) {
