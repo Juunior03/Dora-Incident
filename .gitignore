@@ -29,3 +29,6 @@ node_modules/
 
 
 schema.sql
+# Images Docker exportées et cache local de la CLI Supabase (lien vers un projet)
+*.tar
+supabase/.temp/

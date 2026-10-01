@@ -482,11 +482,11 @@ EditeurSection.propTypes = {
   onRetourRapport: PropTypes.func,
 };
 
-export default function RegistreInformation({ role }) {
+export default function RegistreInformation({ roleRegistre }) {
   const [active, setActive] = useState(SECTIONS[0].key);
   const [compteurs, setCompteurs] = useState({});
   const [anomalieCible, setAnomalieCible] = useState(null);
-  const lectureSeule = role !== 'saisisseur';
+  const lectureSeule = roleRegistre !== 'gestionnaire';
 
   const ouvrirSection = (cle, anomalie = null) => {
     setAnomalieCible(anomalie);
@@ -562,7 +562,7 @@ export default function RegistreInformation({ role }) {
           </ul>
           {lectureSeule && (
             <p className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs">
-              Consultation seule : la saisie du registre est réservée au rôle saisisseur.
+              Consultation seule : la saisie du registre est réservée aux gestionnaires du registre.
             </p>
           )}
         </div>
@@ -590,5 +590,5 @@ export default function RegistreInformation({ role }) {
 }
 
 RegistreInformation.propTypes = {
-  role: PropTypes.string,
+  roleRegistre: PropTypes.oneOf(['gestionnaire', 'lecteur']),
 };

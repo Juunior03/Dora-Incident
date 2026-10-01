@@ -1152,7 +1152,7 @@ const nowISO = () => new Date().toISOString()
     };
 
 export default function DoraIncidentApp() {
-  const { user, role, signOut } = useAuth();
+  const { user, role, roleRegistre, signOut } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [view, setView] = useState('dashboard')
@@ -1886,12 +1886,14 @@ export default function DoraIncidentApp() {
             Dashboard
           </button>
 
-          <button
-              onClick={() => setView('registre')}
-              className={getButtonClasses(view, 'registre')}
-          >
-            Registre
-          </button>
+          {roleRegistre && (
+            <button
+                onClick={() => setView('registre')}
+                className={getButtonClasses(view, 'registre')}
+            >
+              Registre
+            </button>
+          )}
 
           <button
               onClick={() => {
@@ -3905,14 +3907,14 @@ export default function DoraIncidentApp() {
                     </motion.div>
                 )}
 
-                {view === 'registre' && (
+                {view === 'registre' && roleRegistre && (
                   <motion.div
                     key="registre"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    <RegistreInformation role={role} />
+                    <RegistreInformation roleRegistre={roleRegistre} />
                   </motion.div>
                 )}
 
