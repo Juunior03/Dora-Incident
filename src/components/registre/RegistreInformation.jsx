@@ -143,6 +143,8 @@ function cibleAnomalie(sectionKey, anomalie, lignes, fkOptions, section) {
       return { ligne: lignes[0] ?? null };
     case 'entites':
       return { ligne: trouver((l) => l.lei === ref) };
+    case 'succursales':
+      return { ligne: trouver((l) => l.code === ref) };
     case 'prestataires':
       return { ligne: trouver((l) => l.code === ref) };
     case 'fonctions':
