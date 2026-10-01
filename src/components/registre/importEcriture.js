@@ -157,7 +157,7 @@ export async function importerDonnees(donnees, onEtape = () => {}) {
     const idMere = idPrestataire(p.mere_code, p.mere_type_code);
     const refus = (message) => meres.erreurs.push({ reference: p.code, message, donnees: garder(p, champsPrestataire), onglet: p._onglet, ligne: p._ligne });
     if (!idMere) {
-      refus(`entreprise mère ${p.mere_code} absente de la liste des prestataires (B_05.01)`);
+      refus(`L'entreprise mère ultime « ${p.mere_code} » n'existe pas dans « Prestataires TIC » : ajoutez-la, puis choisissez-la comme entreprise mère ultime`);
       continue;
     }
     const { error } = await supabase.from('ri_prestataires').update({ mere_ultime_id: idMere }).eq('id', id);
@@ -190,7 +190,7 @@ export async function importerDonnees(donnees, onEtape = () => {}) {
     const ids = {};
     for (const champ of champs) {
       ids[`${champ}_id`] = idPrestataire(r[`${champ}_code`], r[`${champ}_type_code`]);
-      if (!ids[`${champ}_id`] && r[`${champ}_code`]) manquants.push(`prestataire ${r[`${champ}_code`]} absent de la liste des prestataires (B_05.01)`);
+      if (!ids[`${champ}_id`] && r[`${champ}_code`]) manquants.push(`Le prestataire « ${r[`${champ}_code`]} » n'existe pas dans « Prestataires TIC » : créez-le, puis choisissez-le dans la liste`);
     }
     const erreur = [r._motif, ...manquants].filter(Boolean).join(' ; ');
     return ligne(r, { ...payload, ...ids }, erreur || null);

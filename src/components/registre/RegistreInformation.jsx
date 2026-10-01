@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { SECTIONS } from './registreConfig';
 import { messageErreur } from './erreursBase';
+import { codeColonne, libelleColonne } from './libellesRegistre';
 import RapportAnomalies from './RapportAnomalies';
 import ExportAcpr from './ExportAcpr';
 import ImportExcel from './ImportExcel';
@@ -361,7 +362,8 @@ function EditeurSection({ section, lectureSeule, onChangement, anomalie, onRetou
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 text-sm flex justify-between items-start gap-4">
           <div>
             <p className="font-medium">
-              Anomalie à corriger — {anomalie.modele}{anomalie.colonne && !anomalie.colonne.startsWith('B_') ? `.${anomalie.colonne}` : ''}
+              Anomalie à corriger — {libelleColonne(anomalie.modele, anomalie.colonne) ?? codeColonne(anomalie.modele, anomalie.colonne)}
+              <span className="font-normal opacity-60"> ({codeColonne(anomalie.modele, anomalie.colonne)})</span>
               {anomalie.reference && <span className="font-normal"> · {anomalie.reference}</span>}
             </p>
             <p className="mt-1">{anomalie.message}</p>

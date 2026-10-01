@@ -61,25 +61,25 @@ export function anomaliesGleif(refs, trouves) {
     colonne: ref.colonne,
     section: ref.section,
     reference: ref.lei,
-    message: `${message} (règle ${ref.regle})`,
+    message: `${message} (contrôle EBA ${ref.regle})`,
     source: 'GLEIF',
   });
 
   for (const ref of refs) {
     const g = trouves[ref.lei];
     if (!g) {
-      ajouter(ref, 'bloquant', 'LEI introuvable dans la base du GLEIF');
+      ajouter(ref, 'bloquant', "Ce LEI n'existe pas dans la base mondiale des LEI (GLEIF). Vérifiez-le, une faute de frappe est probable, sur search.gleif.org");
       continue;
     }
-    const nom = g.entity?.legalName?.name ? ` : ${g.entity.legalName.name}` : '';
+    const nom = g.entity?.legalName?.name ? ` (« ${g.entity.legalName.name} »)` : '';
     if (g.entity?.status && g.entity.status !== 'ACTIVE') {
-      ajouter(ref, 'bloquant', `Entité déclarée inactive au GLEIF${nom}`);
+      ajouter(ref, 'bloquant', `L'entité${nom} est déclarée inactive au GLEIF. Vérifiez qu'elle existe toujours, ou indiquez l'identifiant de l'entité qui l'a remplacée`);
     }
     const statut = g.registration?.status;
     if (statut === 'LAPSED') {
-      ajouter(ref, 'avertissement', `LEI non renouvelé (statut GLEIF « LAPSED »)${nom}`);
+      ajouter(ref, 'avertissement', `Le LEI de l'entité${nom} n'a pas été renouvelé (statut « expiré » au GLEIF). Il reste utilisable, mais demandez son renouvellement`);
     } else if (statut && !STATUTS_OK.includes(statut)) {
-      ajouter(ref, 'bloquant', `LEI non valide (statut GLEIF « ${statut} »)${nom}`);
+      ajouter(ref, 'bloquant', `Le LEI de l'entité${nom} n'est plus valide (statut « ${statut} » au GLEIF). Vérifiez-le ou utilisez le LEI qui l'a remplacé`);
     }
     if (ref.pays && ref.modele === 'B_01.02' && ref.colonne === '0010') {
       const paysGleif = [...new Set([g.entity?.jurisdiction, g.entity?.legalAddress?.country].filter(Boolean))];
@@ -90,7 +90,7 @@ export function anomaliesGleif(refs, trouves) {
           colonne: '0030',
           section: ref.section,
           reference: ref.lei,
-          message: `Le pays déclaré (${ref.pays}) diffère de celui du GLEIF (${paysGleif.join(' / ')}) (règle VR_16)`,
+          message: `Le pays indiqué (${ref.pays}) diffère de celui enregistré au GLEIF (${paysGleif.join(' / ')}). Corrigez le pays si nécessaire (contrôle EBA VR_16)`,
           source: 'GLEIF',
         });
       }
