@@ -5,6 +5,9 @@ import { analyserClasseur } from './importAnalyse';
 import { importerDonnees } from './importEcriture';
 import { messageErreur } from './erreursBase';
 
+// Un registre complet tient en quelques Mo : au-delà, fichier anormal (ou piégé) qui bloquerait le navigateur
+const TAILLE_MAX = 20 * 1048576;
+
 const LIBELLES = {
   teneur: ['B_01.01', 'Entité tenant le registre'], entites: ['B_01.02', 'Entités du périmètre'],
   succursales: ['B_01.03', 'Succursales'], prestataires: ['B_05.01', 'Prestataires TIC'], fonctions: ['B_06.01', 'Fonctions'],
@@ -31,6 +34,10 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
     if (!f) return;
     if (!/\.xlsx$/i.test(f.name)) {
       setErreur('Format non pris en charge : enregistrez le classeur au format .xlsx (Fichier > Enregistrer sous > Classeur Excel).');
+      return;
+    }
+    if (f.size > TAILLE_MAX) {
+      setErreur(`Fichier trop volumineux (${Math.round(f.size / 1048576)} Mo) : la limite est de ${TAILLE_MAX / 1048576} Mo. Supprimez les onglets inutiles ou les mises en forme lourdes.`);
       return;
     }
     setFichier(f);
