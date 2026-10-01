@@ -52,10 +52,21 @@ select * from (values
      case when (select prosrc from pg_proc where proname = 'handle_new_user' and pronamespace = 'public'::regnamespace) like '%''auditeur''%'
           then 'auditeur' else 'autre' end, 'auditeur',
      (select prosrc from pg_proc where proname = 'handle_new_user' and pronamespace = 'public'::regnamespace) like '%''auditeur''%'),
+  ('Règles du registre basées sur le rôle registre',
+     (select count(*) from pg_policies where schemaname = 'public' and tablename like 'ri\_%'
+        and coalesce(qual, '') || coalesce(with_check, '') like '%current_registre_role%')::text || ' / 56', '56 / 56',
+     (select count(*) from pg_policies where schemaname = 'public' and tablename like 'ri\_%'
+        and coalesce(qual, '') || coalesce(with_check, '') like '%current_registre_role%') = 56
+     and not exists (select 1 from pg_policies where schemaname = 'public' and tablename like 'ri\_%'
+        and coalesce(qual, '') || coalesce(with_check, '') like '%current_user_role%')),
   ('info : comptes hors domaine @actionlogement.fr',
      coalesce((select string_agg(email, ', ') from public.users where lower(email) !~ '@actionlogement\.fr$'), 'aucun'), 'aucun (sinon à supprimer)',
      true),
-  ('info : comptes par rôle',
+  ('info : comptes par rôle (incidents)',
      (select string_agg(role || ' : ' || n, ', ' order by role) from (select role, count(*) n from public.users group by role) r), '-',
+     true),
+  ('info : comptes par rôle sur le registre',
+     (select string_agg(coalesce(role_registre, 'aucun accès') || ' : ' || n, ', ' order by role_registre)
+      from (select role_registre, count(*) n from public.users group by role_registre) r), '-',
      true)
 ) as v(controle, resultat, attendu, ok);

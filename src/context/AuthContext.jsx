@@ -9,6 +9,9 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  // Rôle sur le registre d'information, indépendant de celui des déclarations d'incident :
+  // 'gestionnaire' (modifie), 'lecteur' (consulte) ou null (aucun accès)
+  const [roleRegistre, setRoleRegistre] = useState(null);
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
 
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) {
       setRole(null);
+      setRoleRegistre(null);
       return;
     }
     let cancelled = false;
@@ -47,14 +51,21 @@ export const AuthProvider = ({ children }) => {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('role')
+          .select('role, role_registre')
           .eq('id', userId)
           .maybeSingle();
         if (error) throw error;
-        if (!cancelled) setRole(data ? data.role : 'saisisseur');
+        // Compte sans ligne de rôle : aucun droit (jamais de rôle par défaut)
+        if (!cancelled) {
+          setRole(data?.role ?? null);
+          setRoleRegistre(data?.role_registre ?? null);
+        }
       } catch (err) {
         console.error("Erreur lors de la récupération du rôle:", err);
-        if (!cancelled) setRole(null); // Aucun droit en cas d'erreur
+        if (!cancelled) { // Aucun droit en cas d'erreur
+          setRole(null);
+          setRoleRegistre(null);
+        }
       } finally {
         if (!cancelled) setRoleLoading(false);
       }
@@ -94,6 +105,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       setUser(null);
       setRole(null);
+      setRoleRegistre(null);
     } catch (err) {
       throw new Error('Erreur lors de la déconnexion: ' + err.message);
     }
@@ -102,10 +114,11 @@ export const AuthProvider = ({ children }) => {
   const contextValue = useMemo(() => ({
     user,
     role,
+    roleRegistre,
     loading: loading || roleLoading,
     signIn,
     signOut,
-  }), [user, role, loading, roleLoading, signIn, signOut]);
+  }), [user, role, roleRegistre, loading, roleLoading, signIn, signOut]);
 
   return (
     <AuthContext.Provider value={contextValue}>

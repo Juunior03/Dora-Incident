@@ -87,7 +87,7 @@ export default function ImportExcel({ lectureSeule, onTermine, onOuvrirRapport }
       </p>
 
       {lectureSeule ? (
-        <p className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm">L'import est réservé au rôle saisisseur.</p>
+        <p className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm">L'import est réservé aux gestionnaires du registre.</p>
       ) : (
         <div className="p-4 rounded-xl border dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <label htmlFor="import-fichier" className="text-sm font-medium">Fichier Excel (.xlsx)</label>

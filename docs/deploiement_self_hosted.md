@@ -34,7 +34,7 @@ Le script est rejouable : en cas d'erreur (coupure, copier-coller incomplet), co
 relancer en entier.
 
 Retour arrière : fichiers de `supabase/rollback/`, dans l'ordre inverse
-(20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
+(20261006, 20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
 registre et leurs données.
 
 ## 3. Configuration de l'authentification (DSI, fichier `.env` du self-hosted)
@@ -50,14 +50,25 @@ Le Studio ne doit être accessible que depuis le réseau d'administration.
 
 ## 4. Rôles des utilisateurs
 
-Les nouveaux comptes reçoivent le rôle `auditeur` (lecture seule). Attribuer ensuite le rôle voulu :
+Chaque compte a deux rôles indépendants :
+
+| Colonne | Partie | Valeurs |
+|---|---|---|
+| `role` | Déclarations d'incident | `saisisseur` (crée et modifie ses brouillons), `validateur` (valide), `auditeur` (consulte les déclarations validées) |
+| `role_registre` | Registre d'information | `gestionnaire` (consulte et modifie, import compris), `lecteur` (consulte, rapport d'anomalies, export), vide = aucun accès (onglet masqué) |
+
+Au déploiement, les comptes existants reçoivent un rôle registre équivalent à leurs droits actuels
+(saisisseur → gestionnaire, validateur et auditeur → lecteur). Les nouveaux comptes sont
+`auditeur` pour les incidents et sans accès au registre. Attribuer ensuite les rôles voulus :
 
 ```sql
 update public.users set role = 'saisisseur' where email = 'prenom.nom@actionlogement.fr';
-update public.users set role = 'validateur' where email = 'prenom.nom@actionlogement.fr';
+update public.users set role_registre = 'gestionnaire' where email = 'prenom.nom@actionlogement.fr';
+update public.users set role_registre = null where email = 'prenom.nom@actionlogement.fr';  -- retirer l'accès
 ```
 
-Seul le rôle `saisisseur` peut modifier le registre.
+L'utilisateur doit se reconnecter (ou recharger la page) pour que le changement s'applique à
+l'écran ; la base l'applique immédiatement.
 
 ## 5. Application
 
@@ -80,8 +91,10 @@ ajouter son URL à `connect-src` dans `nginx.conf`.
 
 ## 6. Recette
 
-1. Connexion avec un compte de chaque rôle.
+1. Connexion avec un compte de chaque rôle, dont un compte aux rôles croisés (par exemple
+   saisisseur des incidents et lecteur du registre).
 2. Déclaration d'incident : création (saisisseur), validation (validateur), lecture (auditeur).
 3. Registre : onglet visible, rapport d'anomalies, vérification GLEIF (accès sortant à
    `api.gleif.org` à autoriser par la DSI), import d'un fichier Excel, export ACPR.
-4. Un auditeur ne voit ni le bouton d'import ni les boutons de modification.
+4. Un lecteur du registre ne voit ni le bouton d'import ni les boutons de modification ;
+   un compte sans rôle registre ne voit pas l'onglet Registre.
