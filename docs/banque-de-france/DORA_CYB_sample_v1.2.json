@@ -1,0 +1,42 @@
+{
+  "submittingEntity": {
+    "name": "Acm Bank S.A.",
+    "LEI": "ABCDEFGHIJ1234567890",
+    "code": "FR-ACM-001",
+    "typeOfSubmittingFinancialEntity": [
+      "credit_institution",
+      "payment_institution"
+    ]
+  },
+  "affectedFinancialEntity": {
+    "name": "Acm Payments S.A.",
+    "LEI": "BCDEFGHIJK2345678901"
+  },
+  "primaryContact": {
+    "name": "M Dup",
+    "email": "m.dup@acm.eu",
+    "phone": "+33612345678"
+  },
+  "secondaryContact": {
+    "name": "Th Müll",
+    "email": "t.mull@acm.eu",
+    "phone": "+33698765432"
+  },
+  "cyberThreat": {
+    "detectionDateTime": "2026-05-20T14:32:00Z",
+    "cyberThreatDescription": "On 20 May 2026 at 14:32 UTC, Acm Bank's threat intelligence platform detected reconnaissance activity targeting the external API gateway of the core banking platform. Network logs show repeated probing of authentication endpoints from a cluster of IP addresses (185.220.101.0/24) associated with a known advanced persistent threat group. Credential stuffing attempts were identified against the corporate VPN portal. No successful authentication or data access has been confirmed at time of notification. The threat remains active and under continuous monitoring.",
+    "potentialImpactInformation": "If the threat materialises, potential impact includes unauthorised access to the core banking API, possible exfiltration of client account data, disruption to SEPA payment processing, and cascading availability issues affecting up to 375,000 retail and corporate clients across France, Germany and Italy. Based on preliminary assessment, the incident could meet materiality thresholds for geographical spread, clients affected and reputational impact.",
+    "potentialClassificationCriteria": [
+      "clients_financial_counterparts_and_transactions_affected",
+      "geographical_spread",
+      "data_losses",
+      "reputational_impact",
+      "economic_impact"
+    ],
+    "status": "active",
+    "actionsTakenToPreventMaterialisation": "1. External API gateway rate-limiting tightened to block the identified IP ranges (185.220.101.0/24 and 45.142.212.0/24) at perimeter firewall level. 2. Multi-factor authentication enforced on all corporate VPN sessions with immediate effect. 3. Core banking API authentication logs placed under enhanced real-time monitoring with 5-minute alerting threshold. 4. Threat intelligence shared with internal SOC and external managed detection and response (MDR) provider. 5. Incident response retainer activated; forensic investigation initiated. 6. Password reset triggered for all accounts with VPN activity originating from flagged IP ranges (127 accounts). 7. Business continuity team placed on standby.",
+    "notificationToOtherStakeholders": "National cybersecurity agency (ANSS) notified at 15:45 UTC on 20 May 2026 via the designated secure channel. Information shared with the French financial sector ISAC (CERT-FIN) at 16:00 UTC. Europol cybercrime unit notified informally by ANSSI. Internal notification issued to Group CISO, CRO and CEO at 15:00 UTC. Board Risk Committee chair briefed at 17:30 UTC.",
+    "indicatorsOfCompromise": "IP ranges: 180.210.101.0/24, 40.142.212.0/24. User-Agent strings observed in API logs: 'Mozilla/5.0 (compatible; MassScanner/1.0)'. Credential stuffing payload pattern: base64-encoded JSON with field 'usr'/'pwd' deviating from standard login schema. DNS lookups to C2 domains: api-gateway-monitor[.]ru, auth-health-check[.]com (sinkholed at 15:10 UTC). SHA256 of observed malicious payload sample: a3f1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2.",
+    "otherRelevantInformation": "Threat actor TTPs are consistent with APT group TA4563 (alias: SilverFox), known to target European financial institutions. A similar campaign was observed against two other EU credit institutions in April 2026 (sector intelligence via CERT-FIN). Acme Bank is coordinating with its MDR provider and StorageCorp (third-party API management vendor) to assess whether the attack vector exploits a known vulnerability in the API gateway middleware (CVE-2026-11432, patch available since 2026-04-15, deployment pending change advisory board approval scheduled for 2026-05-28). Patch deployment has been expedited to 2026-05-21."
+  }
+}

@@ -9,6 +9,8 @@ import ChangePassword from './ChangePassword';
 import { FaKey } from 'react-icons/fa';
 import RegistreInformation from './registre/RegistreInformation';
 import { messageTechnique } from '../utils/messageTechnique';
+import SuiviDelais, { BadgeEcheance } from './SuiviDelais';
+import { controlesAcpr } from '../utils/controlesAcpr';
 
 const nowISO = () => new Date().toISOString()
 
@@ -36,6 +38,7 @@ const nowISO = () => new Date().toISOString()
       // 1. On clone profondément pour ne pas muter le draft original
       const clonedReport = structuredClone(report);
       const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = clonedReport;
+      delete cleanedReport.validatedAt; // donnée interne, absente du format de l'autorité
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -60,7 +63,7 @@ const nowISO = () => new Date().toISOString()
       }
       if (cleanedReport.impactAssessment?.serviceImpact?.serviceRestorationDateTime) {
         cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime =
-          formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'withMilliseconds');
+          formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'iso');
       }
 
       // Ordonner les clés des entités affectées
@@ -73,7 +76,35 @@ const nowISO = () => new Date().toISOString()
         cleanedReport.submittingEntity = submittingEntity;
       }
 
-      return cleanedReport;
+      // Le schéma DORA IR v1.3 refuse les champs vides (chaîne vide hors liste, liste vide) :
+      // les champs non renseignés sont omis, comme dans les maquettes de la Banque de France
+      const elague = retirerChampsVides(cleanedReport);
+      if (elague.ultimateParentUndertaking && Object.keys(elague.ultimateParentUndertaking).length <= 1) {
+        delete elague.ultimateParentUndertaking; // seul entityType : aucune entreprise mère renseignée
+      }
+      if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
+      return elague;
+    }
+
+    function retirerChampsVides(valeur) {
+      if (Array.isArray(valeur)) {
+        return valeur.map(retirerChampsVides).filter((v) => !estVide(v));
+      }
+      if (valeur && typeof valeur === 'object') {
+        const resultat = {};
+        for (const [cle, v] of Object.entries(valeur)) {
+          const nettoye = retirerChampsVides(v);
+          if (!estVide(nettoye)) resultat[cle] = nettoye;
+        }
+        return resultat;
+      }
+      return valeur;
+    }
+
+    function estVide(v) {
+      return v === null || v === undefined || (typeof v === 'string' && v.trim() === '')
+        || (Array.isArray(v) && v.length === 0)
+        || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
     }
 
     // Sous-fonction pour nettoyer les numéros de téléphone
@@ -123,6 +154,11 @@ const nowISO = () => new Date().toISOString()
               ...base,
               dataLosseMaterialityThresholds: ct.dataLosseMaterialityThresholds ?? [],
               dataLossesDescription: ct.dataLossesDescription ?? "",
+            };
+          case 'economic_impact':
+            return {
+              ...base,
+              economicImpactMaterialityThreshold: ct.economicImpactMaterialityThreshold ?? "",
             };
           case 'reputational_impact':
             return {
@@ -185,7 +221,7 @@ const nowISO = () => new Date().toISOString()
       if (!incident) return incident;
 
       if (incident.classificationDateTime) {
-        incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'withZ');
+        incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'iso');
       }
 
       const otherDateFields = [
@@ -198,7 +234,7 @@ const nowISO = () => new Date().toISOString()
 
       for (const field of otherDateFields) {
         if (incident[field]) {
-          incident[field] = formatDateForExport(incident[field], 'withMilliseconds');
+          incident[field] = formatDateForExport(incident[field], 'iso');
         }
       }
 
@@ -225,6 +261,17 @@ const nowISO = () => new Date().toISOString()
 
       // Nettoyer le rapport fusionné pour l'export
       const cleanedReport = cleanReportForExport(mergedReport);
+
+      // Contrôles du guide de remplissage de l'ACPR avant téléchargement
+      const constats = controlesAcpr(cleanedReport);
+      if (constats.length) {
+        const bloquants = constats.filter((c) => c.gravite === 'bloquant');
+        const liste = constats.map((c) => `${c.gravite === 'bloquant' ? '✖' : '⚠'} ${c.message}`).join('\n\n');
+        const titre = bloquants.length
+          ? `${bloquants.length} point(s) bloquant(s) : la déclaration risque d'être rejetée ou de faire l'objet d'une relance de l'ACPR.`
+          : 'Points à vérifier avant transmission à l\'ACPR :';
+        if (!globalThis.confirm(`${titre}\n\n${liste}\n\nTélécharger quand même le fichier ?`)) return;
+      }
 
       const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
       const filename = `dora-incident-${financialEntityCode}.json`;
@@ -878,6 +925,9 @@ const nowISO = () => new Date().toISOString()
 
         // Formater selon le type requis
         switch (formatType) {
+          case 'iso':
+            // Format du schéma DORA IR v1.3 : "2001-12-17T09:30:47Z" (UTC)
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
           case 'withZ':
             // Format: "2001-12-17T09:30:47.0Z" (pour classificationDateTime)
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0Z`;
@@ -1349,6 +1399,7 @@ export default function DoraIncidentApp() {
       }
 
       const candidate = { ...emptyDraft(draft.incidentId), ...draft, savedAt: nowISO() };
+      delete candidate.validatedAt; // fixée par la base, jamais enregistrée par l'application
       const v = validateReportFields(candidate);
       setErrors(Array.isArray(v) ? v : []);
 
@@ -1507,6 +1558,7 @@ export default function DoraIncidentApp() {
           id: item.id,
           status: item.status, // <-- Important : status est bien celui de la base de données
           nextSubmissionType: item.next_submission_type,
+          validatedAt: item.validated_at ?? null,
           comments: item.comments || [],
           savedAt: reportData.savedAt || item.created_at
         };
@@ -3641,6 +3693,8 @@ export default function DoraIncidentApp() {
                         </div>
                       </div>
 
+                        <SuiviDelais incidents={groupedIncidents} />
+
                         <div>
                           {/* Barre de recherche et filtres */}
                           <div className="mb-6">
@@ -3788,6 +3842,7 @@ export default function DoraIncidentApp() {
                                       Incident: {financialEntityCode}
                                       {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
                                       {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
+                                      {!incident.isClosed && <BadgeEcheance reports={incident.reports} />}
                                     </h4>
                                   </div>
                                   <div className="space-y-3">

@@ -1,0 +1,193 @@
+{
+  "incidentSubmission": "final_report",
+  "reportCurrency": "EUR",
+  "submittingEntity": {
+    "entityType": "SUBMITTING_ENTITY",
+    "name": "Acm Bank S.A.",
+    "LEI": "ABCDEFGHIJ1234567890",
+    "code": "FR-ACM-001"
+  },
+  "affectedEntity": [
+    {
+      "entityType": "AFFECTED_ENTITY",
+      "name": "Acm Payments S.A.",
+      "LEI": "BCDEFGHIJK2345678901",
+      "affectedEntityType": [
+        "credit_institution",
+        "payment_institution"
+      ]
+    },
+    {
+      "entityType": "AFFECTED_ENTITY",
+      "name": "Acm Investment Management S.A.",
+      "LEI": "CDEFGHIJKL3456789012",
+      "affectedEntityType": [
+        "investment_firm",
+        "management_company"
+      ]
+    }
+  ],
+  "ultimateParentUndertaking": {
+    "entityType": "ULTIMATE_PARENT_UNDERTAKING_ENTITY",
+    "name": "Acm Financial Group S.A.",
+    "LEI": "DEFGHIJKLM4567890123"
+  },
+  "primaryContact": {
+    "name": "M Dup",
+    "email": "m.dup@acm.eu",
+    "phone": "+33612345678"
+  },
+  "secondaryContact": {
+    "name": "Th Müll",
+    "email": "t.mull@acm.eu",
+    "phone": "+33698765432"
+  },
+  "incident": {
+    "financialEntityCode": "ACM-FR-2026-0042",
+    "detectionDateTime": "2026-05-10T22:15:00Z",
+    "classificationDateTime": "2026-05-10T23:45:00Z",
+    "incidentOccurrenceDateTime": "2026-05-10T21:58:00Z",
+    "incidentDuration": "0:14:30",
+    "incidentDescription": "At 22:15 UTC on 10 May 2026 the core banking storage array became unresponsive. Confirmed supply-chain ransomware attack via trojanised StorageCorp firmware v4.2.1. Full service restored 11 May 2026 06:00 UTC. No data exfiltration confirmed. 87,500 clients and 142 financial counterparts were affected.",
+    "incidentDiscovery": "monitoring_systems",
+    "isBusinessContinuityActivated": true,
+    "originatesFromThirdPartyProvider": "StorageCorp firmware update v4.2.1 (deployed 2026-05-09) confirmed as the attack vector. StorageCorp notified; joint investigation concluded 2026-05-18.",
+    "competentAuthorityCode": "ACBB",
+    "incidentType": {
+      "incidentClassification": [
+        "cybersecurity-related",
+        "system_failure",
+        "other"
+      ],
+      "otherIncidentClassification": "Combination of ransomware propagation and cascading infrastructure failure not fully captured by existing classification categories.",
+      "threatTechniques": [
+        "data_encryption_for_impact_including_ransomware",
+        "supply-chain_attack",
+        "data_exfiltration_and_manipulation_including_identity_theft",
+        "other"
+      ],
+      "otherThreatTechniques": "Use of a previously unknown firmware-level persistence mechanism on storage controllers.",
+      "indicatorsOfCompromise": "C2 domains: malicious-c2-domain.ru, 185.220.101.45. Hashes: SHA256:a3f1... (ransomware payload), SHA256:b9c2... (lateral movement tool). Registry key: HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\svchost.exe."
+    },
+    "classificationTypes": [
+      {
+        "classificationCriterion": "clients_financial_counterparts_and_transactions_affected"
+      },
+      {
+        "classificationCriterion": "geographical_spread",
+        "countryCodeMaterialityThresholds": [
+          "FR",
+          "DE",
+          "IT",
+          "ES",
+          "NL",
+          "BE",
+          "LU"
+        ],
+        "memberStatesImpactType": [
+          "clients",
+          "financial_counterparts",
+          "branch_of_the_financial_entity"
+        ],
+        "memberStatesImpactTypeDescription": "Incident affected retail and corporate banking clients across seven EU member states through shared core banking infrastructure."
+      },
+      {
+        "classificationCriterion": "data_losses",
+        "dataLosseMaterialityThresholds": [
+          "availability",
+          "integrity",
+          "confidentiality"
+        ],
+        "dataLossesDescription": "Transaction records for 2026-05-10 were temporarily unavailable for 4 hours. Integrity of 12,000 records was verified post-restoration. No exfiltration confirmed."
+      },
+      {
+        "classificationCriterion": "critical_services_affected"
+      },
+      {
+        "classificationCriterion": "economic_impact",
+        "economicImpactMaterialityThreshold": "Above 1% of total annual net revenue"
+      },
+      {
+        "classificationCriterion": "reputational_impact",
+        "reputationalImpactType": [
+          "the_major_ict-related_incident_has_been_reflected_in_the_media",
+          "the_major_ict-related_incident_has_resulted_in_repetitive_complaints_from_different_clients_or_financial_counterparts_on_client-facing_services_or_critical_business_relationships"
+        ],
+        "reputationalImpactDescription": "Incident covered by three national financial news outlets. Over 4,000 complaints received from retail clients unable to access mobile banking."
+      },
+      {
+        "classificationCriterion": "duration_and_service_downtime"
+      }
+    ],
+    "rootCauseHLClassification": [
+      "malicious_actions",
+      "process_failure"
+    ],
+    "rootCausesDetailedClassification": [
+      "malicious_actions_deliberate_internal_actions",
+      "process_failure_insufficient_monitoring_or_failure_of_monitoring_and_control",
+      "process_failure_inadequate_ict_systems_acquisition_development_and_maintenance",
+      "process_failure_ICT_risk_management_process_failure"
+    ],
+    "rootCausesAdditionalClassification": [
+      "vulnerability_and_patch_management",
+      "monitoring_of_third-party_service_providers",
+      "change_management",
+      "insufficient_or_failure_of_software_testing"
+    ],
+    "rootCausesOther": "Absence of cryptographic integrity verification for vendor-supplied firmware packages was a contributing factor not fully covered by existing detailed categories.",
+    "rootCausesInformation": "The trojanised firmware passed standard signature checks because StorageCorp's code-signing key was compromised at the vendor's build server. Acm Bank's patch management process did not include independent binary integrity verification. Internal change advisory board approved the update without a mandatory staging-environment test for firmware-class updates.",
+    "rootCauseAddressingDateTime": "2026-05-15T12:00:00Z",
+    "incidentResolutionSummary": "Full service restored via DR site activation. Affected storage array isolated and replaced. StorageCorp provided a clean firmware build (v4.2.2). All systems returned to primary site by 2026-05-13 after full forensic sweep. No customer data loss or exfiltration confirmed by two independent forensic firms.",
+    "incidentResolutionDateTime": "2026-05-11T06:00:00Z",
+    "incidentResolutionVsPlannedImplementation": "DR activation was completed within the 8-hour RTO defined in the BCP, though 2 hours behind the initial internal target due to unexpected dependency on a third-party authentication service that required manual failover.",
+    "assessmentOfRiskToCriticalFunctions": "Risk to payment processing critical function assessed as temporarily elevated during the incident window. Post-restoration controls verified. No residual risk to critical functions identified.",
+    "informationRelevantToResolutionAuthorities": "No insolvency or liquidity impact identified. Capital ratios remained above regulatory minimums throughout the incident. Resolution plan critical functions were not impaired beyond the 14.5-hour window.",
+    "grossAmountIndirectDirectCosts": 4850000.0,
+    "financialRecoveriesAmount": 1200000.0,
+    "recurringNonMajorIncidentsDescription": "Three minor storage performance events occurred in the 12 months prior (refs: ACM-FR-2025-0018, ACM-FR-2025-0031, ACM-FR-2026-0007), each resolved within 30 minutes. None were assessed as related to the current supply-chain vector.",
+    "recurringIncidentDate": "2026-05-10T21:58:00Z",
+    "otherInformation": "Coordination with Europol cybercrime unit ongoing. StorageCorp has issued a security advisory to all customers. Acm Bank is participating in the sector-wide ISAC information sharing exercise on supply-chain firmware risks."
+  },
+  "impactAssessment": {
+    "hasImpactOnRelevantClients": true,
+    "criticalServicesAffected": "Core banking platform (CBS), retail internet banking portal, mobile banking application, SEPA credit transfer processing, intraday liquidity reporting.",
+    "affectedFunctionalAreas": "Retail banking operations, corporate treasury, payment processing, risk management reporting, compliance data feeds.",
+    "isAffectedInfrastructureComponents": "yes",
+    "affectedInfrastructureComponents": "Primary data centre storage array (vendor: StorageCorp, model: SC-9000), backup replication controllers, network segmentation layer between DMZ and internal banking network.",
+    "isImpactOnFinancialInterest": "yes",
+    "serviceImpact": {
+      "serviceRestorationDateTime": "2026-05-11T06:00:00Z",
+      "serviceDowntime": "0:14:30",
+      "isTemporaryActionsMeasuresForRecovery": true,
+      "descriptionOfTemporaryActionsMeasuresForRecovery": "Manual transaction processing activated for priority corporate clients. Read-only mode enabled on internet banking. Backup CBS instance brought online at DR site after 6 hours. Temporary SEPA cut-off extension requested from national central bank."
+    },
+    "affectedAssets": {
+      "affectedClients": {
+        "number": 87500,
+        "percentage": 23.4
+      },
+      "affectedFinancialCounterparts": {
+        "number": 142,
+        "percentage": 8.7
+      },
+      "affectedTransactions": {
+        "number": 410000,
+        "percentage": 31.2
+      },
+      "valueOfAffectedTransactions": 2750000000.0,
+      "numbersActualEstimate": [
+        "actual_figures_for_clients_affected",
+        "actual_figures_for_financial_counterparts_affected",
+        "estimates_for_transactions_affected"
+      ]
+    }
+  },
+  "reportingToOtherAuthorities": [
+    "csirt",
+    "national_cybersecurity_agency",
+    "police_law_enforcement",
+    "data_protection_authority"
+  ],
+  "informationDurationServiceDowntimeActualOrEstimate": "actual_figures"
+}
