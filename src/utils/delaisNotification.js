@@ -10,7 +10,8 @@
 //   5. sauf pour la notification initiale et le rapport intermédiaire des établissements de crédit,
 //      contreparties centrales, plates-formes de négociation, entités essentielles ou importantes (NIS2)
 //      et entités déclarées significatives ou systémiques.
-// Le report (paragraphes 4 et 5) dépend de la nature de l'entité : il n'est appliqué que sur option.
+// Action Logement étant un établissement de crédit, le report ne s'applique qu'au rapport final
+// (régime 'final', utilisé par défaut).
 // La date de transmission retenue est la date de validation (reports.validated_at).
 
 const HEURE = 3600 * 1000;
@@ -81,7 +82,7 @@ export function plusUnMois(d) {
  *   etat : 'respecte' | 'tardif' | 'transmis' (date de validation inconnue) | 'a_venir' |
  *          'proche' | 'depasse' | 'indetermine' (dates de départ manquantes)
  */
-export function echeancier(reports, maintenant = new Date(), reportJourOuvre = 'aucun') {
+export function echeancier(reports, maintenant = new Date(), reportJourOuvre = 'final') {
   const valides = (type) => reports
     .filter((r) => r.incidentSubmission === type && r.status === 'validated')
     .sort((a, b) => (date(a.validatedAt)?.getTime() ?? 0) - (date(b.validatedAt)?.getTime() ?? 0));
