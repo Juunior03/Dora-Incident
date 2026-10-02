@@ -3657,7 +3657,7 @@ export default function DoraIncidentApp() {
 
                       <div className="grid grid-cols-3 gap-2 mb-6">
                           {/* Incidents Status */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 col-span-2">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 col-span-2">
                               {/* Total Incidents */}
                           <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
                             <div className="text-sm">Total Incidents</div>
@@ -3674,6 +3674,9 @@ export default function DoraIncidentApp() {
                               <div className="text-sm">Incidents En Cours</div>
                               <div className="text-2xl font-bold">{incidentStats.openIncidents}</div>
                             </div>
+
+                            {/* Échéances de notification (détail dans un panneau latéral) */}
+                            <SuiviDelais incidents={groupedIncidents} />
                           </div>
 
                         <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
@@ -3692,8 +3695,6 @@ export default function DoraIncidentApp() {
                           </div>
                         </div>
                       </div>
-
-                        <SuiviDelais incidents={groupedIncidents} />
 
                         <div>
                           {/* Barre de recherche et filtres */}
