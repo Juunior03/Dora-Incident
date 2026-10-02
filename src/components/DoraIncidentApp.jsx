@@ -680,6 +680,28 @@ const nowISO = () => new Date().toISOString()
 
       validateFields(report, commonFields, errors);
 
+      // 1.3 : l'entité financière qui déclare elle-même s'identifie par son LEI
+      const codeDeclarant = report.submittingEntity?.code;
+      if (isFilled(codeDeclarant) && !LEI_VALIDE.test(codeDeclarant.trim())) {
+        errors.push("Submitting entity code must be its LEI (20 characters) when the financial entity reports itself");
+      }
+
+      // 2.5 : un incident n'est majeur que s'il affecte des services critiques et remplit au moins un autre
+      // critère (règlement délégué 2024/1772, article 8 ; instructions opérationnelles ESA du 16/09/2026)
+      const criteres = report.incident?.classificationTypes?.[0]?.classificationCriterion || [];
+      if (criteres.length && !criteres.includes('critical_services_affected')) {
+        errors.push("Classification criteria must include 'Critical services affected' for a major incident");
+      }
+      if (criteres.length && criteres.every(c => c === 'critical_services_affected')) {
+        errors.push("At least one classification criterion in addition to 'Critical services affected' is required");
+      }
+
+      // 1.13 / 1.14 : entreprise mère ultime, nom et LEI ensemble (obligatoires si l'entité appartient à un groupe)
+      const mere = report.ultimateParentUndertaking;
+      if (isFilled(mere?.name) !== isFilled(mere?.LEI)) {
+        errors.push("Ultimate parent undertaking: name and LEI must be provided together");
+      }
+
       // Code de l'incident : lettres, chiffres et tirets uniquement (guide de remplissage ACPR)
       const codeIncident = report.incident?.financialEntityCode;
       if (isFilled(codeIncident) && !/^[A-Za-z0-9-]+$/.test(codeIncident.trim())) {
@@ -698,7 +720,7 @@ const nowISO = () => new Date().toISOString()
         if (isFilled(e.LEI) && !isFilled(e.name)) errors.push(`Affected entity ${i + 1}: name is required`);
         if (isFilled(e.LEI) && !LEI_VALIDE.test(e.LEI.trim())) errors.push(`Affected entity ${i + 1}: LEI must be the 20-character code only`);
       });
-      const leiMere = report.ultimateParentUndertaking?.LEI;
+      const leiMere = mere?.LEI;
       if (isFilled(leiMere) && !LEI_VALIDE.test(leiMere.trim())) {
         errors.push("Ultimate parent undertaking LEI must be the 20-character code only");
       }
@@ -886,6 +908,7 @@ const nowISO = () => new Date().toISOString()
         { path: ['incident', 'incidentResolutionDateTime'], message: "Date and time when the incident was resolved is required for final reports" },
         { path: ['incident', 'incidentResolutionVsPlannedImplementation'], message: "Reason for the difference between permanent resolution date and initially planned implementation date is required for final reports" },
         { path: ['incident', 'grossAmountIndirectDirectCosts'], message: "Amount of gross direct and indirect costs and losses is required for final reports" },
+        { path: ['incident', 'financialRecoveriesAmount'], message: "Amount of financial recoveries is required for final reports" },
       ];
 
       validateFields(report, finalReportFields, errors);
@@ -913,6 +936,11 @@ const nowISO = () => new Date().toISOString()
       if (report.incident?.rootCausesDetailedClassification?.some(c => causesAvecPrecision.includes(c))
           && !report.incident?.rootCausesAdditionalClassification?.length) {
         errors.push("Additional classification of root causes is required for the selected detailed root causes (monitoring, ICT risk management, ICT operations, ICT systems acquisition) for final reports");
+      }
+
+      // 4.15 / 4.16 : incidents récurrents, description et date de la première occurrence ensemble
+      if (isFilled(report.incident?.recurringNonMajorIncidentsDescription) !== isFilled(report.incident?.recurringIncidentDate)) {
+        errors.push("Recurring incidents: the description and the date of the first occurrence must be provided together for final reports");
       }
 
       // Actions temporaires : à décrire dans le rapport final, ou expliquer pourquoi aucune n'a été prise (guide ACPR)
@@ -1044,13 +1072,14 @@ const nowISO = () => new Date().toISOString()
           entityType: 'SUBMITTING_ENTITY',
           name: '',
           code: '',
-          affectedEntityType: [],
+          // Action Logement est un établissement de crédit (modifiable dans les paramètres)
+          affectedEntityType: ['credit_institution'],
         },
         affectedEntity: [{
           entityType: 'AFFECTED_ENTITY',
           name: '',
           code: '',
-          affectedEntityType: [],
+          affectedEntityType: ['credit_institution'],
           LEI: ''
         }],
         ultimateParentUndertaking: {

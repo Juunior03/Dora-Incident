@@ -53,11 +53,17 @@ par le schéma et appliqués à l'export :
 
 Validation à l'enregistrement : champs obligatoires de l'annexe II du règlement 2025/302 pour chaque
 type de rapport, y compris les champs conditionnels 2.6, 3.3, 3.13-3.14, 3.17, 3.18-3.21, 3.24-3.26,
-3.29, 3.32, 3.34, 3.35, 4.3, 4.4 et 4.12. Le texte consolidé publié au Journal officiel (EUR-Lex) n'a pas
+3.29, 3.32, 3.34, 3.35, 4.3, 4.4 et 4.12. Ajouts du 2 octobre 2026 : code de l'entité déclarante = son
+LEI (1.3) ; nom et LEI de l'entreprise mère ultime ensemble (1.13/1.14) ; critère « services critiques
+affectés » toujours présent avec au moins un autre critère (2.5) ; montant des recouvrements dans le
+rapport final (4.14) ; description et date des incidents récurrents ensemble (4.15/4.16). Avertissements
+ajoutés : France citée dans la propagation géographique, transactions déclarées affectées sans nombre. Le texte consolidé publié au Journal officiel (EUR-Lex) n'a pas
 pu être téléchargé (protection anti-robots) : la référence utilisée est le projet final des autorités
 européennes, à confronter au texte publié en cas de doute.
 
 Délais (règlement 2025/301, article 5) : 4 h après la classification et au plus tard 24 h après la
 détection ; 4 h après la classification si elle intervient plus de 24 h après la détection ; 72 h après
 la notification initiale ; 1 mois après le dernier rapport intermédiaire ; report au jour ouvré suivant
-à midi (paragraphes 4 et 5) sur option, selon la nature de l'entité.
+à midi (paragraphes 4 et 5) pour le rapport final seulement, Action Logement étant un établissement de
+crédit : la notification initiale et le rapport intermédiaire restent dus à l'heure exacte, y compris
+le week-end et les jours fériés. Type d'entité « credit_institution » proposé par défaut.
