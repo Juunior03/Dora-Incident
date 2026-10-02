@@ -106,21 +106,70 @@ export default function SuiviDelais({ incidents }) {
               </ul>
             )}
 
-            <div className="mt-6 text-xs opacity-70 space-y-2 border-t dark:border-gray-700 pt-3">
-              <p>
-                Règlement délégué (UE) 2025/301 : notification initiale 4 h après la classification (au plus tard
-                24 h après la détection) ; rapport intermédiaire 72 h après l&apos;initiale ; rapport final 1 mois
-                après le dernier intermédiaire.
-              </p>
-              <p>
-                La date de transmission retenue est celle de la validation. Le report au jour ouvré suivant d&apos;une
-                échéance tombant un week-end ou un jour férié, possible sous conditions, n&apos;est pas appliqué.
-              </p>
-            </div>
+            <ExplicationDelais />
           </aside>
         </div>
       )}
     </>
+  );
+}
+
+// Explication des délais du règlement délégué (UE) 2025/301, article 5, en langage courant
+function ExplicationDelais() {
+  return (
+    <details className="mt-6 rounded-lg border dark:border-gray-700 text-sm" open>
+      <summary className="cursor-pointer px-3 py-2 font-medium">Comment les échéances sont-elles calculées ?</summary>
+      <div className="px-3 pb-3 space-y-3">
+        <p className="opacity-80">
+          Un incident majeur lié aux TIC donne lieu à trois rapports à l&apos;ACPR. Chaque délai court à partir
+          d&apos;un événement précis (règlement délégué (UE) 2025/301, article 5) :
+        </p>
+        <ol className="space-y-2">
+          <li className="p-2 rounded bg-gray-50 dark:bg-gray-800">
+            <div className="font-medium">1. Notification initiale</div>
+            <div className="opacity-80">
+              Dans les <strong>4 heures</strong> après que l&apos;incident a été qualifié de majeur (date de
+              classification), et en tout état de cause au plus tard <strong>24 heures</strong> après sa détection.
+              La date la plus proche des deux s&apos;applique.
+            </div>
+          </li>
+          <li className="p-2 rounded bg-gray-50 dark:bg-gray-800">
+            <div className="font-medium">2. Rapport intermédiaire</div>
+            <div className="opacity-80">
+              Dans les <strong>72 heures</strong> après l&apos;envoi de la notification initiale, même si la
+              situation n&apos;a pas changé.
+            </div>
+          </li>
+          <li className="p-2 rounded bg-gray-50 dark:bg-gray-800">
+            <div className="font-medium">3. Rapport final</div>
+            <div className="opacity-80">
+              Au plus tard <strong>1 mois</strong> après l&apos;envoi du dernier rapport intermédiaire.
+            </div>
+          </li>
+        </ol>
+        <div className="p-2 rounded bg-indigo-50 dark:bg-indigo-900/30">
+          <div className="font-medium">Exemple</div>
+          <div className="opacity-80">
+            Incident détecté lundi à 8 h, qualifié de majeur à 10 h : notification initiale avant lundi 14 h
+            (10 h + 4 h, plus tôt que mardi 8 h). Notification envoyée lundi à 13 h : rapport intermédiaire avant
+            jeudi 13 h. Rapport intermédiaire envoyé mercredi 10 h : rapport final avant le même jour du mois
+            suivant, 10 h.
+          </div>
+        </div>
+        <ul className="list-disc pl-5 opacity-80 space-y-1 text-xs">
+          <li>L&apos;application considère qu&apos;un rapport est envoyé au moment où il est validé.</li>
+          <li>
+            Si l&apos;incident est qualifié de majeur tardivement, la limite des 24 heures après la détection
+            reste la plus contraignante.
+          </li>
+          <li>
+            Le règlement permet à certaines entités, sous conditions, de reporter au jour ouvré suivant une
+            échéance tombant un week-end ou un jour férié : ce report n&apos;est pas appliqué ici, l&apos;échéance
+            affichée est toujours la plus stricte.
+          </li>
+        </ul>
+      </div>
+    </details>
   );
 }
 
@@ -151,7 +200,8 @@ function CarteEcheance({ code, incident, etapes, prochaine, maintenant }) {
             <li key={x.type} className="flex items-start justify-between gap-2 text-xs p-2 rounded bg-gray-50 dark:bg-gray-800">
               <div>
                 <div className="font-medium">{x.libelle}</div>
-                <div className="opacity-70">Échéance {formater(x.echeance)}{x.base ? ` (${x.base})` : ''}</div>
+                <div className="opacity-70">Échéance : {formater(x.echeance)}</div>
+                {x.base && <div className="opacity-60">{x.base}</div>}
                 {x.transmisLe && <div className="opacity-70">Transmis le {formater(x.transmisLe)}</div>}
               </div>
               <span className={`px-2 py-0.5 rounded-full whitespace-nowrap ${ETATS[x.etat].classes}`}>{ETATS[x.etat].libelle}</span>

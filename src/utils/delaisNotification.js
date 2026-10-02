@@ -61,7 +61,7 @@ export function echeancier(reports, maintenant = new Date()) {
     .filter(Boolean).sort((a, b) => a - b)[0] ?? null;
   const baseInitiale = !echeanceInitiale ? null
     : classification && echeanceInitiale.getTime() === plus(classification, 4 * HEURE).getTime()
-      ? 'classification + 4 h' : 'détection + 24 h';
+      ? '4 h après la classification comme incident majeur' : '24 h après la détection (limite maximale)';
 
   const transmisInitiale = initiales[0];
   const transmisIntermediaire = intermediaires[0];
@@ -73,13 +73,13 @@ export function echeancier(reports, maintenant = new Date()) {
     {
       ...ETAPES[1],
       echeance: plus(date(transmisInitiale?.validatedAt), 72 * HEURE),
-      base: 'notification initiale + 72 h',
+      base: '72 h après la transmission de la notification initiale',
       rapport: transmisIntermediaire,
     },
     {
       ...ETAPES[2],
       echeance: plusUnMois(date(dernierIntermediaire?.validatedAt)),
-      base: 'dernier rapport intermédiaire + 1 mois',
+      base: '1 mois après la transmission du dernier rapport intermédiaire',
       rapport: transmisFinal,
     },
   ];
