@@ -780,6 +780,15 @@ const nowISO = () => new Date().toISOString()
       ];
 
       validateFields(report, fields, errors);
+
+      // 3.9 à 3.11 : nombre, pourcentage et valeur des transactions, si des transactions sont affectées
+      // (règlement d'exécution 2025/302, annexe II)
+      const actifs = report.impactAssessment?.affectedAssets;
+      if (actifs?.numbersActualEstimate?.some(v => /^(actual_figures|estimates)_for_transactions_affected$/.test(v))) {
+        if (!(Number(actifs.affectedTransactions?.number) > 0)) errors.push("Number of affected transactions is required when transactions have been affected");
+        if (!(Number(actifs.affectedTransactions?.percentage) > 0)) errors.push("Percentage of affected transactions is required when transactions have been affected");
+        if (!(Number(actifs.valueOfAffectedTransactions) > 0)) errors.push("Value of affected transactions is required when transactions have been affected");
+      }
     }
 
 
