@@ -10,12 +10,13 @@ MIGRATIONS = [
     '20261004000000_conformite_its',
     '20261005000000_comptes_moindre_privilege',
     '20261006000000_roles_registre',
+    '20261007000000_suppression_comptes',
 ]
 
 ENTETE = """-- =============================================================================
 -- Déploiement du registre d'information DORA sur le Supabase self-hosted (octobre 2026)
 --
--- Contenu : les migrations 20260930000000 à 20261006000000, dans l'ordre (chacune dans sa
+-- Contenu : les migrations 20260930000000 à 20261007000000, dans l'ordre (chacune dans sa
 -- propre transaction). La migration 20260928000000 (durcissement RLS) doit déjà être appliquée.
 -- Le script est rejouable : le relancer après un incident ne crée pas de doublon.
 -- Aucune déclaration d'incident ni aucun commentaire n'est modifié ; les comptes existants

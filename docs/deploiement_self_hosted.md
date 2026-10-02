@@ -34,7 +34,7 @@ Le script est rejouable : en cas d'erreur (coupure, copier-coller incomplet), co
 relancer en entier.
 
 Retour arrière : fichiers de `supabase/rollback/`, dans l'ordre inverse
-(20261006, 20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
+(20261007, 20261006, 20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
 registre et leurs données.
 
 ## 3. Configuration de l'authentification (DSI, fichier `.env` du self-hosted)
@@ -75,7 +75,7 @@ l'écran ; la base l'applique immédiatement.
 ```bash
 npm ci
 npm run build          # avec le .env de production (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
-docker build -t dora-incident-app:2026-10 .
+docker build --no-cache -t dora-incident-app .   # copie dist/ : les --build-arg sont sans effet
 docker tag / docker push vers le registre interne
 ```
 
