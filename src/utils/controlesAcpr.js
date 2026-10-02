@@ -130,13 +130,29 @@ export function controlesAcpr(rapport) {
     if (!texte(inc.incidentResolutionSummary)) bloquant('Rapport final : décrivez la résolution de l\'incident et les enseignements tirés.');
   }
 
+  // Chronologie : survenance <= détection <= classification
+  const d = (v) => (v ? new Date(v) : null);
+  const [survenance, detection, classification] = [inc.incidentOccurrenceDateTime, inc.detectionDateTime, inc.classificationDateTime].map(d);
+  if (detection && classification && classification < detection) {
+    avertissement('La date de classification est antérieure à la date de détection : vérifiez les deux dates.');
+  }
+  if (survenance && detection && detection < survenance) {
+    avertissement('La date de détection est antérieure à la date de survenance de l\'incident : vérifiez les deux dates.');
+  }
+  if (!rapport.ultimateParentUndertaking?.name || !rapport.ultimateParentUndertaking?.LEI) {
+    avertissement('Entreprise mère ultime : son nom et son LEI sont obligatoires si l\'entité appartient à un groupe (champs 1.13 et 1.14).');
+  }
+  if ((rapport.affectedEntity ?? []).some((e) => !e.LEI)) {
+    avertissement('Entité affectée sans LEI : c\'est admis seulement si elle est l\'entité déclarante elle-même (champs 1.5 et 1.6).');
+  }
+
   // Qualité rédactionnelle relevée par l'ACPR
   if (texte(inc.incidentDescription) && texte(inc.incidentDescription).length < 150) {
     avertissement('Description de l\'incident très courte : expliquez le problème et en quoi il est majeur, sans abréviations internes, pour un lecteur extérieur.');
   }
   const tiers = texte(inc.originatesFromThirdPartyProvider);
   if (tiers && (/^(oui|yes|non|no|n\/a|na)$/i.test(tiers) || tiers.length < 15)) {
-    avertissement('Incident causé par un prestataire : indiquez son nom et son code d\'identification (LEI, EUID…), en précisant le type de code. Laissez vide si aucun prestataire n\'est en cause.');
+    avertissement('Incident causé par un prestataire : indiquez « nom légal;code;LEI ou EUID;informations complémentaires » (format recommandé par les autorités européennes). Laissez vide si aucun prestataire n\'est en cause.');
   }
   return r;
 }

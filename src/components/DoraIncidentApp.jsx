@@ -79,8 +79,9 @@ const nowISO = () => new Date().toISOString()
       // Le schéma DORA IR v1.3 refuse les champs vides (chaîne vide hors liste, liste vide) :
       // les champs non renseignés sont omis, comme dans les maquettes de la Banque de France
       const elague = retirerChampsVides(cleanedReport);
-      if (elague.ultimateParentUndertaking && Object.keys(elague.ultimateParentUndertaking).length <= 1) {
-        delete elague.ultimateParentUndertaking; // seul entityType : aucune entreprise mère renseignée
+      const mere = elague.ultimateParentUndertaking;
+      if (mere && !mere.name && !mere.LEI && !mere.code) {
+        delete elague.ultimateParentUndertaking; // type prérempli seulement : aucune entreprise mère renseignée
       }
       if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
       return elague;
@@ -679,6 +680,29 @@ const nowISO = () => new Date().toISOString()
 
       validateFields(report, commonFields, errors);
 
+      // Code de l'incident : lettres, chiffres et tirets uniquement (guide de remplissage ACPR)
+      const codeIncident = report.incident?.financialEntityCode;
+      if (isFilled(codeIncident) && !/^[A-Za-z0-9-]+$/.test(codeIncident.trim())) {
+        errors.push("Incident reference code may only contain letters, digits and hyphens (-)");
+      }
+
+      // Entités affectées : au moins une, chacune avec son type et son LEI (exigé par le schéma DORA IR v1.3)
+      const entitesAffectees = (report.affectedEntity || []).filter(e => isFilled(e?.name) || isFilled(e?.LEI) || e?.affectedEntityType?.length);
+      if (entitesAffectees.length === 0) {
+        errors.push("Type of the affected financial entity is required");
+      }
+      entitesAffectees.forEach((e, i) => {
+        if (!e.affectedEntityType?.length) errors.push(`Affected entity ${i + 1}: type of entity is required`);
+        // Nom et LEI : exigés lorsque l'entité affectée est décrite (différente de l'entité déclarante)
+        if (isFilled(e.name) && !isFilled(e.LEI)) errors.push(`Affected entity ${i + 1}: LEI is required`);
+        if (isFilled(e.LEI) && !isFilled(e.name)) errors.push(`Affected entity ${i + 1}: name is required`);
+        if (isFilled(e.LEI) && !LEI_VALIDE.test(e.LEI.trim())) errors.push(`Affected entity ${i + 1}: LEI must be the 20-character code only`);
+      });
+      const leiMere = report.ultimateParentUndertaking?.LEI;
+      if (isFilled(leiMere) && !LEI_VALIDE.test(leiMere.trim())) {
+        errors.push("Ultimate parent undertaking LEI must be the 20-character code only");
+      }
+
       // Validation spécifique pour "countryCodeMaterialityThresholds" si "geographical_spread" est sélectionné
       if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("geographical_spread")) {
         if (!report.incident?.classificationTypes?.[0]?.countryCodeMaterialityThresholds?.length) {
@@ -718,6 +742,7 @@ const nowISO = () => new Date().toISOString()
     function validateRequiredFieldsForIntermediateAndFinalReports(report, errors) {
       const fields = [
         { path: ['incident', 'incidentOccurrenceDateTime'], check: (value) => value && !Number.isNaN(new Date(value).getTime()), message: "Incident occurrence date and time must be valid" },
+        { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'number'], message: "Number of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedClients', 'percentage'], message: "Percentage of affected clients is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'number'], message: "Number of affected financial counterparts is required for intermediate and final reports" },
         { path: ['impactAssessment', 'affectedAssets', 'affectedFinancialCounterparts', 'percentage'], message: "Percentage of affected financial counterparts is required for intermediate and final reports" },
@@ -738,6 +763,19 @@ const nowISO = () => new Date().toISOString()
 
     //Valide les champs conditionnels basés sur les critères de classification.
     function validateConditionalFieldsByClassification(report, errors) {
+      const impact = report.impactAssessment;
+      // 3.3 : date de rétablissement si une durée d'interruption de service est indiquée (3.16)
+      if (isFilled(impact?.serviceImpact?.serviceDowntime) && !isFilled(impact?.serviceImpact?.serviceRestorationDateTime)) {
+        errors.push("Date and time of service restoration is required when a service downtime is reported");
+      }
+      // 3.29 : description des composants d'infrastructure si la réponse à 3.28 est « oui »
+      if (impact?.isAffectedInfrastructureComponents === 'yes' && !isFilled(impact?.affectedInfrastructureComponents)) {
+        errors.push("Information about affected infrastructure components is required when infrastructure components are affected");
+      }
+      // 3.32 : autorités « other » à préciser
+      if (report.reportingToOtherAuthorities?.includes('other') && !isFilled(report.reportingToOtherAuthoritiesOther)) {
+        errors.push("Specification of 'other' authorities is required when 'Other' is selected in reporting to other authorities");
+      }
       validateReputationalImpactFields(report, errors);
       validateDurationAndServiceDowntimeFields(report, errors);
       validateGeographicalSpreadFields(report, errors);
@@ -762,10 +800,10 @@ const nowISO = () => new Date().toISOString()
      * Valide les champs spécifiques au critère "duration_and_service_downtime".
      */
     function validateDurationAndServiceDowntimeFields(report, errors) {
-      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
-        if (!report.informationDurationServiceDowntimeActualOrEstimate) {
-          errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
-        }
+      // Champ 3.17 : exigé par le règlement 2025/302 si le critère « durée » est retenu, et attendu par les
+      // autorités dans tous les rapports intermédiaires et finaux (instructions opérationnelles ESA du 16/09/2026)
+      if (!report.informationDurationServiceDowntimeActualOrEstimate) {
+        errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports");
       }
     }
 
@@ -811,6 +849,13 @@ const nowISO = () => new Date().toISOString()
         }
       }
 
+      // Classification « other » à préciser (champ requis dès le rapport intermédiaire)
+      if (report.incident?.incidentType?.incidentClassification?.includes("other")) {
+        if (!report.incident?.incidentType?.otherIncidentClassification) {
+          errors.push("Other incident classification is required when 'Other' is selected for intermediate and final reports");
+        }
+      }
+
       // Validation pour "other" dans les techniques de menace
       if (report.incident?.incidentType?.threatTechniques?.includes("other")) {
         if (!report.incident?.incidentType?.otherThreatTechniques) {
@@ -835,13 +880,11 @@ const nowISO = () => new Date().toISOString()
       const finalReportFields = [
         { path: ['incident', 'rootCauseHLClassification'], check: (value) => value?.length, message: "High-level classification of root cause is required for final reports" },
         { path: ['incident', 'rootCausesDetailedClassification'], check: (value) => value?.length, message: "Detailed classification of root causes is required for final reports" },
-        { path: ['incident', 'rootCausesAdditionalClassification'], check: (value) => value?.length, message: "Additional classification of root causes is required for final reports" },
         { path: ['incident', 'rootCausesInformation'], message: "Information about the root causes of the incident is required for final reports" },
         { path: ['incident', 'incidentResolutionSummary'], message: "Incident resolution summary is required for final reports" },
         { path: ['incident', 'rootCauseAddressingDateTime'], message: "Date and time when the incident root cause was addressed is required for final reports" },
         { path: ['incident', 'incidentResolutionDateTime'], message: "Date and time when the incident was resolved is required for final reports" },
         { path: ['incident', 'incidentResolutionVsPlannedImplementation'], message: "Reason for the difference between permanent resolution date and initially planned implementation date is required for final reports" },
-        { path: ['incident', 'classificationTypes', 0, 'economicImpactMaterialityThreshold'], message: "Materiality threshold for the classification criterion 'Economic Impact' is required for final reports" },
         { path: ['incident', 'grossAmountIndirectDirectCosts'], message: "Amount of gross direct and indirect costs and losses is required for final reports" },
       ];
 
@@ -854,11 +897,27 @@ const nowISO = () => new Date().toISOString()
         }
       }
 
-      // Validations spécifiques pour "other" dans la classification des incidents
-      if (report.incident?.incidentType?.incidentClassification?.includes("other")) {
-        if (!report.incident?.incidentType?.otherIncidentClassification) {
-          errors.push("Other incident classification is required when 'Other' is selected for intermediate and final reports");
-        }
+      // Seuil d'impact économique : seulement si le critère « impact économique » est retenu (schéma DORA IR v1.3)
+      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("economic_impact")
+          && !isFilled(report.incident?.classificationTypes?.[0]?.economicImpactMaterialityThreshold)) {
+        errors.push("Materiality threshold for the classification criterion 'Economic Impact' is required for final reports");
+      }
+
+      // Causes additionnelles : exigées pour les causes détaillées 2.a, 2.c, 2.d et 2.g (guide ACPR, règlement 2025/302)
+      const causesAvecPrecision = [
+        'process_failure_insufficient_monitoring_or_failure_of_monitoring_and_control',
+        'process_failure_ICT_risk_management_process_failure',
+        'process_failure_insufficient_or_failure_of_ict_operations_and_ict_security_operations',
+        'process_failure_inadequate_ict_systems_acquisition_development_and_maintenance',
+      ];
+      if (report.incident?.rootCausesDetailedClassification?.some(c => causesAvecPrecision.includes(c))
+          && !report.incident?.rootCausesAdditionalClassification?.length) {
+        errors.push("Additional classification of root causes is required for the selected detailed root causes (monitoring, ICT risk management, ICT operations, ICT systems acquisition) for final reports");
+      }
+
+      // Actions temporaires : à décrire dans le rapport final, ou expliquer pourquoi aucune n'a été prise (guide ACPR)
+      if (!isFilled(report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery)) {
+        errors.push("Description of temporary actions/measures for recovery (or why none were taken) is required for final reports");
       }
     }
 
@@ -884,6 +943,8 @@ const nowISO = () => new Date().toISOString()
         }
       }
     }
+
+    const LEI_VALIDE = /^[A-Z0-9]{18}[0-9]{2}$/;
 
     // Valide le format d'un email
     function isValidEmail(email) {

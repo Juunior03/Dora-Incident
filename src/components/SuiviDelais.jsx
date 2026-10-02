@@ -21,6 +21,42 @@ const manque = (type) => (type === 'initial_notification'
   ? 'Renseignez la date de détection et la date de classification de l\'incident.'
   : 'Le rapport précédent a été validé avant la mise en place du suivi : sa date de transmission est inconnue.');
 
+// Régime de report des échéances tombant un week-end ou un jour férié (article 5, paragraphes 4 et 5),
+// propre à la nature de l'entité ; mémorisé dans le navigateur, « aucun » par défaut (au plus strict)
+const CLE_REGIME = 'dora-report-jour-ouvre';
+const EVENEMENT_REGIME = 'dora-regime-report';
+const REGIMES = {
+  aucun: 'Aucun report : échéances au plus strict',
+  final: 'Report du rapport final seulement (établissement de crédit, contrepartie centrale, plate-forme de négociation, entité essentielle ou importante NIS2, entité déclarée significative)',
+  tous: 'Report de tous les rapports (autres entités financières)',
+};
+function lireRegime() {
+  try {
+    const v = globalThis.localStorage?.getItem(CLE_REGIME);
+    return v in REGIMES ? v : 'aucun';
+  } catch {
+    return 'aucun';
+  }
+}
+function useRegimeReport() {
+  const [regime, setRegime] = useState(lireRegime);
+  useEffect(() => {
+    const maj = () => setRegime(lireRegime());
+    globalThis.addEventListener(EVENEMENT_REGIME, maj);
+    globalThis.addEventListener('storage', maj);
+    return () => {
+      globalThis.removeEventListener(EVENEMENT_REGIME, maj);
+      globalThis.removeEventListener('storage', maj);
+    };
+  }, []);
+  const changer = (v) => {
+    try { globalThis.localStorage?.setItem(CLE_REGIME, v); } catch { /* stockage indisponible */ }
+    setRegime(v);
+    globalThis.dispatchEvent(new Event(EVENEMENT_REGIME));
+  };
+  return [regime, changer];
+}
+
 /** Pastille d'état de la prochaine échéance, pour la liste des incidents */
 export function BadgeEcheance({ reports }) {
   const [maintenant, setMaintenant] = useState(() => new Date());
@@ -28,7 +64,8 @@ export function BadgeEcheance({ reports }) {
     const t = setInterval(() => setMaintenant(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
-  const { prochaine } = echeancier(reports, maintenant);
+  const [regime] = useRegimeReport();
+  const { prochaine } = echeancier(reports, maintenant, regime);
   if (!prochaine) return null;
   const e = ETATS[prochaine.etat];
   return (
@@ -44,6 +81,7 @@ BadgeEcheance.propTypes = { reports: PropTypes.array.isRequired };
 export default function SuiviDelais({ incidents }) {
   const [maintenant, setMaintenant] = useState(() => new Date());
   const [panneau, setPanneau] = useState(false);
+  const [regime, setRegime] = useRegimeReport();
   useEffect(() => {
     const t = setInterval(() => setMaintenant(new Date()), 60000);
     return () => clearInterval(t);
@@ -56,11 +94,11 @@ export default function SuiviDelais({ incidents }) {
   }, [panneau]);
 
   const lignes = useMemo(() => Object.entries(incidents)
-    .map(([code, incident]) => ({ code, incident, ...echeancier(incident.reports, maintenant) }))
+    .map(([code, incident]) => ({ code, incident, ...echeancier(incident.reports, maintenant, regime) }))
     .filter((l) => !l.cloture && l.prochaine)
     .sort((a, b) => (ETATS[a.prochaine.etat].ordre - ETATS[b.prochaine.etat].ordre)
       || ((a.prochaine.echeance?.getTime() ?? Infinity) - (b.prochaine.echeance?.getTime() ?? Infinity))),
-  [incidents, maintenant]);
+  [incidents, maintenant, regime]);
 
   const retards = lignes.filter((l) => l.prochaine.etat === 'depasse').length;
   const proches = lignes.filter((l) => l.prochaine.etat === 'proche').length;
@@ -106,6 +144,18 @@ export default function SuiviDelais({ incidents }) {
               </ul>
             )}
 
+            <div className="mt-6">
+              <label htmlFor="regime-report" className="text-sm font-medium">Échéance un week-end ou un jour férié</label>
+              <select id="regime-report" value={regime} onChange={(e) => setRegime(e.target.value)}
+                className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full text-sm">
+                {Object.entries(REGIMES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <p className="text-xs opacity-60 mt-1">
+                Selon la nature de votre entité, une échéance tombant un samedi, un dimanche ou un jour férié peut
+                être reportée au jour ouvré suivant à midi. Choix mémorisé sur ce poste.
+              </p>
+            </div>
+
             <ExplicationDelais />
           </aside>
         </div>
@@ -117,7 +167,7 @@ export default function SuiviDelais({ incidents }) {
 // Explication des délais du règlement délégué (UE) 2025/301, article 5, en langage courant
 function ExplicationDelais() {
   return (
-    <details className="mt-6 rounded-lg border dark:border-gray-700 text-sm" open>
+    <details className="mt-6 rounded-lg border dark:border-gray-700 text-sm">
       <summary className="cursor-pointer px-3 py-2 font-medium">Comment les échéances sont-elles calculées ?</summary>
       <div className="px-3 pb-3 space-y-3">
         <p className="opacity-80">
@@ -159,13 +209,23 @@ function ExplicationDelais() {
         <ul className="list-disc pl-5 opacity-80 space-y-1 text-xs">
           <li>L&apos;application considère qu&apos;un rapport est envoyé au moment où il est validé.</li>
           <li>
-            Si l&apos;incident est qualifié de majeur tardivement, la limite des 24 heures après la détection
-            reste la plus contraignante.
+            Si l&apos;incident n&apos;est qualifié de majeur que plus de 24 heures après sa détection, la
+            notification initiale est due 4 heures après cette qualification.
           </li>
           <li>
-            Le règlement permet à certaines entités, sous conditions, de reporter au jour ouvré suivant une
-            échéance tombant un week-end ou un jour férié : ce report n&apos;est pas appliqué ici, l&apos;échéance
-            affichée est toujours la plus stricte.
+            Échéance tombant un week-end ou un jour férié : le rapport peut être remis jusqu&apos;au jour ouvré
+            suivant à midi. Ce report ne vaut pas pour la notification initiale et le rapport intermédiaire des
+            établissements de crédit, contreparties centrales, plates-formes de négociation, entités
+            essentielles ou importantes au sens de NIS2 et entités déclarées significatives. Choisissez le cas
+            de votre entité ci-dessus ; par défaut, aucun report n&apos;est appliqué.
+          </li>
+          <li>
+            Si un délai ne peut pas être tenu, l&apos;ACPR doit en être informée avant son expiration, avec
+            les raisons du retard.
+          </li>
+          <li>
+            Après le premier rapport intermédiaire, les autorités attendent au moins une mise à jour par mois
+            jusqu&apos;au rapport final.
           </li>
         </ul>
       </div>
