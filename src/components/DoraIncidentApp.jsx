@@ -2505,7 +2505,10 @@ export default function DoraIncidentApp() {
                     </div>
                   )}
 
-                  {step === 2 && draft.incidentSubmission === "initial_notification" && (
+                  {/* Formulaire cumulatif : le rapport intermédiaire reprend les informations de la notification
+                      initiale, le rapport final celles des deux précédents, qui restent modifiables (annexe II du
+                      règlement d'exécution 2025/302 : champs 1.x à 3.x obligatoires dans tous les rapports suivants) */}
+                  {step === 2 && (
                     <div>
                       <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
                       <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
@@ -2517,7 +2520,8 @@ export default function DoraIncidentApp() {
                             value={draft.incident.financialEntityCode}
                             onChange={e => updateDraft('incident.financialEntityCode', e.target.value)}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            disabled={isFieldDisabled(role, draft.status)}
+                            disabled={isFieldDisabled(role, draft.status) || draft.incidentSubmission !== 'initial_notification'}
+                            title={draft.incidentSubmission !== 'initial_notification' ? "Le code de l'incident doit rester identique dans tous les rapports" : undefined}
                           />
                         </div>
 
@@ -2704,17 +2708,17 @@ export default function DoraIncidentApp() {
                           />
                         </div>
 
-                        <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
+                        {draft.incidentSubmission === 'initial_notification' && <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />}
 
                       </div>
                     </div>
                   )}
 
-                  {step === 2 && draft.incidentSubmission === "intermediate_report" && (
-                      <div>
+                  {step === 2 && (draft.incidentSubmission === "intermediate_report" || draft.incidentSubmission === "final_report") && (
+                      <div className="mt-10 pt-6 border-t dark:border-gray-700">
 
-                        <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
-                      <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
+                        <h2 className="text-2xl font-semibold mb-2">Impact Assessment</h2>
+                      <p className="text-sm opacity-70 mb-6">Information required from the intermediate report onwards (update it if needed)</p>
 
                       <div className="mt-6">
                           <div className="flex items-center gap-2">
@@ -2976,7 +2980,7 @@ export default function DoraIncidentApp() {
                         </div>
                     </div>
 
-                    {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("duration_and_service_downtime") && (
+                    {/* Champ 3.17 : attendu dans tout rapport intermédiaire ou final (instructions ESA du 16/09/2026) */}
                     <div className="mt-4">
                       <label htmlFor="durationServiceDowntimeInfo" className="text-sm font-medium">
                         Information whether the values for duration and service downtime are actual or estimates
@@ -2996,7 +3000,6 @@ export default function DoraIncidentApp() {
                         ))}
                       </select>
                     </div>
-                    )}
 
 
                     {draft.incident.classificationTypes[0]?.classificationCriterion?.includes("geographical_spread") && (
@@ -3350,16 +3353,16 @@ export default function DoraIncidentApp() {
                       </div>
                     )}
 
-                        <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
+                        {draft.incidentSubmission === 'intermediate_report' && <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />}
 
                     </div>
                   )}
 
 
                   {step === 2 && draft.incidentSubmission === "final_report" && (
-                      <div>
-                          <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
-                          <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
+                      <div className="mt-10 pt-6 border-t dark:border-gray-700">
+                          <h2 className="text-2xl font-semibold mb-2">Root Causes and Resolution</h2>
+                          <p className="text-sm opacity-70 mb-6">Information required for the final report</p>
 
                         <div className="mt-4">
                           <p className="block text-xs font-medium mb-2">High-Level Classification of Root Cause of the Incident</p>
