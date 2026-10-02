@@ -1277,13 +1277,30 @@ const nowISO = () => new Date().toISOString()
     }
 
     /** En-tête d'une section : rapport en cours, ou données reprises d'un rapport précédent */
-    const BandeauSection = ({ type, actuel, verrouillee, manquants, deverrouillee, onDeverrouiller, onReverrouiller, modifiees = 0 }) => {
+    const BandeauSection = ({ type, actuel, verrouillee, manquants, deverrouillee, onDeverrouiller, onReverrouiller, modifiees = 0, lectureSeule = false }) => {
       const section = SECTIONS_RAPPORT[rangRapport(type)];
       const noteModifs = modifiees > 0 && (
         <div className="w-full mt-1 text-amber-800 dark:text-amber-200">
           ✏️ {modifiees} donnée(s) de cette section modifiée(s) par rapport au rapport précédent : détail à l&apos;étape Review.
         </div>
       );
+      if (lectureSeule) {
+        // Relecture (validateur, auditeur, rapport déjà validé) : aucune action de modification proposée
+        const actuelLib = SECTIONS_RAPPORT[rangRapport(actuel)].libelle.toLowerCase();
+        return (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${manquants.length ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-900 dark:text-orange-100' : type === actuel ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-100' : 'bg-gray-100 dark:bg-gray-800'}`}>
+            <strong>{type === actuel ? `${section.libelle} : informations de ce rapport` : `Données reprises ${section.du}`}</strong>
+            <span> (lecture seule).</span>
+            {manquants.length > 0 && (
+              <>
+                <span> Informations manquantes, exigées pour le {actuelLib} : le rapport ne peut pas être validé en l&apos;état. Renvoyez-le au saisisseur avec un commentaire.</span>
+                <ul className="list-disc pl-5 mt-1">{manquants.map(m => <li key={m}>{m}</li>)}</ul>
+              </>
+            )}
+            {noteModifs}
+          </div>
+        );
+      }
       if (type === actuel) {
         return (
           <div className="mb-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-sm text-indigo-900 dark:text-indigo-100">
@@ -1336,6 +1353,7 @@ const nowISO = () => new Date().toISOString()
       onDeverrouiller: PropTypes.func.isRequired,
       onReverrouiller: PropTypes.func.isRequired,
       modifiees: PropTypes.number,
+      lectureSeule: PropTypes.bool,
     };
 
     const RootCauseCheckboxGroup = ({
@@ -1403,12 +1421,16 @@ export default function DoraIncidentApp() {
 
   useEffect(() => { setDeverrouillees({}); }, [draft.id, draft.incidentSubmission]);
   const rangActuel = Math.max(0, rangRapport(draft.incidentSubmission));
-  const manquantsSection = (type) => (rangRapport(type) < rangActuel ? erreursSection(draft, type) : []);
-  const sectionVerrouillee = (type) => rangRapport(type) < rangActuel && !deverrouillees[type] && manquantsSection(type).length === 0;
+  const lectureSeuleRapport = isFieldDisabled(role, draft.status);
+  const manquantsSection = (type) => (rangRapport(type) < rangActuel || (lectureSeuleRapport && draft.status !== 'validated' && rangRapport(type) === rangActuel)
+    ? erreursSection(draft, type) : []);
+  const sectionVerrouillee = (type) => lectureSeuleRapport
+    || (rangRapport(type) < rangActuel && !deverrouillees[type] && manquantsSection(type).length === 0);
   const precedent = rapportPrecedent(draft, reports);
   const modifications = modificationsRapport(draft, precedent);
   const modifieesSection = (type) => modifications.filter(m => m.section === type).length;
   const propsBandeau = (type) => ({
+    lectureSeule: lectureSeuleRapport,
     modifiees: modifieesSection(type),
     type,
     actuel: draft.incidentSubmission,
@@ -1419,7 +1441,7 @@ export default function DoraIncidentApp() {
     onReverrouiller: () => setDeverrouillees(d => ({ ...d, [type]: false })),
   });
   // Une section ouverte pour compléter un champ manquant reste ouverte pendant la saisie
-  const sectionsIncompletes = SECTIONS_RAPPORT.filter(x => manquantsSection(x.type).length).map(x => x.type).join(',');
+  const sectionsIncompletes = lectureSeuleRapport ? '' : SECTIONS_RAPPORT.filter(x => manquantsSection(x.type).length).map(x => x.type).join(',');
   useEffect(() => {
     if (!sectionsIncompletes) return;
     setDeverrouillees(d => {
@@ -1534,14 +1556,15 @@ export default function DoraIncidentApp() {
       }
   };
 
-    const isFieldDisabled = (role, status) => {
-      // Pour les auditeurs, toujours en lecture seule
+    // Fonction déclarée (et non constante) : utilisée plus haut dans le composant
+    function isFieldDisabled(role, status) {
+      // Auditeurs : toujours en lecture seule
       if (role === 'auditeur') {
         return true;
       }
-      // Pour les validateurs, en lecture seule uniquement si le statut est "validated"
-      return status === 'validated' || (role === 'validateur' && status === 'draft');
-    };
+      // Validateurs : approuvent sans jamais modifier ; rapports validés : figés pour tous
+      return status === 'validated' || role === 'validateur';
+    }
 
     useEffect(() => {
       if (!user?.id || !role) return;
@@ -1798,6 +1821,12 @@ export default function DoraIncidentApp() {
             return { ok: false, error: 'Seuls les validateurs peuvent valider des rapports.' };
         }
         const aValider = reports.find(r => r.id === reportId);
+        // Le validateur approuve sans modifier : un rapport incomplet est renvoyé au saisisseur
+        const manquants = aValider ? validateReportFields(aValider) : [];
+        if (manquants.length > 0) {
+          alert(`Ce rapport ne peut pas être validé : ${manquants.length} information(s) obligatoire(s) manquante(s) ou incorrecte(s).\n\n${manquants.slice(0, 10).map(m => `- ${m}`).join('\n')}${manquants.length > 10 ? '\n…' : ''}\n\nRenvoyez-le au saisisseur avec un commentaire pour qu'il le complète.`);
+          return { ok: false, error: 'Rapport incomplet' };
+        }
         const prec = aValider && rapportPrecedent(aValider, reports);
         const modifs = prec ? modificationsRapport(aValider, prec) : [];
         if (modifs.length > 0) {
@@ -2348,6 +2377,7 @@ export default function DoraIncidentApp() {
                                 }}
                                 className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                 readOnly={draft.submittingEntity.isParametersSet}
+                                disabled={isFieldDisabled(role, draft.status)}
                                 style={draft.submittingEntity.isParametersSet ? {
                                   backgroundColor: '#f3f4f6',
                                   cursor: 'not-allowed',
@@ -2365,6 +2395,7 @@ export default function DoraIncidentApp() {
                                 }}
                                 className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                 readOnly={draft.submittingEntity.isParametersSet}
+                                disabled={isFieldDisabled(role, draft.status)}
                                 style={draft.submittingEntity.isParametersSet ? {
                                   backgroundColor: '#f3f4f6',
                                   cursor: 'not-allowed',
@@ -2651,7 +2682,7 @@ export default function DoraIncidentApp() {
                       {SECTIONS_RAPPORT.slice(0, rangActuel + 1).map((x, i) => (
                         <button key={x.type} type="button" onClick={() => allerASection(x.type)}
                           className={`px-3 py-1 rounded-full ${x.type === draft.incidentSubmission ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
-                          {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? ' (en cours)' : sectionVerrouillee(x.type) ? ' 🔒' : ''}{modifieesSection(x.type) > 0 ? ` · ✏️ ${modifieesSection(x.type)}` : ''}
+                          {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? (lectureSeuleRapport ? '' : ' (en cours)') : sectionVerrouillee(x.type) && !lectureSeuleRapport ? ' 🔒' : ''}{manquantsSection(x.type).length > 0 ? ' ⚠️' : ''}{modifieesSection(x.type) > 0 ? ` · ✏️ ${modifieesSection(x.type)}` : ''}
                         </button>
                       ))}
                     </nav>
