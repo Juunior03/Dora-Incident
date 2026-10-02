@@ -1255,6 +1255,79 @@ const nowISO = () => new Date().toISOString()
       hideBack: PropTypes.bool
     };
 
+    // Sections de l'étape « Incident » : une par type de rapport, cumulées dans les rapports suivants
+    const SECTIONS_RAPPORT = [
+      { type: 'initial_notification', libelle: 'Notification initiale', du: 'de la notification initiale' },
+      { type: 'intermediate_report', libelle: 'Rapport intermédiaire', du: 'du rapport intermédiaire' },
+      { type: 'final_report', libelle: 'Rapport final', du: 'du rapport final' },
+    ];
+    const rangRapport = (type) => SECTIONS_RAPPORT.findIndex(x => x.type === type);
+
+    /** Champs manquants propres à une section (ceux exigés à partir de ce type de rapport) */
+    function erreursSection(draft, type) {
+      const rang = rangRapport(type);
+      // Les champs des étapes « Identity » et « Contacts » ne figurent pas dans ces sections
+      const horsSection = /^(Type of report|Report currency|Submitting entity|Affected entity|Type of the affected|Ultimate parent|Primary contact|Secondary contact)/;
+      const propres = validateReportFields({ ...draft, incidentSubmission: type }).filter(e => !horsSection.test(e));
+      if (rang === 0) return propres;
+      const avant = validateReportFields({ ...draft, incidentSubmission: SECTIONS_RAPPORT[rang - 1].type });
+      return propres.filter(e => !avant.includes(e));
+    }
+
+    /** En-tête d'une section : rapport en cours, ou données reprises d'un rapport précédent */
+    const BandeauSection = ({ type, actuel, verrouillee, manquants, deverrouillee, onDeverrouiller, onReverrouiller }) => {
+      const section = SECTIONS_RAPPORT[rangRapport(type)];
+      if (type === actuel) {
+        return (
+          <div className="mb-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-sm text-indigo-900 dark:text-indigo-100">
+            <strong>{section.libelle} : informations à saisir pour ce rapport.</strong>
+          </div>
+        );
+      }
+      const actuelLibelle = SECTIONS_RAPPORT[rangRapport(actuel)].libelle.toLowerCase();
+      if (manquants.length) {
+        return (
+          <div className="mb-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/30 text-sm text-orange-900 dark:text-orange-100">
+            <strong>Données reprises {section.du} : informations manquantes.</strong>
+            <span> Elles sont exigées pour le {actuelLibelle} ; la section est ouverte pour que vous les complétiez :</span>
+            <ul className="list-disc pl-5 mt-1">{manquants.map(m => <li key={m}>{m}</li>)}</ul>
+          </div>
+        );
+      }
+      return (
+        <div className="mb-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {verrouillee ? '🔒 ' : '✏️ '}
+            <strong>Données reprises {section.du}</strong>
+            {verrouillee
+              ? ', en lecture seule. Elles sont transmises à nouveau dans ce rapport.'
+              : ' : modification en cours. Les valeurs mises à jour seront transmises dans ce rapport.'}
+          </span>
+          {verrouillee ? (
+            <button type="button" onClick={onDeverrouiller}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-700">
+              Mettre à jour ces informations
+            </button>
+          ) : deverrouillee && (
+            <button type="button" onClick={onReverrouiller}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-700">
+              Terminer la mise à jour
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    BandeauSection.propTypes = {
+      type: PropTypes.string.isRequired,
+      actuel: PropTypes.string.isRequired,
+      verrouillee: PropTypes.bool,
+      manquants: PropTypes.arrayOf(PropTypes.string).isRequired,
+      deverrouillee: PropTypes.bool,
+      onDeverrouiller: PropTypes.func.isRequired,
+      onReverrouiller: PropTypes.func.isRequired,
+    };
+
     const RootCauseCheckboxGroup = ({
       title,
       prefix,
@@ -1311,10 +1384,51 @@ export default function DoraIncidentApp() {
   const [confettiTrigger, setConfettiTrigger] = useState(false)
   const [errors, setErrors] = useState([])
   const [fromContinueButton, setFromContinueButton] = useState(false);
+  // Sections des rapports précédents déverrouillées par l'utilisateur (réinitialisé à chaque rapport)
+  const [deverrouillees, setDeverrouillees] = useState({});
   const [groupedIncidents, setGroupedIncidents] = useState({});
   const [filteredIncidents, setFilteredIncidents] = useState({});
   const [showUserMenu, setShowUserMenu] = useState(false);
   const isReportView = view === 'report';
+
+  useEffect(() => { setDeverrouillees({}); }, [draft.id, draft.incidentSubmission]);
+  const rangActuel = Math.max(0, rangRapport(draft.incidentSubmission));
+  const manquantsSection = (type) => (rangRapport(type) < rangActuel ? erreursSection(draft, type) : []);
+  const sectionVerrouillee = (type) => rangRapport(type) < rangActuel && !deverrouillees[type] && manquantsSection(type).length === 0;
+  const propsBandeau = (type) => ({
+    type,
+    actuel: draft.incidentSubmission,
+    verrouillee: sectionVerrouillee(type),
+    manquants: manquantsSection(type),
+    deverrouillee: Boolean(deverrouillees[type]),
+    onDeverrouiller: () => setDeverrouillees(d => ({ ...d, [type]: true })),
+    onReverrouiller: () => setDeverrouillees(d => ({ ...d, [type]: false })),
+  });
+  // Une section ouverte pour compléter un champ manquant reste ouverte pendant la saisie
+  const sectionsIncompletes = SECTIONS_RAPPORT.filter(x => manquantsSection(x.type).length).map(x => x.type).join(',');
+  useEffect(() => {
+    if (!sectionsIncompletes) return;
+    setDeverrouillees(d => {
+      const n = { ...d };
+      sectionsIncompletes.split(',').forEach(type => { n[type] = true; });
+      return n;
+    });
+  }, [sectionsIncompletes]);
+  const allerASection = (type) => document.getElementById(`section-${type}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // En arrivant sur l'étape « Incident » d'un rapport intermédiaire ou final : directement à sa section
+  useEffect(() => {
+    if (step !== 2 || rangActuel === 0) return undefined;
+    // La section n'existe qu'une fois l'animation de changement de vue terminée : on l'attend (2 s au plus)
+    let essais = 0;
+    const t = setInterval(() => {
+      const section = document.getElementById(`section-${draft.incidentSubmission}`);
+      if (section || ++essais > 40) {
+        clearInterval(t);
+        section?.scrollIntoView({ block: 'start' });
+      }
+    }, 50);
+    return () => clearInterval(t);
+  }, [step, draft.id, draft.incidentSubmission, rangActuel]);
 
   const [filters, setFilters] = useState({
       searchTerm: '',
@@ -2508,10 +2622,23 @@ export default function DoraIncidentApp() {
                   {/* Formulaire cumulatif : le rapport intermédiaire reprend les informations de la notification
                       initiale, le rapport final celles des deux précédents, qui restent modifiables (annexe II du
                       règlement d'exécution 2025/302 : champs 1.x à 3.x obligatoires dans tous les rapports suivants) */}
+                  {step === 2 && rangActuel > 0 && (
+                    <nav aria-label="Sections du rapport" className="sticky top-0 z-20 -mx-2 mb-6 px-2 py-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b dark:border-gray-700 flex flex-wrap gap-2 text-sm">
+                      {SECTIONS_RAPPORT.slice(0, rangActuel + 1).map((x, i) => (
+                        <button key={x.type} type="button" onClick={() => allerASection(x.type)}
+                          className={`px-3 py-1 rounded-full ${x.type === draft.incidentSubmission ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                          {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? ' (en cours)' : sectionVerrouillee(x.type) ? ' 🔒' : ''}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
+
                   {step === 2 && (
-                    <div>
+                    <div id="section-initial_notification" className="scroll-mt-16">
                       <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
-                      <p className="text-sm opacity-70 mb-6">Description and classification of the incident</p>
+                      <p className="text-sm opacity-70 mb-4">Description and classification of the incident (initial notification)</p>
+                      <BandeauSection {...propsBandeau('initial_notification')} />
+                      <fieldset disabled={sectionVerrouillee('initial_notification')} className={`min-w-0 border-0 p-0 m-0 ${sectionVerrouillee('initial_notification') ? 'opacity-70' : ''}`}>
 
                         <div>
                           <label htmlFor="financialEntityCode" className="text-sm font-medium">Incident Reference Code Provided by the Financial Entity</label>
@@ -2711,14 +2838,17 @@ export default function DoraIncidentApp() {
                         {draft.incidentSubmission === 'initial_notification' && <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />}
 
                       </div>
+                      </fieldset>
                     </div>
                   )}
 
                   {step === 2 && (draft.incidentSubmission === "intermediate_report" || draft.incidentSubmission === "final_report") && (
-                      <div className="mt-10 pt-6 border-t dark:border-gray-700">
+                      <div id="section-intermediate_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
 
                         <h2 className="text-2xl font-semibold mb-2">Impact Assessment</h2>
-                      <p className="text-sm opacity-70 mb-6">Information required from the intermediate report onwards (update it if needed)</p>
+                      <p className="text-sm opacity-70 mb-4">Impact, duration and type of the incident (intermediate report)</p>
+                      <BandeauSection {...propsBandeau('intermediate_report')} />
+                      <fieldset disabled={sectionVerrouillee('intermediate_report')} className={`min-w-0 border-0 p-0 m-0 ${sectionVerrouillee('intermediate_report') ? 'opacity-70' : ''}`}>
 
                       <div className="mt-6">
                           <div className="flex items-center gap-2">
@@ -3354,15 +3484,17 @@ export default function DoraIncidentApp() {
                     )}
 
                         {draft.incidentSubmission === 'intermediate_report' && <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />}
+                      </fieldset>
 
                     </div>
                   )}
 
 
                   {step === 2 && draft.incidentSubmission === "final_report" && (
-                      <div className="mt-10 pt-6 border-t dark:border-gray-700">
+                      <div id="section-final_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
                           <h2 className="text-2xl font-semibold mb-2">Root Causes and Resolution</h2>
-                          <p className="text-sm opacity-70 mb-6">Information required for the final report</p>
+                          <p className="text-sm opacity-70 mb-4">Root causes, resolution and costs (final report)</p>
+                          <BandeauSection {...propsBandeau('final_report')} />
 
                         <div className="mt-4">
                           <p className="block text-xs font-medium mb-2">High-Level Classification of Root Cause of the Incident</p>
