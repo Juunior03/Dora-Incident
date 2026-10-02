@@ -11,6 +11,8 @@ import RegistreInformation from './registre/RegistreInformation';
 import { messageTechnique } from '../utils/messageTechnique';
 import SuiviDelais, { BadgeEcheance } from './SuiviDelais';
 import { controlesAcpr } from '../utils/controlesAcpr';
+import { rapportPrecedent, modificationsRapport, LIBELLES_RAPPORTS } from '../utils/comparaisonRapports';
+import ModificationsRapport from './ModificationsRapport';
 
 const nowISO = () => new Date().toISOString()
 
@@ -1275,8 +1277,13 @@ const nowISO = () => new Date().toISOString()
     }
 
     /** En-tête d'une section : rapport en cours, ou données reprises d'un rapport précédent */
-    const BandeauSection = ({ type, actuel, verrouillee, manquants, deverrouillee, onDeverrouiller, onReverrouiller }) => {
+    const BandeauSection = ({ type, actuel, verrouillee, manquants, deverrouillee, onDeverrouiller, onReverrouiller, modifiees = 0 }) => {
       const section = SECTIONS_RAPPORT[rangRapport(type)];
+      const noteModifs = modifiees > 0 && (
+        <div className="w-full mt-1 text-amber-800 dark:text-amber-200">
+          ✏️ {modifiees} donnée(s) de cette section modifiée(s) par rapport au rapport précédent : détail à l&apos;étape Review.
+        </div>
+      );
       if (type === actuel) {
         return (
           <div className="mb-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-sm text-indigo-900 dark:text-indigo-100">
@@ -1291,6 +1298,7 @@ const nowISO = () => new Date().toISOString()
             <strong>Données reprises {section.du} : informations manquantes.</strong>
             <span> Elles sont exigées pour le {actuelLibelle} ; la section est ouverte pour que vous les complétiez :</span>
             <ul className="list-disc pl-5 mt-1">{manquants.map(m => <li key={m}>{m}</li>)}</ul>
+            {noteModifs}
           </div>
         );
       }
@@ -1314,6 +1322,7 @@ const nowISO = () => new Date().toISOString()
               Terminer la mise à jour
             </button>
           )}
+          {noteModifs}
         </div>
       );
     };
@@ -1326,6 +1335,7 @@ const nowISO = () => new Date().toISOString()
       deverrouillee: PropTypes.bool,
       onDeverrouiller: PropTypes.func.isRequired,
       onReverrouiller: PropTypes.func.isRequired,
+      modifiees: PropTypes.number,
     };
 
     const RootCauseCheckboxGroup = ({
@@ -1395,7 +1405,11 @@ export default function DoraIncidentApp() {
   const rangActuel = Math.max(0, rangRapport(draft.incidentSubmission));
   const manquantsSection = (type) => (rangRapport(type) < rangActuel ? erreursSection(draft, type) : []);
   const sectionVerrouillee = (type) => rangRapport(type) < rangActuel && !deverrouillees[type] && manquantsSection(type).length === 0;
+  const precedent = rapportPrecedent(draft, reports);
+  const modifications = modificationsRapport(draft, precedent);
+  const modifieesSection = (type) => modifications.filter(m => m.section === type).length;
   const propsBandeau = (type) => ({
+    modifiees: modifieesSection(type),
     type,
     actuel: draft.incidentSubmission,
     verrouillee: sectionVerrouillee(type),
@@ -1782,6 +1796,16 @@ export default function DoraIncidentApp() {
         if (role !== 'validateur') {
             alert('Seuls les validateurs peuvent valider des rapports.');
             return { ok: false, error: 'Seuls les validateurs peuvent valider des rapports.' };
+        }
+        const aValider = reports.find(r => r.id === reportId);
+        const prec = aValider && rapportPrecedent(aValider, reports);
+        const modifs = prec ? modificationsRapport(aValider, prec) : [];
+        if (modifs.length > 0) {
+          const liste = modifs.slice(0, 10).map(m => `- ${m.numero} ${m.libelle} : « ${m.avant || 'vide'} » -> « ${m.apres || 'vide'} »`).join('\n');
+          const suite = modifs.length > 10 ? `\n… et ${modifs.length - 10} autre(s) (détail à l'étape Review du rapport)` : '';
+          if (!globalThis.confirm(`Ce rapport modifie ${modifs.length} donnée(s) déjà transmise(s) dans le ${LIBELLES_RAPPORTS[prec.incidentSubmission]} :\n${liste}${suite}\n\nValider ce rapport ?`)) {
+            return { ok: false, error: 'Validation annulée' };
+          }
         }
       try {
         const { data, error } = await supabase
@@ -2627,7 +2651,7 @@ export default function DoraIncidentApp() {
                       {SECTIONS_RAPPORT.slice(0, rangActuel + 1).map((x, i) => (
                         <button key={x.type} type="button" onClick={() => allerASection(x.type)}
                           className={`px-3 py-1 rounded-full ${x.type === draft.incidentSubmission ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
-                          {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? ' (en cours)' : sectionVerrouillee(x.type) ? ' 🔒' : ''}
+                          {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? ' (en cours)' : sectionVerrouillee(x.type) ? ' 🔒' : ''}{modifieesSection(x.type) > 0 ? ` · ✏️ ${modifieesSection(x.type)}` : ''}
                         </button>
                       ))}
                     </nav>
@@ -3830,6 +3854,8 @@ export default function DoraIncidentApp() {
                       <h2 className="text-2xl font-semibold mb-2">Review & Export</h2>
                       <p className="text-sm opacity-70 mb-6">Validate and export your JSON report</p>
 
+                      {rangActuel > 0 && <ModificationsRapport precedent={precedent} modifications={modifications} />}
+
                       <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
                         <h4 className="font-medium">Validation</h4>
                           {Array.isArray(errors) && errors.length === 0 ? (
@@ -4082,6 +4108,15 @@ export default function DoraIncidentApp() {
                                             <div className="text-xs opacity-60 mt-2">
                                               Saved: {new Date(r.savedAt).toLocaleString()}
                                             </div>
+                                            {r.status !== 'validated' && (() => {
+                                              const prec = rapportPrecedent(r, reports);
+                                              const n = modificationsRapport(r, prec).length;
+                                              return n > 0 && (
+                                                <div className="text-xs mt-2 text-amber-800 dark:text-amber-200">
+                                                  ✏️ {n} donnée(s) du {LIBELLES_RAPPORTS[prec.incidentSubmission]} modifiée(s) : détail à l&apos;étape Review du rapport
+                                                </div>
+                                              );
+                                            })()}
                                           </div>
 
                                           {/* Deuxième colonne : commentaires */}
