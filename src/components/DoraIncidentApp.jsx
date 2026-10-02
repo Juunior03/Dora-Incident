@@ -9,6 +9,7 @@ import ChangePassword from './ChangePassword';
 import { FaKey } from 'react-icons/fa';
 import RegistreInformation from './registre/RegistreInformation';
 import { messageTechnique } from '../utils/messageTechnique';
+import SuiviDelais, { BadgeEcheance } from './SuiviDelais';
 
 const nowISO = () => new Date().toISOString()
 
@@ -36,6 +37,7 @@ const nowISO = () => new Date().toISOString()
       // 1. On clone profondément pour ne pas muter le draft original
       const clonedReport = structuredClone(report);
       const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = clonedReport;
+      delete cleanedReport.validatedAt; // donnée interne, absente du format de l'autorité
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -1349,6 +1351,7 @@ export default function DoraIncidentApp() {
       }
 
       const candidate = { ...emptyDraft(draft.incidentId), ...draft, savedAt: nowISO() };
+      delete candidate.validatedAt; // fixée par la base, jamais enregistrée par l'application
       const v = validateReportFields(candidate);
       setErrors(Array.isArray(v) ? v : []);
 
@@ -1507,6 +1510,7 @@ export default function DoraIncidentApp() {
           id: item.id,
           status: item.status, // <-- Important : status est bien celui de la base de données
           nextSubmissionType: item.next_submission_type,
+          validatedAt: item.validated_at ?? null,
           comments: item.comments || [],
           savedAt: reportData.savedAt || item.created_at
         };
@@ -3641,6 +3645,8 @@ export default function DoraIncidentApp() {
                         </div>
                       </div>
 
+                        <SuiviDelais incidents={groupedIncidents} />
+
                         <div>
                           {/* Barre de recherche et filtres */}
                           <div className="mb-6">
@@ -3788,6 +3794,7 @@ export default function DoraIncidentApp() {
                                       Incident: {financialEntityCode}
                                       {incident.isClosed && <span className="ml-2 text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Fermé</span>}
                                       {!incident.isClosed && <span className="ml-2 text-sm text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">En cours</span>}
+                                      {!incident.isClosed && <BadgeEcheance reports={incident.reports} />}
                                     </h4>
                                   </div>
                                   <div className="space-y-3">
