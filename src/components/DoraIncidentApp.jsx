@@ -10,6 +10,7 @@ import { FaKey } from 'react-icons/fa';
 import RegistreInformation from './registre/RegistreInformation';
 import { messageTechnique } from '../utils/messageTechnique';
 import SuiviDelais, { BadgeEcheance } from './SuiviDelais';
+import { controlesAcpr } from '../utils/controlesAcpr';
 
 const nowISO = () => new Date().toISOString()
 
@@ -260,6 +261,17 @@ const nowISO = () => new Date().toISOString()
 
       // Nettoyer le rapport fusionné pour l'export
       const cleanedReport = cleanReportForExport(mergedReport);
+
+      // Contrôles du guide de remplissage de l'ACPR avant téléchargement
+      const constats = controlesAcpr(cleanedReport);
+      if (constats.length) {
+        const bloquants = constats.filter((c) => c.gravite === 'bloquant');
+        const liste = constats.map((c) => `${c.gravite === 'bloquant' ? '✖' : '⚠'} ${c.message}`).join('\n\n');
+        const titre = bloquants.length
+          ? `${bloquants.length} point(s) bloquant(s) : la déclaration risque d'être rejetée ou de faire l'objet d'une relance de l'ACPR.`
+          : 'Points à vérifier avant transmission à l\'ACPR :';
+        if (!globalThis.confirm(`${titre}\n\n${liste}\n\nTélécharger quand même le fichier ?`)) return;
+      }
 
       const financialEntityCode = report.incident?.financialEntityCode || 'unknown';
       const filename = `dora-incident-${financialEntityCode}.json`;

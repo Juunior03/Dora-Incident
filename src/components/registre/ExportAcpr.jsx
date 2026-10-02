@@ -160,7 +160,7 @@ export default function ExportAcpr({ onOuvrirRapport }) {
             <div>
               <label htmlFor="exp-arrete" className="text-sm font-medium">Date d'arrêté (date de référence)</label>
               <input id="exp-arrete" type="date" value={parametres.dateArrete} onChange={modifier('dateArrete')} className={inputClasses} />
-              <p className="text-xs opacity-60 mt-1">Date de référence demandée par l'autorité pour la campagne (ex. 31/12 de l'année écoulée).</p>
+              <p className="text-xs opacity-60 mt-1">31 décembre de l'année précédente ; remise annuelle au plus tard le 31 mars (instruction ACPR n° 2025-I-12).</p>
             </div>
             <div>
               <label htmlFor="exp-communication" className="text-sm font-medium">Date de communication (B_01.01.0060)</label>
