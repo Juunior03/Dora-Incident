@@ -117,7 +117,7 @@ export default function SuiviDelais({ incidents }) {
 // Explication des délais du règlement délégué (UE) 2025/301, article 5, en langage courant
 function ExplicationDelais() {
   return (
-    <details className="mt-6 rounded-lg border dark:border-gray-700 text-sm" open>
+    <details className="mt-6 rounded-lg border dark:border-gray-700 text-sm">
       <summary className="cursor-pointer px-3 py-2 font-medium">Comment les échéances sont-elles calculées ?</summary>
       <div className="px-3 pb-3 space-y-3">
         <p className="opacity-80">
