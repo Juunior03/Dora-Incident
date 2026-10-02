@@ -130,6 +130,19 @@ export function controlesAcpr(rapport) {
     if (!texte(inc.incidentResolutionSummary)) bloquant('Rapport final : décrivez la résolution de l\'incident et les enseignements tirés.');
   }
 
+  // Chronologie : survenance <= détection <= classification
+  const d = (v) => (v ? new Date(v) : null);
+  const [survenance, detection, classification] = [inc.incidentOccurrenceDateTime, inc.detectionDateTime, inc.classificationDateTime].map(d);
+  if (detection && classification && classification < detection) {
+    avertissement('La date de classification est antérieure à la date de détection : vérifiez les deux dates.');
+  }
+  if (survenance && detection && detection < survenance) {
+    avertissement('La date de détection est antérieure à la date de survenance de l\'incident : vérifiez les deux dates.');
+  }
+  if (malveillant && suivi && !texte(inc.incidentType?.indicatorsOfCompromise)) {
+    avertissement('Incident lié à la cybersécurité : renseignez si possible les indicateurs de compromission (domaines, adresses IP, empreintes…).');
+  }
+
   // Qualité rédactionnelle relevée par l'ACPR
   if (texte(inc.incidentDescription) && texte(inc.incidentDescription).length < 150) {
     avertissement('Description de l\'incident très courte : expliquez le problème et en quoi il est majeur, sans abréviations internes, pour un lecteur extérieur.');
