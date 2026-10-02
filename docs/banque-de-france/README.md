@@ -8,6 +8,7 @@ téléchargés le 2 octobre 2026. Les maquettes sont identiques pour la banque e
 |---|---|
 | `DORA_IR_Schema_v1.3.json` | Schéma JSON des déclarations d'incident majeur (initiale, intermédiaire, finale, reclassement en non majeur), version du 21/05/2026 |
 | `DORA_IR_final_report_sample_v1.3.json` | Exemple officiel de rapport final conforme |
+| `Reglement_execution_UE_2025-302_JO.pdf` | Règlement d'exécution (UE) 2025/302 publié au JO (annexe II : champs et caractère obligatoire) |
 | `DORA_CYB_Schema_v1.2.json`, `DORA_CYB_sample_v1.2.json` | Notification volontaire des cybermenaces importantes (non gérée par l'application) |
 | `Instruction_2025-I-09_Formulaire_annexe.xlsx` | Instruction 2025-I-09 : déclaration du prestataire tiers qui notifie les incidents pour le compte de l'entité |
 | `Instruction_2025-I-11_annexe.xlsx` | Instruction 2025-I-11 : adhésion / cessation à un dispositif de partage d'informations (art. 45.3 DORA) |
@@ -57,9 +58,15 @@ type de rapport, y compris les champs conditionnels 2.6, 3.3, 3.13-3.14, 3.17, 3
 LEI (1.3) ; nom et LEI de l'entreprise mère ultime ensemble (1.13/1.14) ; critère « services critiques
 affectés » toujours présent avec au moins un autre critère (2.5) ; montant des recouvrements dans le
 rapport final (4.14) ; description et date des incidents récurrents ensemble (4.15/4.16). Avertissements
-ajoutés : France citée dans la propagation géographique, transactions déclarées affectées sans nombre. Le texte consolidé publié au Journal officiel (EUR-Lex) n'a pas
-pu être téléchargé (protection anti-robots) : la référence utilisée est le projet final des autorités
-européennes, à confronter au texte publié en cas de doute.
+ajoutés : France citée dans la propagation géographique. Nombre, pourcentage et valeur des transactions
+(3.9 à 3.11) exigés si des transactions sont déclarées affectées. Comparaison faite champ par champ avec le texte publié au Journal
+officiel (`Reglement_execution_UE_2025-302_JO.pdf`, JO L du 20/02/2025). Écarts volontaires, plus stricts
+que le texte, conformes aux attentes des autorités : 3.1 (code ACPR) et 3.17 (réel ou estimé) exigés
+dans tout rapport intermédiaire ou final ; description des actions temporaires (3.34) exigée dans le
+rapport final, ou la raison de leur absence (guide ACPR). Champ 4.12 (seuil d'impact économique) :
+« oui » dans le tableau, mais le schéma de la Banque de France ne permet de le transmettre qu'avec le
+critère « impact économique » ; il est exigé dans ce cas (instructions ESA du 16/09/2026). Champs 4.10
+et 4.11 (résolution) : non contrôlés automatiquement, leur condition dépend d'une appréciation.
 
 Délais (règlement 2025/301, article 5) : 4 h après la classification et au plus tard 24 h après la
 détection ; 4 h après la classification si elle intervient plus de 24 h après la détection ; 72 h après

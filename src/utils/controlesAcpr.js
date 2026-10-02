@@ -146,11 +146,6 @@ export function controlesAcpr(rapport) {
   if (pays.includes('FR')) {
     avertissement('Propagation géographique : la France, pays d\'origine de l\'entité, ne doit pas figurer parmi les États membres touchés (seuls les autres États membres comptent).');
   }
-  const transactions = impact.affectedAssets?.affectedTransactions;
-  const chiffresTx = impact.affectedAssets?.numbersActualEstimate ?? [];
-  if (chiffresTx.some((v) => /^(actual_figures|estimates)_for_transactions_affected$/.test(v)) && !(transactions?.number > 0)) {
-    avertissement('Des transactions sont déclarées affectées mais leur nombre est nul : renseignez le nombre, le pourcentage et la valeur des transactions (champs 3.9 à 3.11).');
-  }
   if ((rapport.affectedEntity ?? []).some((e) => !e.LEI)) {
     avertissement('Entité affectée sans LEI : c\'est admis seulement si elle est l\'entité déclarante elle-même (champs 1.5 et 1.6).');
   }
