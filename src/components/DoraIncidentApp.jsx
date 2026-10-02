@@ -62,7 +62,7 @@ const nowISO = () => new Date().toISOString()
       }
       if (cleanedReport.impactAssessment?.serviceImpact?.serviceRestorationDateTime) {
         cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime =
-          formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'withMilliseconds');
+          formatDateForExport(cleanedReport.impactAssessment.serviceImpact.serviceRestorationDateTime, 'iso');
       }
 
       // Ordonner les clés des entités affectées
@@ -75,7 +75,35 @@ const nowISO = () => new Date().toISOString()
         cleanedReport.submittingEntity = submittingEntity;
       }
 
-      return cleanedReport;
+      // Le schéma DORA IR v1.3 refuse les champs vides (chaîne vide hors liste, liste vide) :
+      // les champs non renseignés sont omis, comme dans les maquettes de la Banque de France
+      const elague = retirerChampsVides(cleanedReport);
+      if (elague.ultimateParentUndertaking && Object.keys(elague.ultimateParentUndertaking).length <= 1) {
+        delete elague.ultimateParentUndertaking; // seul entityType : aucune entreprise mère renseignée
+      }
+      if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
+      return elague;
+    }
+
+    function retirerChampsVides(valeur) {
+      if (Array.isArray(valeur)) {
+        return valeur.map(retirerChampsVides).filter((v) => !estVide(v));
+      }
+      if (valeur && typeof valeur === 'object') {
+        const resultat = {};
+        for (const [cle, v] of Object.entries(valeur)) {
+          const nettoye = retirerChampsVides(v);
+          if (!estVide(nettoye)) resultat[cle] = nettoye;
+        }
+        return resultat;
+      }
+      return valeur;
+    }
+
+    function estVide(v) {
+      return v === null || v === undefined || (typeof v === 'string' && v.trim() === '')
+        || (Array.isArray(v) && v.length === 0)
+        || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
     }
 
     // Sous-fonction pour nettoyer les numéros de téléphone
@@ -125,6 +153,11 @@ const nowISO = () => new Date().toISOString()
               ...base,
               dataLosseMaterialityThresholds: ct.dataLosseMaterialityThresholds ?? [],
               dataLossesDescription: ct.dataLossesDescription ?? "",
+            };
+          case 'economic_impact':
+            return {
+              ...base,
+              economicImpactMaterialityThreshold: ct.economicImpactMaterialityThreshold ?? "",
             };
           case 'reputational_impact':
             return {
@@ -187,7 +220,7 @@ const nowISO = () => new Date().toISOString()
       if (!incident) return incident;
 
       if (incident.classificationDateTime) {
-        incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'withZ');
+        incident.classificationDateTime = formatDateForExport(incident.classificationDateTime, 'iso');
       }
 
       const otherDateFields = [
@@ -200,7 +233,7 @@ const nowISO = () => new Date().toISOString()
 
       for (const field of otherDateFields) {
         if (incident[field]) {
-          incident[field] = formatDateForExport(incident[field], 'withMilliseconds');
+          incident[field] = formatDateForExport(incident[field], 'iso');
         }
       }
 
@@ -880,6 +913,9 @@ const nowISO = () => new Date().toISOString()
 
         // Formater selon le type requis
         switch (formatType) {
+          case 'iso':
+            // Format du schéma DORA IR v1.3 : "2001-12-17T09:30:47Z" (UTC)
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
           case 'withZ':
             // Format: "2001-12-17T09:30:47.0Z" (pour classificationDateTime)
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.0Z`;
