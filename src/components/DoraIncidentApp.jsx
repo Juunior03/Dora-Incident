@@ -3655,9 +3655,9 @@ export default function DoraIncidentApp() {
                       <h2 className="text-xl font-semibold">Dashboard</h2>
                       <p className="text-sm opacity-70 mb-4">Manage your saved DORA reports</p>
 
-                      <div className="grid grid-cols-3 gap-2 mb-6">
+                      <div className="mb-6">
                           {/* Incidents Status */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 col-span-2">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                               {/* Total Incidents */}
                           <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
                             <div className="text-sm">Total Incidents</div>
@@ -3679,21 +3679,6 @@ export default function DoraIncidentApp() {
                             <SuiviDelais incidents={groupedIncidents} />
                           </div>
 
-                        <div className="p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-                          <div className="text-sm">Actions</div>
-                          <div className="mt-2 flex flex-col gap-2">
-                            <button
-                              onClick={async () => {
-                                const allReports = await fetchReportsFromSupabase();
-                                niceDownload('dora-all-reports.json', allReports.map(r => cleanReportForExport({ ...emptyDraft(r.incidentId), ...r })));
-                              }}
-                              className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 transition-colors"
-                            >
-                              Export All JSON
-                            </button>
-
-                          </div>
-                        </div>
                       </div>
 
                         <div>
