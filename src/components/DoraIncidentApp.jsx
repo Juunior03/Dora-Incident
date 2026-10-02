@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext.jsx'
@@ -13,6 +13,7 @@ import SuiviDelais, { BadgeEcheance } from './SuiviDelais';
 import { controlesAcpr } from '../utils/controlesAcpr';
 import { rapportPrecedent, modificationsRapport, LIBELLES_RAPPORTS } from '../utils/comparaisonRapports';
 import ModificationsRapport from './ModificationsRapport';
+import { champDeLErreur } from '../utils/champsErreurs';
 
 const nowISO = () => new Date().toISOString()
 
@@ -954,10 +955,8 @@ const nowISO = () => new Date().toISOString()
         errors.push("Recurring incidents: the description and the date of the first occurrence must be provided together for final reports");
       }
 
-      // Actions temporaires : à décrire dans le rapport final, ou expliquer pourquoi aucune n'a été prise (guide ACPR)
-      if (!isFilled(report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery)) {
-        errors.push("Description of temporary actions/measures for recovery (or why none were taken) is required for final reports");
-      }
+      // 3.34 (description des actions temporaires) : exigée seulement si 3.33 = oui, dans tous les rapports
+      // (validateTemporaryRecoveryActions), conformément à l'annexe II du règlement d'exécution 2025/302
     }
 
     // Un champ est renseigné s'il n'est ni absent, ni une chaîne vide
@@ -1205,6 +1204,7 @@ const nowISO = () => new Date().toISOString()
         <div>
           <label htmlFor={id} className="text-sm font-medium">{label}</label>
           <input
+            data-champ={onChangePath}
             id={id}
             type="text"
             value={value}
@@ -1374,6 +1374,7 @@ const nowISO = () => new Date().toISOString()
               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
                 <input
                   type="checkbox"
+                  data-champ="incident.rootCausesDetailedClassification"
                   checked={selectedValues.includes(option.value)}
                   onChange={() => {
                     const updatedValues = selectedValues.includes(option.value)
@@ -1450,10 +1451,47 @@ export default function DoraIncidentApp() {
       return n;
     });
   }, [sectionsIncompletes]);
+  // Erreur cliquée à l'étape Review : ouvrir l'étape et la section du champ, puis le mettre en évidence
+  const [cible, setCible] = useState(null);
+  const cibleRef = useRef(null);
+  const allerAuChamp = (message) => {
+    const info = champDeLErreur(message, draft);
+    if (!info) return;
+    const c = { ...info, message, t: Date.now() };
+    cibleRef.current = c;
+    setCible(c);
+    setStep(info.etape);
+  };
+  useEffect(() => {
+    if (!cible || step !== cible.etape) return undefined;
+    let essais = 0;
+    let retrait;
+    const t = setInterval(() => {
+      const el = document.querySelector(`[data-champ="${cible.champ}"]`);
+      if (!el) { if (++essais > 40) clearInterval(t); return; }
+      // Section d'un rapport précédent verrouillée : on l'ouvre (sauf en relecture), puis on réessaie
+      const section = el.closest('[id^="section-"]');
+      if (el.closest('fieldset')?.disabled && section && !lectureSeuleRapport) {
+        const type = section.id.replace('section-', '');
+        setDeverrouillees(d => ({ ...d, [type]: true }));
+        return;
+      }
+      clearInterval(t);
+      const groupe = ['checkbox', 'radio'].includes(el.type) ? (el.closest('.grid') || el.closest('label') || el) : el;
+      groupe.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (!el.disabled) el.focus({ preventScroll: true });
+      groupe.classList.add('ring-4', 'ring-red-400', 'ring-offset-2', 'rounded-lg');
+      retrait = setTimeout(() => groupe.classList.remove('ring-4', 'ring-red-400', 'ring-offset-2'), 6000);
+      cibleRef.current = null;
+    }, 50);
+    return () => { clearInterval(t); clearTimeout(retrait); };
+  }, [cible, step, lectureSeuleRapport]);
+  useEffect(() => { if (step === 3) setCible(null); }, [step]);
+
   const allerASection = (type) => document.getElementById(`section-${type}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   // En arrivant sur l'étape « Incident » d'un rapport intermédiaire ou final : directement à sa section
   useEffect(() => {
-    if (step !== 2 || rangActuel === 0) return undefined;
+    if (step !== 2 || rangActuel === 0 || cibleRef.current) return undefined;
     // La section n'existe qu'une fois l'animation de changement de vue terminée : on l'attend (2 s au plus)
     let essais = 0;
     const t = setInterval(() => {
@@ -2330,7 +2368,17 @@ export default function DoraIncidentApp() {
 
               <section className="col-span-9">
                 <div className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
-                  {!draft.skipIdentity && step === 0 && (
+                  {cible && step === cible.etape && (
+                    <div role="alert" className="sticky top-0 z-30 mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/40 text-sm text-red-800 dark:text-red-100 border border-red-200 dark:border-red-800 flex items-start justify-between gap-3">
+                      <span><strong>À compléter ({cible.numero}) :</strong> {cible.message}</span>
+                      <span className="flex gap-2 shrink-0">
+                        <button type="button" onClick={() => setStep(3)} className="underline">Retour à Review</button>
+                        <button type="button" onClick={() => setCible(null)} aria-label="Fermer">✕</button>
+                      </span>
+                    </div>
+                  )}
+
+                  {(!draft.skipIdentity || cible?.etape === 0) && step === 0 && (
                     <div>
 
                       <h2 className="text-2xl font-semibold mb-2">Identity</h2>
@@ -2340,7 +2388,7 @@ export default function DoraIncidentApp() {
                         <div className="mt-6 grid grid-cols-2 gap-4">
                           <div>
                             <label htmlFor="incidentSubmission" className="block text-sm font-medium mb-1">Type of report</label>
-                            <select id="incidentSubmission" value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
+                            <select data-champ="incidentSubmission" id="incidentSubmission" value={draft.incidentSubmission} onChange={e => updateDraft('incidentSubmission', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="initial_notification">Initial Notification</option>
                               <option value="intermediate_report">Intermediate Report</option>
                               <option value="final_report">Final Report</option>
@@ -2348,7 +2396,7 @@ export default function DoraIncidentApp() {
                           </div>
                           <div>
                             <label htmlFor="reportCurrency" className="block text-sm font-medium mb-1">Report currency</label>
-                            <select id="reportCurrency" value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
+                            <select data-champ="reportCurrency" id="reportCurrency" value={draft.reportCurrency} onChange={e => updateDraft('reportCurrency', e.target.value)} className="w-full rounded-lg p-2 border dark:border-gray-600 bg-white dark:bg-gray-800" disabled={isFieldDisabled(role, draft.status)}>
                               <option value="EUR">EUR</option>
                               <option value="BGN">BGN</option>
                               <option value="CZK">CZK</option>
@@ -2367,7 +2415,7 @@ export default function DoraIncidentApp() {
                         <div className="border-t dark:border-gray-700 pt-4">
                           <h4 className="text-sm font-medium mb-3">Submitting Entity</h4>
                           <div className="grid grid-cols-2 gap-2">
-                            <input
+                            <input data-champ="submittingEntity.name"
                                 placeholder="Name"
                                 value={draft.submittingEntity.name}
                                 onChange={e => {
@@ -2385,7 +2433,7 @@ export default function DoraIncidentApp() {
                                 } : {}}
                                 title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
                             />
-                            <input
+                            <input data-champ="submittingEntity.code"
                                 placeholder="Identification Code"
                                 value={draft.submittingEntity.code}
                                 onChange={e => {
@@ -2419,21 +2467,21 @@ export default function DoraIncidentApp() {
                           </div>
 
                           <div className="grid grid-cols-3 gap-2">
-                            <input
+                            <input data-champ="ultimateParentUndertaking.name"
                               placeholder="Name"
                               value={draft.ultimateParentUndertaking.name}
                               onChange={e => updateDraft('ultimateParentUndertaking.name', e.target.value)}
                               className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                               disabled={isFieldDisabled(role, draft.status)}
                             />
-                            <input
+                            <input data-champ="ultimateParentUndertaking.code"
                               placeholder="Identification Code"
                               value={draft.ultimateParentUndertaking.code}
                               onChange={e => updateDraft('ultimateParentUndertaking.code', e.target.value)}
                               className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                               disabled={isFieldDisabled(role, draft.status)}
                             />
-                            <input
+                            <input data-champ="ultimateParentUndertaking.LEI"
                               placeholder="LEI Code"
                               value={draft.ultimateParentUndertaking.LEI}
                               onChange={e => updateDraft('ultimateParentUndertaking.LEI', e.target.value)}
@@ -2453,7 +2501,7 @@ export default function DoraIncidentApp() {
                                     className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
                                     style={draft.submittingEntity.isParametersSet ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                                   >
-                                    <input
+                                    <input data-champ="submittingEntity.affectedEntityType"
                                       id={`affected-entity-type-${type.value}`}
                                       type="checkbox"
                                       checked={draft.submittingEntity.affectedEntityType?.includes(type.value)}
@@ -2505,21 +2553,21 @@ export default function DoraIncidentApp() {
                               {draft.affectedEntity.map((ae, idx) => (
                                 <div key={`affected-entity-${idx}`} className="p-3 rounded-lg border bg-white">
                                   <div className="flex gap-2">
-                                    <input
+                                    <input data-champ={`affectedEntity.${idx}.name`}
                                       placeholder="Name"
                                       value={ae.name}
                                       onChange={e => updateAffectedEntity(idx, 'name', e.target.value)}
                                       className="flex-1 p-2 rounded-lg border"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     />
-                                    <input
+                                    <input data-champ={`affectedEntity.${idx}.code`}
                                       placeholder="Identification Code"
                                       value={ae.code}
                                       onChange={e => updateAffectedEntity(idx, 'code', e.target.value)}
                                       className="flex-1 p-2 rounded-lg border"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     />
-                                    <input
+                                    <input data-champ={`affectedEntity.${idx}.LEI`}
                                       placeholder="LEI Code"
                                       value={ae.LEI}
                                       onChange={e => updateAffectedEntity(idx, 'LEI', e.target.value)}
@@ -2549,7 +2597,7 @@ export default function DoraIncidentApp() {
                     </div>
                   )}
 
-                  {!draft.skipContacts && step === 1 && (
+                  {(!draft.skipContacts || cible?.etape === 1) && step === 1 && (
                     <div>
                       <h2 className="text-2xl font-semibold mb-2">Contacts</h2>
                       <p className="text-sm opacity-70 mb-6">Primary and secondary contact information</p>
@@ -2558,28 +2606,28 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="primaryContactName" className="text-sm font-medium">Primary Contact Name</label>
-                          <input id="primaryContactName" value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                          <input data-champ="primaryContact.name" id="primaryContactName" value={draft.primaryContact.name} onChange={e => updateDraft('primaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                         <div>
                           <label htmlFor="secondaryContactName" className="text-sm font-medium">Secondary Contact Name</label>
-                          <input id="secondaryContactName" value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                          <input data-champ="secondaryContact.name" id="secondaryContactName" value={draft.secondaryContact.name} onChange={e => updateDraft('secondaryContact.name', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="primaryContactEmail" className="text-sm font-medium">Primary Contact Email</label>
-                          <input id="primaryContactEmail" type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                          <input data-champ="primaryContact.email" id="primaryContactEmail" type="email" value={draft.primaryContact.email} onChange={e => updateDraft('primaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                         <div>
                           <label htmlFor="secondaryContactEmail" className="text-sm font-medium">Secondary Contact Email</label>
-                          <input id="secondaryContactEmail" type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
+                          <input data-champ="secondaryContact.email" id="secondaryContactEmail" type="email" value={draft.secondaryContact.email} onChange={e => updateDraft('secondaryContact.email', e.target.value)} className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full" disabled={isFieldDisabled(role, draft.status)}/>
                         </div>
                       </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label htmlFor="primaryContactPhone" className="text-sm font-medium">Primary Contact Phone</label>
                             <div className="flex gap-2">
-                              <select
+                              <select data-champ="primaryContact.countryCode"
                                   value={draft.primaryContact.countryCode || '+33'}
                                   onChange={(e) => updateDraft('primaryContact.countryCode', e.target.value)}
                                   className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
@@ -2592,7 +2640,7 @@ export default function DoraIncidentApp() {
                                   ))}
                                 </select>
 
-                              <input
+                              <input data-champ="primaryContact.phone"
                                 id="primaryContactPhone"
                                 type="tel"
                                 value={draft.primaryContact.phone}
@@ -2620,7 +2668,7 @@ export default function DoraIncidentApp() {
                           <div>
                             <label htmlFor="secondaryContactPhone" className="text-sm font-medium">Secondary Contact Phone</label>
                             <div className="flex gap-2">
-                              <select
+                              <select data-champ="secondaryContact.countryCode"
                                 value={draft.secondaryContact.countryCode}
                                 onChange={(e) => updateDraft('secondaryContact.countryCode', e.target.value)}
                                 className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-24"
@@ -2632,7 +2680,7 @@ export default function DoraIncidentApp() {
                                   </option>
                                 ))}
                               </select>
-                              <input
+                              <input data-champ="secondaryContact.phone"
                                 id="secondaryContactPhone"
                                 type="tel"
                                 value={draft.secondaryContact.phone}
@@ -2697,7 +2745,7 @@ export default function DoraIncidentApp() {
 
                         <div>
                           <label htmlFor="financialEntityCode" className="text-sm font-medium">Incident Reference Code Provided by the Financial Entity</label>
-                          <input
+                          <input data-champ="incident.financialEntityCode"
                             id="financialEntityCode"
                             value={draft.incident.financialEntityCode}
                             onChange={e => updateDraft('incident.financialEntityCode', e.target.value)}
@@ -2711,7 +2759,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label htmlFor="detectionDateTime" className="text-sm font-medium">Detection Date/Time</label>
-                              <input
+                              <input data-champ="incident.detectionDateTime"
                                 id="detectionDateTime"
                                 type="datetime-local"
                                 value={draft.incident.detectionDateTime}
@@ -2722,7 +2770,7 @@ export default function DoraIncidentApp() {
                             </div>
                             <div>
                               <label htmlFor="classificationDateTime" className="text-sm font-medium">Classification Date/Time</label>
-                              <input
+                              <input data-champ="incident.classificationDateTime"
                                 id="classificationDateTime"
                                 type="datetime-local"
                                 value={draft.incident.classificationDateTime}
@@ -2738,7 +2786,7 @@ export default function DoraIncidentApp() {
                       <div className="space-y-4">
                         <div>
                           <label htmlFor="incidentDescription" className="text-sm font-medium">Incident Description</label>
-                          <textarea
+                          <textarea data-champ="incident.incidentDescription"
                             id="incidentDescription"
                             value={draft.incident.incidentDescription}
                             onChange={e => updateDraft('incident.incidentDescription', e.target.value)}
@@ -2757,7 +2805,7 @@ export default function DoraIncidentApp() {
                                 key={criteria.value}
                                 className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-2 rounded"
                               >
-                                <input
+                                <input data-champ="incident.classificationTypes.0.classificationCriterion"
                                   type="checkbox"
                                   checked={draft.incident.classificationTypes[0]?.classificationCriterion?.includes(criteria.value)}
                                   onChange={() => {
@@ -2792,7 +2840,7 @@ export default function DoraIncidentApp() {
                                   key={country.value}
                                   className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
                                 >
-                                  <input
+                                  <input data-champ="incident.classificationTypes.0.countryCodeMaterialityThresholds"
                                     type="checkbox"
                                     checked={draft.incident.classificationTypes[0]?.countryCodeMaterialityThresholds?.includes(country.value) || false}
                                     onChange={() => {
@@ -2814,7 +2862,7 @@ export default function DoraIncidentApp() {
 
                         <div className="mt-6">
                           <label htmlFor="incidentDiscovery" className="text-sm font-medium">Incident Discovery</label>
-                          <select
+                          <select data-champ="incident.incidentDiscovery"
                             id="incidentDiscovery"
                             value={draft.incident.incidentDiscovery}
                             onChange={e => updateDraft('incident.incidentDiscovery', e.target.value)}
@@ -2844,7 +2892,7 @@ export default function DoraIncidentApp() {
                               </div>
                             </div>
                           </div>
-                          <textarea
+                          <textarea data-champ="incident.originatesFromThirdPartyProvider"
                             value={draft.incident.originatesFromThirdPartyProvider}
                             onChange={e => updateDraft('incident.originatesFromThirdPartyProvider', e.target.value)}
                             rows={2}
@@ -2854,7 +2902,7 @@ export default function DoraIncidentApp() {
                         </div>
 
                         <div className="mt-4 flex items-center gap-2">
-                          <input
+                          <input data-champ="incident.isBusinessContinuityActivated"
                             type="checkbox"
                             id="isBusinessContinuityActivated"
                             checked={draft.incident.isBusinessContinuityActivated}
@@ -2881,7 +2929,7 @@ export default function DoraIncidentApp() {
                               </div>
                             </div>
                           </div>
-                          <textarea
+                          <textarea data-champ="incident.otherInformation"
                             value={draft.incident.otherInformation}
                             onChange={e => updateDraft('incident.otherInformation', e.target.value)}
                             rows={3}
@@ -2918,7 +2966,7 @@ export default function DoraIncidentApp() {
                               </div>
                             </div>
                           </div>
-                          <input
+                          <input data-champ="incident.competentAuthorityCode"
                             type="text"
                             value={draft.incident.competentAuthorityCode}
                             onChange={e => updateDraft('incident.competentAuthorityCode', e.target.value)}
@@ -2932,7 +2980,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label htmlFor="incidentOccurrenceDateTime" className="text-sm font-medium">Occurrence Date/Time</label>
-                              <input
+                              <input data-champ="incident.incidentOccurrenceDateTime"
                                 id="incidentOccurrenceDateTime"
                                 type="datetime-local"
                                 value={draft.incident.incidentOccurrenceDateTime}
@@ -2944,7 +2992,7 @@ export default function DoraIncidentApp() {
 
                             <div>
                               <label htmlFor="serviceRestorationDateTime" className="text-sm font-medium">Services Restoration Date/Time</label>
-                              <input
+                              <input data-champ="impactAssessment.serviceImpact.serviceRestorationDateTime"
                                 id="serviceRestorationDateTime"
                                 type="datetime-local"
                                 value={draft.impactAssessment.serviceImpact.serviceRestorationDateTime}
@@ -2963,7 +3011,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label htmlFor="affectedClientsNumber" className="text-sm font-medium">Number of Affected Clients</label>
-                              <input
+                              <input data-champ="impactAssessment.affectedAssets.affectedClients.number"
                                 id="affectedClientsNumber"
                                 type="number"
                                 value={draft.impactAssessment.affectedAssets.affectedClients.number}
@@ -2974,7 +3022,7 @@ export default function DoraIncidentApp() {
                             </div>
                             <div>
                               <label htmlFor="affectedClientsPercentage" className="text-sm font-medium">Percentage of Affected Clients (%)</label>
-                              <input
+                              <input data-champ="impactAssessment.affectedAssets.affectedClients.percentage"
                                 id="affectedClientsPercentage"
                                 type="number"
                                 step="0.01"
@@ -2990,7 +3038,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label htmlFor="affectedFinancialCounterpartsNumber" className="text-sm font-medium">Number of Affected Financial Counterparts</label>
-                              <input
+                              <input data-champ="impactAssessment.affectedAssets.affectedFinancialCounterparts.number"
                                 id="affectedFinancialCounterpartsNumber"
                                 type="number"
                                 value={draft.impactAssessment.affectedAssets.affectedFinancialCounterparts.number}
@@ -3001,7 +3049,7 @@ export default function DoraIncidentApp() {
                             </div>
                             <div>
                               <label htmlFor="affectedFinancialCounterpartsPercentage" className="text-sm font-medium">Percentage of Affected Financial Counterparts (%)</label>
-                              <input
+                              <input data-champ="impactAssessment.affectedAssets.affectedFinancialCounterparts.percentage"
                                 id="affectedFinancialCounterpartsPercentage"
                                 type="number"
                                 step="0.01"
@@ -3014,7 +3062,7 @@ export default function DoraIncidentApp() {
 
                             <div className="mt-4">
                               <div className="flex items-center gap-2">
-                                  <input
+                                  <input data-champ="impactAssessment.hasImpactOnRelevantClients"
                                     type="checkbox"
                                     id="hasImpactOnRelevantClients"
                                     checked={draft.impactAssessment.hasImpactOnRelevantClients}
@@ -3033,7 +3081,7 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <label htmlFor="affectedTransactionsNumber" className="text-sm font-medium">Number of Affected Transactions</label>
-                          <input
+                          <input data-champ="impactAssessment.affectedAssets.affectedTransactions.number"
                             id="affectedTransactionsNumber"
                             type="number"
                             value={draft.impactAssessment.affectedAssets.affectedTransactions.number}
@@ -3044,7 +3092,7 @@ export default function DoraIncidentApp() {
                         </div>
                         <div>
                           <label htmlFor="affectedTransactionsPercentage" className="text-sm font-medium">Percentage of Affected Transactions (%)</label>
-                          <input
+                          <input data-champ="impactAssessment.affectedAssets.affectedTransactions.percentage"
                             id="affectedTransactionsPercentage"
                             type="number"
                             step="0.01"
@@ -3058,7 +3106,7 @@ export default function DoraIncidentApp() {
                         {/* Valeur des transactions affectées */}
                         <div>
                           <label htmlFor="valueOfAffectedTransactions" className="text-sm font-medium">Value of Affected Transactions</label>
-                          <input
+                          <input data-champ="impactAssessment.affectedAssets.valueOfAffectedTransactions"
                             id="valueOfAffectedTransactions"
                             type="number"
                             value={draft.impactAssessment.affectedAssets.valueOfAffectedTransactions}
@@ -3076,7 +3124,7 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {NUMBERS_ACTUAL_ESTIMATE_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                            <input
+                            <input data-champ="impactAssessment.affectedAssets.numbersActualEstimate"
                               type="checkbox"
                               checked={draft.impactAssessment.affectedAssets.numbersActualEstimate.includes(option.value)}
                               onChange={() => {
@@ -3101,7 +3149,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {REPUTATIONAL_IMPACT_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.classificationTypes.0.reputationalImpactType"
                                   type="checkbox"
                                   checked={draft.incident.classificationTypes[0]?.reputationalImpactType?.includes(option.value)}
                                   onChange={() => {
@@ -3132,7 +3180,7 @@ export default function DoraIncidentApp() {
                               </div>
                             </div>
                           </div>
-                          <textarea
+                          <textarea data-champ="incident.classificationTypes.0.reputationalImpactDescription"
                             value={draft.incident.classificationTypes[0]?.reputationalImpactDescription || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.reputationalImpactDescription', e.target.value)}
                             rows={2}
@@ -3146,7 +3194,7 @@ export default function DoraIncidentApp() {
 
                     <div className="mt-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <DurationInput
+                          <DurationInput data-champ="incident.incidentDuration"
                             id="incidentDuration"
                             label="Incident Duration (DD:HH:MM)"
                             value={draft.incident.incidentDuration}
@@ -3154,7 +3202,7 @@ export default function DoraIncidentApp() {
                             updateDraft={updateDraft}
                             disabled={isFieldDisabled(role, draft.status)}
                           />
-                          <DurationInput
+                          <DurationInput data-champ="impactAssessment.serviceImpact.serviceDowntime"
                             id="serviceDowntime"
                             label="Service Downtime (DD:HH:MM)"
                             value={draft.impactAssessment.serviceImpact.serviceDowntime}
@@ -3170,7 +3218,7 @@ export default function DoraIncidentApp() {
                       <label htmlFor="durationServiceDowntimeInfo" className="text-sm font-medium">
                         Information whether the values for duration and service downtime are actual or estimates
                       </label>
-                      <select
+                      <select data-champ="informationDurationServiceDowntimeActualOrEstimate"
                         id="durationServiceDowntimeInfo"
                         value={draft.informationDurationServiceDowntimeActualOrEstimate}
                         onChange={(e) => updateDraft('informationDurationServiceDowntimeActualOrEstimate', e.target.value)}
@@ -3194,7 +3242,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {MEMBER_STATES_IMPACT_TYPE_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.classificationTypes.0.memberStatesImpactType"
                                   type="checkbox"
                                   checked={draft.incident.classificationTypes[0]?.memberStatesImpactType?.includes(option.value)}
                                   onChange={() => {
@@ -3217,7 +3265,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Description of the Impact and Severity in Each Affected Member State
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.classificationTypes.0.memberStatesImpactTypeDescription"
                             value={draft.incident.classificationTypes[0]?.memberStatesImpactTypeDescription || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.memberStatesImpactTypeDescription', e.target.value)}
                             rows={2}
@@ -3236,7 +3284,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {DATA_LOSS_MATERIALITY_THRESHOLDS_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.classificationTypes.0.dataLosseMaterialityThresholds"
                                   type="checkbox"
                                   checked={draft.incident.classificationTypes[0]?.dataLosseMaterialityThresholds?.includes(option.value)}
                                   onChange={() => {
@@ -3259,7 +3307,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Description of the Data Losses
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.classificationTypes.0.dataLossesDescription"
                             value={draft.incident.classificationTypes[0]?.dataLossesDescription || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.dataLossesDescription', e.target.value)}
                             rows={2}
@@ -3275,7 +3323,7 @@ export default function DoraIncidentApp() {
                       <p className="block text-sm font-medium mb-2">
                         Critical Services Affected
                       </p>
-                      <textarea
+                      <textarea data-champ="impactAssessment.criticalServicesAffected"
                         value={draft.impactAssessment.criticalServicesAffected || ''}
                         onChange={e => updateDraft('impactAssessment.criticalServicesAffected', e.target.value)}
                         rows={2}
@@ -3290,7 +3338,7 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {INCIDENT_CLASSIFICATION_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                            <input
+                            <input data-champ="incident.incidentType.incidentClassification"
                               type="checkbox"
                               checked={draft.incident.incidentType.incidentClassification.includes(option.value)}
                               onChange={() => {
@@ -3326,7 +3374,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Other Incident Classification
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.incidentType.otherIncidentClassification"
                             value={draft.incident.incidentType.otherIncidentClassification || ''}
                             onChange={e => updateDraft('incident.incidentType.otherIncidentClassification', e.target.value)}
                             rows={2}
@@ -3344,7 +3392,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {THREAT_TECHNIQUES_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.incidentType.threatTechniques"
                                   type="checkbox"
                                   checked={draft.incident.incidentType.threatTechniques.includes(option.value)}
                                   onChange={() => {
@@ -3369,7 +3417,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Other Threat Techniques
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.incidentType.otherThreatTechniques"
                             value={draft.incident.incidentType.otherThreatTechniques || ''}
                             onChange={e => updateDraft('incident.incidentType.otherThreatTechniques', e.target.value)}
                             rows={2}
@@ -3385,7 +3433,7 @@ export default function DoraIncidentApp() {
                       <p className="block text-sm font-medium mb-2">
                         Information about Affected Functional Areas and Business Processes
                       </p>
-                      <textarea
+                      <textarea data-champ="impactAssessment.affectedFunctionalAreas"
                         value={draft.impactAssessment.affectedFunctionalAreas || ''}
                         onChange={e => updateDraft('impactAssessment.affectedFunctionalAreas', e.target.value)}
                         rows={2}
@@ -3400,7 +3448,7 @@ export default function DoraIncidentApp() {
                       <label htmlFor="isAffectedInfrastructureComponents" className="block text-sm font-medium mb-2">
                         Are Infrastructure Components Supporting Business Processes Affected ?
                       </label>
-                      <select
+                      <select data-champ="impactAssessment.isAffectedInfrastructureComponents"
                         id="isAffectedInfrastructureComponents"
                         value={draft.impactAssessment.isAffectedInfrastructureComponents}
                         onChange={e => updateDraft('impactAssessment.isAffectedInfrastructureComponents', e.target.value)}
@@ -3421,7 +3469,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Information about Affected Infrastructure Components
                           </p>
-                          <textarea
+                          <textarea data-champ="impactAssessment.affectedInfrastructureComponents"
                             value={draft.impactAssessment.affectedInfrastructureComponents || ''}
                             onChange={e => updateDraft('impactAssessment.affectedInfrastructureComponents', e.target.value)}
                             rows={2}
@@ -3436,7 +3484,7 @@ export default function DoraIncidentApp() {
                       <label htmlFor="isImpactOnFinancialInterest" className="block text-sm font-medium mb-2">
                         Has the Incident Impacted the Financial Interest of Clients?
                       </label>
-                      <select
+                      <select data-champ="impactAssessment.isImpactOnFinancialInterest"
                         id="isImpactOnFinancialInterest"
                         value={draft.impactAssessment.isImpactOnFinancialInterest}
                         onChange={e => updateDraft('impactAssessment.isImpactOnFinancialInterest', e.target.value)}
@@ -3457,7 +3505,7 @@ export default function DoraIncidentApp() {
                       <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                         {REPORTING_TO_OTHER_AUTHORITIES_OPTIONS.map(option => (
                           <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                            <input
+                            <input data-champ="reportingToOtherAuthorities"
                               type="checkbox"
                               checked={draft.reportingToOtherAuthorities.includes(option.value)}
                               onChange={() => {
@@ -3481,7 +3529,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Other Authorities Informed
                           </p>
-                          <textarea
+                          <textarea data-champ="reportingToOtherAuthoritiesOther"
                             value={draft.reportingToOtherAuthoritiesOther || ''}
                             onChange={e => updateDraft('reportingToOtherAuthoritiesOther', e.target.value)}
                             rows={2}
@@ -3494,7 +3542,7 @@ export default function DoraIncidentApp() {
 
                     <div className="mt-5">
                       <label className="flex items-center gap-2 text-sm font-medium">
-                        <input
+                        <input data-champ="impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery"
                           type="checkbox"
                           checked={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery || false}
                           onChange={e => updateDraft('impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', e.target.checked)}
@@ -3510,7 +3558,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Description of Temporary Actions/Measures for Recovery
                           </p>
-                          <textarea
+                          <textarea data-champ="impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery"
                             id="descriptionOfTemporaryActionsMeasuresForRecovery"
                             value={draft.impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery || ''}
                             onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
@@ -3527,7 +3575,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Indicators of Compromise (IoC)
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.incidentType.indicatorsOfCompromise"
                             value={draft.incident.incidentType.indicatorsOfCompromise || ''}
                             onChange={e => updateDraft('incident.incidentType.indicatorsOfCompromise', e.target.value)}
                             rows={2}
@@ -3556,7 +3604,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ROOT_CAUSE_HL_CLASSIFICATION_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.rootCauseHLClassification"
                                   type="checkbox"
                                   checked={draft.incident.rootCauseHLClassification.includes(option.value)}
                                   onChange={() => {
@@ -3651,7 +3699,7 @@ export default function DoraIncidentApp() {
                           <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             {ROOT_CAUSES_ADDITIONAL_CLASSIFICATION_OPTIONS.map(option => (
                               <label key={option.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded">
-                                <input
+                                <input data-champ="incident.rootCausesAdditionalClassification"
                                   type="checkbox"
                                   checked={draft.incident.rootCausesAdditionalClassification.includes(option.value)}
                                   onChange={() => {
@@ -3673,7 +3721,7 @@ export default function DoraIncidentApp() {
                         {draft.incident.rootCausesDetailedClassification.some(value => value.includes("other")) && (
                             <div className="mt-4">
                               <p className="block text-sm font-medium mb-2">Other Types of Root Causes</p>
-                              <textarea
+                              <textarea data-champ="incident.rootCausesOther"
                                 value={draft.incident.rootCausesOther || ''}
                                 onChange={e => updateDraft('incident.rootCausesOther', e.target.value)}
                                 rows={2}
@@ -3688,7 +3736,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Information about the Root Causes of the Incident
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.rootCausesInformation"
                             value={draft.incident.rootCausesInformation || ''}
                             onChange={e => updateDraft('incident.rootCausesInformation', e.target.value)}
                             rows={2}
@@ -3702,7 +3750,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Incident Resolution Summary
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.incidentResolutionSummary"
                             value={draft.incident.incidentResolutionSummary || ''}
                             onChange={e => updateDraft('incident.incidentResolutionSummary', e.target.value)}
                             rows={3}
@@ -3717,7 +3765,7 @@ export default function DoraIncidentApp() {
                               <label htmlFor="rootCauseAddressingDateTime" className="block text-sm font-medium mb-2">
                                 Date and Time When the Incident Root Cause Was Addressed
                               </label>
-                              <input
+                              <input data-champ="incident.rootCauseAddressingDateTime"
                                 id="rootCauseAddressingDateTime"
                                 type="datetime-local"
                                 value={draft.incident.rootCauseAddressingDateTime || ''}
@@ -3730,7 +3778,7 @@ export default function DoraIncidentApp() {
                               <label htmlFor="incidentResolutionDateTime" className="block text-sm font-medium mb-2">
                                 Date and Time When the Incident Was Resolved
                               </label>
-                              <input
+                              <input data-champ="incident.incidentResolutionDateTime"
                                 id="incidentResolutionDateTime"
                                 type="datetime-local"
                                 value={draft.incident.incidentResolutionDateTime || ''}
@@ -3745,7 +3793,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Reason for the Difference Between Permanent Resolution Date and Initially Planned Implementation Date
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.incidentResolutionVsPlannedImplementation"
                             value={draft.incident.incidentResolutionVsPlannedImplementation || ''}
                             onChange={e => updateDraft('incident.incidentResolutionVsPlannedImplementation', e.target.value)}
                             rows={2}
@@ -3759,7 +3807,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Assessment of risk to critical functions for resolution purposes
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.assessmentOfRiskToCriticalFunctions"
                             value={draft.incident.assessmentOfRiskToCriticalFunctions || ''}
                             onChange={e => updateDraft('incident.assessmentOfRiskToCriticalFunctions', e.target.value)}
                             rows={3}
@@ -3773,7 +3821,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Information Relevant for Resolution Authorities
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.informationRelevantToResolutionAuthorities"
                             value={draft.incident.informationRelevantToResolutionAuthorities || ''}
                             onChange={e => updateDraft('incident.informationRelevantToResolutionAuthorities', e.target.value)}
                             rows={4}
@@ -3787,7 +3835,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Materiality Threshold for the Classification Criterion "Economic Impact"
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.classificationTypes.0.economicImpactMaterialityThreshold"
                             value={draft.incident.classificationTypes[0].economicImpactMaterialityThreshold || ''}
                             onChange={e => updateDraft('incident.classificationTypes.0.economicImpactMaterialityThreshold', e.target.value)}
                             rows={3}
@@ -3811,7 +3859,7 @@ export default function DoraIncidentApp() {
                                   </div>
                                 </div>
                               </div>
-                            <input
+                            <input data-champ="incident.grossAmountIndirectDirectCosts"
                               type="number"
                               value={draft.incident.grossAmountIndirectDirectCosts || ''}
                               onChange={e => updateDraft('incident.grossAmountIndirectDirectCosts', e.target.value)}
@@ -3834,7 +3882,7 @@ export default function DoraIncidentApp() {
                                   </div>
                                 </div>
                               </div>
-                            <input
+                            <input data-champ="incident.financialRecoveriesAmount"
                               type="number"
                               value={draft.incident.financialRecoveriesAmount || ''}
                               onChange={e => updateDraft('incident.financialRecoveriesAmount', e.target.value)}
@@ -3849,7 +3897,7 @@ export default function DoraIncidentApp() {
                           <p className="block text-sm font-medium mb-2">
                             Information whether the non-major incidents have been recurring
                           </p>
-                          <textarea
+                          <textarea data-champ="incident.recurringNonMajorIncidentsDescription"
                             value={draft.incident.recurringNonMajorIncidentsDescription || ''}
                             onChange={e => updateDraft('incident.recurringNonMajorIncidentsDescription', e.target.value)}
                             rows={2}
@@ -3863,7 +3911,7 @@ export default function DoraIncidentApp() {
                           <label htmlFor="recurringIncidentDate" className="block text-sm font-medium mb-2">
                             Date and time of occurrence of recurring incidents
                           </label>
-                          <input
+                          <input data-champ="incident.recurringIncidentDate"
                             id="recurringIncidentDate"
                             type="datetime-local"
                             value={draft.incident.recurringIncidentDate || ''}
@@ -3893,7 +3941,21 @@ export default function DoraIncidentApp() {
                             <div className="mt-2 text-sm text-green-700 dark:text-green-400">No validation errors detected</div>
                           ) : (
                             <ul className="mt-2 text-sm text-red-700 dark:text-red-400 list-disc pl-4">
-                              {Array.isArray(errors) && errors.map((e) => <li key={e}>{e}</li>)}
+                              {Array.isArray(errors) && errors.map((e) => {
+                                const info = champDeLErreur(e, draft);
+                                const section = info?.etape === 0 ? 'Identity' : info?.etape === 1 ? 'Contacts' : null;
+                                return (
+                                  <li key={e}>
+                                    {info ? (
+                                      <button type="button" onClick={() => allerAuChamp(e)}
+                                        className="text-left underline decoration-dotted underline-offset-2 hover:decoration-solid">
+                                        <span className="font-medium">{info.numero}</span> {e}
+                                        <span className="ml-1 no-underline opacity-70">→ {section ? `étape ${section}` : 'aller au champ'}</span>
+                                      </button>
+                                    ) : e}
+                                  </li>
+                                );
+                              })}
                             </ul>
                           )}
 

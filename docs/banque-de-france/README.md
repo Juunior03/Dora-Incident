@@ -62,8 +62,8 @@ ajoutés : France citée dans la propagation géographique. Nombre, pourcentage 
 (3.9 à 3.11) exigés si des transactions sont déclarées affectées. Comparaison faite champ par champ avec le texte publié au Journal
 officiel (`Reglement_execution_UE_2025-302_JO.pdf`, JO L du 20/02/2025). Écarts volontaires, plus stricts
 que le texte, conformes aux attentes des autorités : 3.1 (code ACPR) et 3.17 (réel ou estimé) exigés
-dans tout rapport intermédiaire ou final ; description des actions temporaires (3.34) exigée dans le
-rapport final, ou la raison de leur absence (guide ACPR). Champ 4.12 (seuil d'impact économique) :
+dans tout rapport intermédiaire ou final. Description des actions temporaires (3.34) : exigée seulement
+si des actions temporaires sont déclarées (3.33), comme le prévoit le texte. Champ 4.12 (seuil d'impact économique) :
 « oui » dans le tableau, mais le schéma de la Banque de France ne permet de le transmettre qu'avec le
 critère « impact économique » ; il est exigé dans ce cas (instructions ESA du 16/09/2026). Champs 4.10
 et 4.11 (résolution) : non contrôlés automatiquement, leur condition dépend d'une appréciation.
