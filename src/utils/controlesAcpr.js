@@ -139,8 +139,11 @@ export function controlesAcpr(rapport) {
   if (survenance && detection && detection < survenance) {
     avertissement('La date de détection est antérieure à la date de survenance de l\'incident : vérifiez les deux dates.');
   }
-  if (malveillant && suivi && !texte(inc.incidentType?.indicatorsOfCompromise)) {
-    avertissement('Incident lié à la cybersécurité : renseignez si possible les indicateurs de compromission (domaines, adresses IP, empreintes…).');
+  if (!rapport.ultimateParentUndertaking?.name || !rapport.ultimateParentUndertaking?.LEI) {
+    avertissement('Entreprise mère ultime : son nom et son LEI sont obligatoires si l\'entité appartient à un groupe (champs 1.13 et 1.14).');
+  }
+  if ((rapport.affectedEntity ?? []).some((e) => !e.LEI)) {
+    avertissement('Entité affectée sans LEI : c\'est admis seulement si elle est l\'entité déclarante elle-même (champs 1.5 et 1.6).');
   }
 
   // Qualité rédactionnelle relevée par l'ACPR
@@ -149,7 +152,7 @@ export function controlesAcpr(rapport) {
   }
   const tiers = texte(inc.originatesFromThirdPartyProvider);
   if (tiers && (/^(oui|yes|non|no|n\/a|na)$/i.test(tiers) || tiers.length < 15)) {
-    avertissement('Incident causé par un prestataire : indiquez son nom et son code d\'identification (LEI, EUID…), en précisant le type de code. Laissez vide si aucun prestataire n\'est en cause.');
+    avertissement('Incident causé par un prestataire : indiquez « nom légal;code;LEI ou EUID;informations complémentaires » (format recommandé par les autorités européennes). Laissez vide si aucun prestataire n\'est en cause.');
   }
   return r;
 }

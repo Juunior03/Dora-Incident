@@ -14,6 +14,8 @@ téléchargés le 2 octobre 2026. Les maquettes sont identiques pour la banque e
 
 | `ACPR_2025-08_Explication_remplissage_maquette_incident.pdf` | Guide ACPR champ par champ et erreurs fréquentes (26/08/2025) |
 | `Instruction_2025-I-09.pdf`, `Instruction_2025-I-11.pdf`, `Instruction_2025-I-12.pdf` | Textes des instructions (acpr.banque-france.fr) |
+| `ESA_JC2024-33_RTS_ITS_declaration_incidents.pdf` | Rapport final des autorités européennes (EBA) : projets du règlement délégué 2025/301 (délais, article 5) et du règlement d'exécution 2025/302 (annexe II : caractère obligatoire de chaque champ par type de rapport) |
+| `ESA_2026-09_DORA_IR_instructions_operationnelles.pdf` | Instructions opérationnelles des autorités européennes (16/09/2026) : montants en milliers, critère « services critiques » toujours déclaré, pays d'origine exclu de la propagation géographique, format du champ 2.8, champ 3.17 attendu dans tous les rapports intermédiaires et finaux |
 | `20250407_RoI_Tableaux_Recapitulatifs_ACPR.pdf` | Remise du registre : base individuelle ou consolidée selon la situation du groupe |
 
 Registre d'information (instruction 2025-I-12) : remise annuelle, date de référence au 31 décembre
@@ -46,3 +48,16 @@ par le schéma et appliqués à l'export :
 - seuil `economicImpactMaterialityThreshold` transmis avec le critère « impact économique ».
 
 À refaire à chaque nouvelle version du schéma publiée sur eSurfi.
+
+## Règles appliquées (vérifiées le 2 octobre 2026)
+
+Validation à l'enregistrement : champs obligatoires de l'annexe II du règlement 2025/302 pour chaque
+type de rapport, y compris les champs conditionnels 2.6, 3.3, 3.13-3.14, 3.17, 3.18-3.21, 3.24-3.26,
+3.29, 3.32, 3.34, 3.35, 4.3, 4.4 et 4.12. Le texte consolidé publié au Journal officiel (EUR-Lex) n'a pas
+pu être téléchargé (protection anti-robots) : la référence utilisée est le projet final des autorités
+européennes, à confronter au texte publié en cas de doute.
+
+Délais (règlement 2025/301, article 5) : 4 h après la classification et au plus tard 24 h après la
+détection ; 4 h après la classification si elle intervient plus de 24 h après la détection ; 72 h après
+la notification initiale ; 1 mois après le dernier rapport intermédiaire ; report au jour ouvré suivant
+à midi (paragraphes 4 et 5) sur option, selon la nature de l'entité.

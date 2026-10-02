@@ -689,12 +689,14 @@ const nowISO = () => new Date().toISOString()
       // Entités affectées : au moins une, chacune avec son type et son LEI (exigé par le schéma DORA IR v1.3)
       const entitesAffectees = (report.affectedEntity || []).filter(e => isFilled(e?.name) || isFilled(e?.LEI) || e?.affectedEntityType?.length);
       if (entitesAffectees.length === 0) {
-        errors.push("At least one affected entity is required (the submitting entity itself if it is the one affected)");
+        errors.push("Type of the affected financial entity is required");
       }
       entitesAffectees.forEach((e, i) => {
         if (!e.affectedEntityType?.length) errors.push(`Affected entity ${i + 1}: type of entity is required`);
-        if (!isFilled(e.LEI)) errors.push(`Affected entity ${i + 1}: LEI is required`);
-        else if (!LEI_VALIDE.test(e.LEI.trim())) errors.push(`Affected entity ${i + 1}: LEI must be the 20-character code only`);
+        // Nom et LEI : exigés lorsque l'entité affectée est décrite (différente de l'entité déclarante)
+        if (isFilled(e.name) && !isFilled(e.LEI)) errors.push(`Affected entity ${i + 1}: LEI is required`);
+        if (isFilled(e.LEI) && !isFilled(e.name)) errors.push(`Affected entity ${i + 1}: name is required`);
+        if (isFilled(e.LEI) && !LEI_VALIDE.test(e.LEI.trim())) errors.push(`Affected entity ${i + 1}: LEI must be the 20-character code only`);
       });
       const leiMere = report.ultimateParentUndertaking?.LEI;
       if (isFilled(leiMere) && !LEI_VALIDE.test(leiMere.trim())) {
@@ -761,6 +763,19 @@ const nowISO = () => new Date().toISOString()
 
     //Valide les champs conditionnels basés sur les critères de classification.
     function validateConditionalFieldsByClassification(report, errors) {
+      const impact = report.impactAssessment;
+      // 3.3 : date de rétablissement si une durée d'interruption de service est indiquée (3.16)
+      if (isFilled(impact?.serviceImpact?.serviceDowntime) && !isFilled(impact?.serviceImpact?.serviceRestorationDateTime)) {
+        errors.push("Date and time of service restoration is required when a service downtime is reported");
+      }
+      // 3.29 : description des composants d'infrastructure si la réponse à 3.28 est « oui »
+      if (impact?.isAffectedInfrastructureComponents === 'yes' && !isFilled(impact?.affectedInfrastructureComponents)) {
+        errors.push("Information about affected infrastructure components is required when infrastructure components are affected");
+      }
+      // 3.32 : autorités « other » à préciser
+      if (report.reportingToOtherAuthorities?.includes('other') && !isFilled(report.reportingToOtherAuthoritiesOther)) {
+        errors.push("Specification of 'other' authorities is required when 'Other' is selected in reporting to other authorities");
+      }
       validateReputationalImpactFields(report, errors);
       validateDurationAndServiceDowntimeFields(report, errors);
       validateGeographicalSpreadFields(report, errors);
@@ -785,10 +800,10 @@ const nowISO = () => new Date().toISOString()
      * Valide les champs spécifiques au critère "duration_and_service_downtime".
      */
     function validateDurationAndServiceDowntimeFields(report, errors) {
-      if (report.incident?.classificationTypes?.[0]?.classificationCriterion?.includes("duration_and_service_downtime")) {
-        if (!report.informationDurationServiceDowntimeActualOrEstimate) {
-          errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports when 'Duration and service downtime' is selected");
-        }
+      // Champ 3.17 : exigé par le règlement 2025/302 si le critère « durée » est retenu, et attendu par les
+      // autorités dans tous les rapports intermédiaires et finaux (instructions opérationnelles ESA du 16/09/2026)
+      if (!report.informationDurationServiceDowntimeActualOrEstimate) {
+        errors.push("Information whether the values for duration and service downtime are actual or estimates is required for intermediate and final reports");
       }
     }
 
@@ -828,6 +843,9 @@ const nowISO = () => new Date().toISOString()
       if (report.incident?.incidentType?.incidentClassification?.includes("cybersecurity-related")) {
         if (!report.incident?.incidentType?.threatTechniques?.length) {
           errors.push("Threat techniques are required when 'Cybersecurity-related' is selected for intermediate and final reports");
+        }
+        if (!report.incident?.incidentType?.indicatorsOfCompromise) {
+          errors.push("Indicators of compromise are required when 'Cybersecurity-related' is selected for intermediate and final reports");
         }
       }
 
