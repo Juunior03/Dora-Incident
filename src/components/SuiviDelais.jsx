@@ -10,6 +10,7 @@ const ETATS = {
   indetermine: { libelle: 'Dates à compléter', classes: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200', ordre: 4 },
   respecte: { libelle: 'Transmis dans les délais', classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' },
   tardif: { libelle: 'Transmis en retard', classes: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+  attente: { libelle: 'Après le rapport précédent', classes: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
   transmis: { libelle: 'Transmis (date inconnue)', classes: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
 };
 
@@ -39,13 +40,20 @@ export function BadgeEcheance({ reports }) {
 
 BadgeEcheance.propTypes = { reports: PropTypes.array.isRequired };
 
+/** Tuile du Dashboard : synthèse des échéances, détail dans un panneau latéral */
 export default function SuiviDelais({ incidents }) {
   const [maintenant, setMaintenant] = useState(() => new Date());
-  const [ouvert, setOuvert] = useState(null);
+  const [panneau, setPanneau] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setMaintenant(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    if (!panneau) return undefined;
+    const fermer = (e) => { if (e.key === 'Escape') setPanneau(false); };
+    globalThis.addEventListener('keydown', fermer);
+    return () => globalThis.removeEventListener('keydown', fermer);
+  }, [panneau]);
 
   const lignes = useMemo(() => Object.entries(incidents)
     .map(([code, incident]) => ({ code, incident, ...echeancier(incident.reports, maintenant) }))
@@ -56,109 +64,111 @@ export default function SuiviDelais({ incidents }) {
 
   const retards = lignes.filter((l) => l.prochaine.etat === 'depasse').length;
   const proches = lignes.filter((l) => l.prochaine.etat === 'proche').length;
+  const suivante = lignes.find((l) => l.prochaine.echeance && l.prochaine.etat !== 'depasse');
+  const couleur = retards ? 'bg-red-50 dark:bg-red-900/30 ring-1 ring-red-300 dark:ring-red-800'
+    : proches ? 'bg-orange-50 dark:bg-orange-900/30 ring-1 ring-orange-300 dark:ring-orange-800'
+      : 'bg-blue-50 dark:bg-blue-900/30';
 
-  return (
-    <div className="mb-6 p-4 rounded-lg bg-white/80 dark:bg-gray-800">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h3 className="font-medium">Délais de notification</h3>
-        <p className="text-xs opacity-70">
-          Initiale : 4 h après la classification, au plus tard 24 h après la détection · intermédiaire :
-          72 h après l&apos;initiale · finale : 1 mois après le dernier intermédiaire (règlement délégué 2025/301).
-        </p>
-      </div>
-
-      {lignes.length === 0 ? (
-        <p className="text-sm p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-          Aucune échéance en cours.
-        </p>
-      ) : (
-        <>
-          {(retards > 0 || proches > 0) && (
-            <p className={`text-sm font-medium mb-3 p-2 rounded-lg ${retards ? 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200' : 'bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'}`}>
-              {retards > 0 && `${retards} échéance(s) dépassée(s). `}
-              {proches > 0 && `${proches} échéance(s) dans moins de 4 heures.`}
-            </p>
-          )}
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left border-b dark:border-gray-700">
-                <th className="py-2 pr-4 font-medium">Incident</th>
-                <th className="py-2 pr-4 font-medium">Prochain rapport</th>
-                <th className="py-2 pr-4 font-medium">Échéance</th>
-                <th className="py-2 pr-4 font-medium">État</th>
-                <th className="py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {lignes.map(({ code, incident, etapes, prochaine }) => (
-                <FragmentLigne key={code} code={code} incident={incident} etapes={etapes} prochaine={prochaine}
-                  maintenant={maintenant} ouvert={ouvert === code} basculer={() => setOuvert(ouvert === code ? null : code)} />
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-      <p className="text-xs opacity-60 mt-3">
-        La date de transmission retenue est celle de la validation. Une échéance tombant un week-end ou un jour
-        férié peut, pour certaines entités et sous conditions, être reportée au jour ouvré suivant : ce report
-        n&apos;est pas appliqué ici, l&apos;échéance affichée est la plus stricte.
-      </p>
-    </div>
-  );
-}
-
-function FragmentLigne({ code, incident, etapes, prochaine, maintenant, ouvert, basculer }) {
-  const e = ETATS[prochaine.etat];
   return (
     <>
-      <tr className="border-b dark:border-gray-700 align-top">
-        <td className="py-2 pr-4">
-          <span className="font-medium">{code}</span>
-          {incident.description && <span className="block text-xs opacity-60">{incident.description.slice(0, 60)}</span>}
-        </td>
-        <td className="py-2 pr-4">{prochaine.libelle}</td>
-        <td className="py-2 pr-4 whitespace-nowrap">
-          {formater(prochaine.echeance)}
-          {prochaine.echeance && <span className="block text-xs opacity-70">{formaterReste(prochaine.echeance, maintenant)}</span>}
-        </td>
-        <td className="py-2 pr-4">
-          <span className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${e.classes}`}>{e.libelle}</span>
-          {prochaine.etat === 'indetermine' && <span className="block text-xs opacity-70 mt-1">{manque(prochaine.type)}</span>}
-        </td>
-        <td className="py-2 text-right">
-          <button onClick={basculer} className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs whitespace-nowrap">
-            {ouvert ? 'Masquer' : 'Détail'}
-          </button>
-        </td>
-      </tr>
-      {ouvert && (
-        <tr className="border-b dark:border-gray-700">
-          <td colSpan={5} className="py-2">
-            <ol className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {etapes.map((x) => (
-                <li key={x.type} className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-xs">
-                  <div className="font-medium text-sm">{x.libelle}</div>
-                  <div>Échéance : {formater(x.echeance)}{x.echeance && <span className="opacity-60"> ({x.base})</span>}</div>
-                  <div>Transmis le : {formater(x.transmisLe)}</div>
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full ${ETATS[x.etat].classes}`}>{ETATS[x.etat].libelle}</span>
-                </li>
-              ))}
-            </ol>
-          </td>
-        </tr>
+      <button type="button" onClick={() => setPanneau(true)} aria-haspopup="dialog"
+        className={`p-4 rounded-lg text-left hover:brightness-95 transition ${couleur}`}>
+        <div className="text-sm">Échéances de notification</div>
+        <div className="text-2xl font-bold">
+          {retards > 0 ? `${retards} en retard` : proches > 0 ? `${proches} < 4 h` : lignes.length}
+        </div>
+        <div className="text-xs opacity-70 mt-1 truncate">
+          {lignes.length === 0 ? 'Aucune en cours'
+            : suivante ? `Prochaine ${formaterReste(suivante.prochaine.echeance, maintenant)}`
+              : 'Voir le détail'}
+        </div>
+      </button>
+
+      {panneau && (
+        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Délais de notification">
+          <button type="button" aria-label="Fermer" className="absolute inset-0 bg-black/30 cursor-default" onClick={() => setPanneau(false)} />
+          <aside className="relative w-full max-w-md h-full overflow-y-auto bg-white dark:bg-gray-900 shadow-xl p-5">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Délais de notification</h3>
+                <p className="text-xs opacity-70">{lignes.length} incident(s) avec une échéance en cours</p>
+              </div>
+              <button type="button" onClick={() => setPanneau(false)} className="px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-sm">
+                Fermer
+              </button>
+            </div>
+
+            {lignes.length === 0 ? (
+              <p className="text-sm p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200">Aucune échéance en cours.</p>
+            ) : (
+              <ul className="space-y-3">
+                {lignes.map((l) => <CarteEcheance key={l.code} {...l} maintenant={maintenant} />)}
+              </ul>
+            )}
+
+            <div className="mt-6 text-xs opacity-70 space-y-2 border-t dark:border-gray-700 pt-3">
+              <p>
+                Règlement délégué (UE) 2025/301 : notification initiale 4 h après la classification (au plus tard
+                24 h après la détection) ; rapport intermédiaire 72 h après l&apos;initiale ; rapport final 1 mois
+                après le dernier intermédiaire.
+              </p>
+              <p>
+                La date de transmission retenue est celle de la validation. Le report au jour ouvré suivant d&apos;une
+                échéance tombant un week-end ou un jour férié, possible sous conditions, n&apos;est pas appliqué.
+              </p>
+            </div>
+          </aside>
+        </div>
       )}
     </>
   );
 }
 
-FragmentLigne.propTypes = {
+function CarteEcheance({ code, incident, etapes, prochaine, maintenant }) {
+  const [detail, setDetail] = useState(false);
+  const e = ETATS[prochaine.etat];
+  return (
+    <li className="p-3 rounded-lg border dark:border-gray-700">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium truncate">{code}</div>
+          {incident.description && <div className="text-xs opacity-60 truncate">{incident.description}</div>}
+        </div>
+        <span className={`px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${e.classes}`}>{e.libelle}</span>
+      </div>
+      <div className="mt-2 text-sm">
+        {prochaine.libelle} :{' '}
+        {prochaine.echeance
+          ? <><span className="font-medium">{formater(prochaine.echeance)}</span> <span className="opacity-70">({formaterReste(prochaine.echeance, maintenant)})</span></>
+          : <span className="opacity-70">{manque(prochaine.type)}</span>}
+      </div>
+      <button type="button" onClick={() => setDetail(!detail)} className="mt-2 text-xs text-indigo-700 dark:text-indigo-300 hover:underline">
+        {detail ? 'Masquer les étapes' : 'Voir les 3 étapes'}
+      </button>
+      {detail && (
+        <ol className="mt-2 space-y-1">
+          {etapes.map((x, i) => ({ ...x, etat: i > etapes.indexOf(prochaine) && x.etat === 'indetermine' ? 'attente' : x.etat })).map((x) => (
+            <li key={x.type} className="flex items-start justify-between gap-2 text-xs p-2 rounded bg-gray-50 dark:bg-gray-800">
+              <div>
+                <div className="font-medium">{x.libelle}</div>
+                <div className="opacity-70">Échéance {formater(x.echeance)}{x.base ? ` (${x.base})` : ''}</div>
+                {x.transmisLe && <div className="opacity-70">Transmis le {formater(x.transmisLe)}</div>}
+              </div>
+              <span className={`px-2 py-0.5 rounded-full whitespace-nowrap ${ETATS[x.etat].classes}`}>{ETATS[x.etat].libelle}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </li>
+  );
+}
+
+CarteEcheance.propTypes = {
   code: PropTypes.string.isRequired,
   incident: PropTypes.object.isRequired,
   etapes: PropTypes.array.isRequired,
   prochaine: PropTypes.object.isRequired,
   maintenant: PropTypes.instanceOf(Date).isRequired,
-  ouvert: PropTypes.bool.isRequired,
-  basculer: PropTypes.func.isRequired,
 };
 
 SuiviDelais.propTypes = { incidents: PropTypes.object.isRequired };
