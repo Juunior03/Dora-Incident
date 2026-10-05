@@ -2341,7 +2341,7 @@ export default function DoraIncidentApp() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
       <ConfettiCanvas trigger={confettiTrigger} />
       {/* En-tête fixe : reste visible pendant le défilement ; sa hauteur (--entete) décale les autres éléments fixes */}
-      <div ref={refEntete} className="sticky top-0 z-40 -mx-6 -mt-6 mb-6 px-6 py-3 bg-gray-50 dark:bg-gray-900 shadow-sm border-b border-gray-200/70 dark:border-gray-800">
+      <div ref={refEntete} className="sticky top-0 z-40 -mx-6 -mt-6 mb-6 px-6 py-3 bg-gray-50 dark:bg-gray-900 shadow-[0_6px_16px_-10px_rgba(15,23,42,0.18)] dark:shadow-[0_6px_16px_-10px_rgba(0,0,0,0.6)]">
       <header className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img src="/logo.svg" alt="DORA" width="56" height="56" className="w-14 h-14 rounded-2xl shadow-sm" />
