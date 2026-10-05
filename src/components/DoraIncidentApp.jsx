@@ -15,6 +15,7 @@ import { rapportPrecedent, modificationsRapport, LIBELLES_RAPPORTS } from '../ut
 import ModificationsRapport from './ModificationsRapport';
 import { champDeLErreur } from '../utils/champsErreurs';
 import Parametres from './Parametres';
+import Logo from './Logo';
 
 const nowISO = () => new Date().toISOString()
 
@@ -2406,7 +2407,7 @@ export default function DoraIncidentApp() {
       <div ref={refEntete} className="sticky top-0 z-40 -mx-6 -mt-6 mb-6 px-6 py-3 bg-gray-50 dark:bg-gray-900 shadow-[0_6px_16px_-10px_rgba(15,23,42,0.18)] dark:shadow-[0_6px_16px_-10px_rgba(0,0,0,0.6)]">
       <header className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <img src="/logo.svg" alt="DORA" width="56" height="56" className="w-14 h-14 rounded-2xl shadow-sm" />
+          <Logo className="h-14 w-auto shrink-0" />
           <div>
             <h1 className="text-xl font-semibold">DORA Incident Reporter</h1>
             <p className="text-sm opacity-70">Complete incident reporting for regulatory compliance</p>
