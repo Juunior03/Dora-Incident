@@ -123,8 +123,9 @@ export function controlesAcpr(rapport) {
   }
   if (type === 'final_report') {
     if (!texte(inc.rootCausesInformation)) bloquant('Rapport final : décrivez la séquence des événements ayant conduit à l\'incident (informations sur les causes).');
-    if (!texte(impact.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery)) {
-      bloquant('Rapport final : décrivez les actions temporaires de rétablissement, ou indiquez pourquoi aucune n\'a été prise.');
+    if (impact.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true
+      && !texte(impact.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery)) {
+      bloquant('Rapport final : des actions temporaires sont déclarées (3.33), décrivez-les (3.34).');
     }
     if (!(inc.rootCausesDetailedClassification ?? []).length) bloquant('Rapport final : la classification détaillée des causes est obligatoire.');
     if (!texte(inc.incidentResolutionSummary)) bloquant('Rapport final : décrivez la résolution de l\'incident et les enseignements tirés.');
