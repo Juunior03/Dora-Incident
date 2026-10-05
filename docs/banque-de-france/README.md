@@ -76,3 +76,10 @@ la notification initiale ; 1 mois après le dernier rapport intermédiaire ; rep
 à midi (paragraphes 4 et 5) pour le rapport final seulement, Action Logement étant un établissement de
 crédit : la notification initiale et le rapport intermédiaire restent dus à l'heure exacte, y compris
 le week-end et les jours fériés. Type d'entité « credit_institution » proposé par défaut.
+
+## Forme du fichier (vérifiée le 5 octobre 2026)
+
+Paquet « DORA_IR Maquettes V20260521 » d'eSurfi (schéma v1.3 et exemple de rapport final), identique à
+celui téléchargé le 2 octobre. Le champ 1.3 y est découpé : 1.3a (clé LEI) pour une entité financière qui
+déclare pour elle-même, 1.3b (clé code) pour un prestataire tiers déclarant pour une entité. Le LEI de
+l'entité déclarante est donc exporté dans la clé LEI. Les clés sont écrites dans l'ordre du schéma.

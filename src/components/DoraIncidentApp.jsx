@@ -76,6 +76,14 @@ const nowISO = () => new Date().toISOString()
 
       if (cleanedReport.submittingEntity) {
         const { isParametersSet, ...submittingEntity } = cleanedReport.submittingEntity;
+        // Champ 1.3 : le schéma DORA IR v1.3 distingue 1.3a (clé LEI, entité financière déclarant pour
+        // elle-même) et 1.3b (clé code, prestataire tiers déclarant pour une entité). Le LEI saisi est
+        // donc transmis dans la clé LEI, comme dans l'exemple officiel de la Banque de France.
+        const code = typeof submittingEntity.code === 'string' ? submittingEntity.code.trim() : '';
+        if (/^[A-Z0-9]{18}[0-9]{2}$/.test(code) && !submittingEntity.LEI) {
+          submittingEntity.LEI = code;
+          delete submittingEntity.code;
+        }
         cleanedReport.submittingEntity = submittingEntity;
       }
 
@@ -87,7 +95,35 @@ const nowISO = () => new Date().toISOString()
         delete elague.ultimateParentUndertaking; // type prérempli seulement : aucune entreprise mère renseignée
       }
       if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
-      return elague;
+      return ordonnerSelonSchema(elague, 'racine');
+    }
+
+    // Ordre des clés défini par le schéma DORA IR v1.3 de la Banque de France (sans effet sur la validité
+    // du JSON, mais le fichier se lit dans le même ordre que la maquette)
+    const ORDRE_SCHEMA = {
+      racine: ['incidentSubmission', 'reportCurrency', 'submittingEntity', 'affectedEntity', 'ultimateParentUndertaking', 'primaryContact', 'secondaryContact', 'incident', 'impactAssessment', 'reportingToOtherAuthorities', 'reportingToOtherAuthoritiesOther', 'informationDurationServiceDowntimeActualOrEstimate'],
+      entite: ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'],
+      contact: ['name', 'email', 'phone'],
+      incident: ['financialEntityCode', 'detectionDateTime', 'classificationDateTime', 'incidentDescription', 'otherInformation', 'classificationTypes', 'isBusinessContinuityActivated', 'incidentOccurrenceDateTime', 'incidentDuration', 'originatesFromThirdPartyProvider', 'incidentDiscovery', 'competentAuthorityCode', 'incidentType', 'rootCauseHLClassification', 'rootCausesDetailedClassification', 'rootCausesAdditionalClassification', 'rootCausesOther', 'rootCausesInformation', 'rootCauseAddressingDateTime', 'incidentResolutionSummary', 'incidentResolutionDateTime', 'incidentResolutionVsPlannedImplementation', 'assessmentOfRiskToCriticalFunctions', 'informationRelevantToResolutionAuthorities', 'financialRecoveriesAmount', 'grossAmountIndirectDirectCosts', 'recurringNonMajorIncidentsDescription', 'recurringIncidentDate'],
+      incidentType: ['incidentClassification', 'otherIncidentClassification', 'threatTechniques', 'otherThreatTechniques', 'indicatorsOfCompromise'],
+      classificationType: ['classificationCriterion', 'countryCodeMaterialityThresholds', 'memberStatesImpactType', 'memberStatesImpactTypeDescription', 'dataLosseMaterialityThresholds', 'dataLossesDescription', 'reputationalImpactType', 'reputationalImpactDescription', 'economicImpactMaterialityThreshold'],
+      impactAssessment: ['hasImpactOnRelevantClients', 'serviceImpact', 'criticalServicesAffected', 'affectedAssets', 'affectedFunctionalAreas', 'isAffectedInfrastructureComponents', 'affectedInfrastructureComponents', 'isImpactOnFinancialInterest'],
+      serviceImpact: ['serviceRestorationDateTime', 'serviceDowntime', 'isTemporaryActionsMeasuresForRecovery', 'descriptionOfTemporaryActionsMeasuresForRecovery'],
+      affectedAssets: ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions', 'valueOfAffectedTransactions', 'numbersActualEstimate'],
+      nombrePourcentage: ['number', 'percentage'],
+    };
+    const SOUS_OBJETS = {
+      racine: { submittingEntity: 'entite', affectedEntity: 'entite', ultimateParentUndertaking: 'entite', primaryContact: 'contact', secondaryContact: 'contact', incident: 'incident', impactAssessment: 'impactAssessment' },
+      incident: { incidentType: 'incidentType', classificationTypes: 'classificationType' },
+      impactAssessment: { serviceImpact: 'serviceImpact', affectedAssets: 'affectedAssets' },
+      affectedAssets: { affectedClients: 'nombrePourcentage', affectedFinancialCounterparts: 'nombrePourcentage', affectedTransactions: 'nombrePourcentage' },
+    };
+    function ordonnerSelonSchema(objet, type) {
+      if (Array.isArray(objet)) return objet.map(o => ordonnerSelonSchema(o, type));
+      if (!objet || typeof objet !== 'object' || !ORDRE_SCHEMA[type]) return objet;
+      const ordre = ORDRE_SCHEMA[type];
+      const cles = [...ordre.filter(k => k in objet), ...Object.keys(objet).filter(k => !ordre.includes(k))];
+      return Object.fromEntries(cles.map(k => [k, SOUS_OBJETS[type]?.[k] ? ordonnerSelonSchema(objet[k], SOUS_OBJETS[type][k]) : objet[k]]));
     }
 
     function retirerChampsVides(valeur) {
@@ -2435,7 +2471,7 @@ export default function DoraIncidentApp() {
                                 title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
                             />
                             <input data-champ="submittingEntity.code"
-                                placeholder="Identification Code"
+                                placeholder="LEI (20 characters)"
                                 value={draft.submittingEntity.code}
                                 onChange={e => {
                                   if (!draft.submittingEntity.isParametersSet) {
@@ -4357,7 +4393,7 @@ export default function DoraIncidentApp() {
                         {/* Code de l'entité - TOUJOURS MODIFIABLE */}
                         <div className="mb-4">
                           <label htmlFor="submittingEntityCode" className="block text-sm font-medium mb-1">
-                            Code de l'entité soumise
+                            LEI de l&apos;entité déclarante (champ 1.3)
                           </label>
                           <input
                             id="submittingEntityCode"
