@@ -62,8 +62,10 @@ ajoutés : France citée dans la propagation géographique. Nombre, pourcentage 
 (3.9 à 3.11) exigés si des transactions sont déclarées affectées. Comparaison faite champ par champ avec le texte publié au Journal
 officiel (`Reglement_execution_UE_2025-302_JO.pdf`, JO L du 20/02/2025). Écarts volontaires, plus stricts
 que le texte, conformes aux attentes des autorités : 3.1 (code ACPR) et 3.17 (réel ou estimé) exigés
-dans tout rapport intermédiaire ou final. Description des actions temporaires (3.34) : exigée seulement
-si des actions temporaires sont déclarées (3.33), comme le prévoit le texte. Champ 4.12 (seuil d'impact économique) :
+dans tout rapport intermédiaire ou final. Description des actions temporaires (3.34) : exigée à partir
+du rapport intermédiaire ; sans action temporaire (3.33 non coché), la raison est demandée, comme
+l'indique le guide de remplissage de l'ACPR (« nécessaire de remplir ce champ même si aucune action
+n'a été prise »). Champ 4.12 (seuil d'impact économique) :
 « oui » dans le tableau, mais le schéma de la Banque de France ne permet de le transmettre qu'avec le
 critère « impact économique » ; il est exigé dans ce cas (instructions ESA du 16/09/2026). Champs 4.10
 et 4.11 (résolution) : non contrôlés automatiquement, leur condition dépend d'une appréciation.
@@ -74,3 +76,10 @@ la notification initiale ; 1 mois après le dernier rapport intermédiaire ; rep
 à midi (paragraphes 4 et 5) pour le rapport final seulement, Action Logement étant un établissement de
 crédit : la notification initiale et le rapport intermédiaire restent dus à l'heure exacte, y compris
 le week-end et les jours fériés. Type d'entité « credit_institution » proposé par défaut.
+
+## Forme du fichier (vérifiée le 5 octobre 2026)
+
+Paquet « DORA_IR Maquettes V20260521 » d'eSurfi (schéma v1.3 et exemple de rapport final), identique à
+celui téléchargé le 2 octobre. Le champ 1.3 y est découpé : 1.3a (clé LEI) pour une entité financière qui
+déclare pour elle-même, 1.3b (clé code) pour un prestataire tiers déclarant pour une entité. Le LEI de
+l'entité déclarante est donc exporté dans la clé LEI. Les clés sont écrites dans l'ordre du schéma.

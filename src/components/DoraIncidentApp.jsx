@@ -76,6 +76,14 @@ const nowISO = () => new Date().toISOString()
 
       if (cleanedReport.submittingEntity) {
         const { isParametersSet, ...submittingEntity } = cleanedReport.submittingEntity;
+        // Champ 1.3 : le schéma DORA IR v1.3 distingue 1.3a (clé LEI, entité financière déclarant pour
+        // elle-même) et 1.3b (clé code, prestataire tiers déclarant pour une entité). Le LEI saisi est
+        // donc transmis dans la clé LEI, comme dans l'exemple officiel de la Banque de France.
+        const code = typeof submittingEntity.code === 'string' ? submittingEntity.code.trim() : '';
+        if (/^[A-Z0-9]{18}[0-9]{2}$/.test(code) && !submittingEntity.LEI) {
+          submittingEntity.LEI = code;
+          delete submittingEntity.code;
+        }
         cleanedReport.submittingEntity = submittingEntity;
       }
 
@@ -87,7 +95,35 @@ const nowISO = () => new Date().toISOString()
         delete elague.ultimateParentUndertaking; // type prérempli seulement : aucune entreprise mère renseignée
       }
       if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
-      return elague;
+      return ordonnerSelonSchema(elague, 'racine');
+    }
+
+    // Ordre des clés défini par le schéma DORA IR v1.3 de la Banque de France (sans effet sur la validité
+    // du JSON, mais le fichier se lit dans le même ordre que la maquette)
+    const ORDRE_SCHEMA = {
+      racine: ['incidentSubmission', 'reportCurrency', 'submittingEntity', 'affectedEntity', 'ultimateParentUndertaking', 'primaryContact', 'secondaryContact', 'incident', 'impactAssessment', 'reportingToOtherAuthorities', 'reportingToOtherAuthoritiesOther', 'informationDurationServiceDowntimeActualOrEstimate'],
+      entite: ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'],
+      contact: ['name', 'email', 'phone'],
+      incident: ['financialEntityCode', 'detectionDateTime', 'classificationDateTime', 'incidentDescription', 'otherInformation', 'classificationTypes', 'isBusinessContinuityActivated', 'incidentOccurrenceDateTime', 'incidentDuration', 'originatesFromThirdPartyProvider', 'incidentDiscovery', 'competentAuthorityCode', 'incidentType', 'rootCauseHLClassification', 'rootCausesDetailedClassification', 'rootCausesAdditionalClassification', 'rootCausesOther', 'rootCausesInformation', 'rootCauseAddressingDateTime', 'incidentResolutionSummary', 'incidentResolutionDateTime', 'incidentResolutionVsPlannedImplementation', 'assessmentOfRiskToCriticalFunctions', 'informationRelevantToResolutionAuthorities', 'financialRecoveriesAmount', 'grossAmountIndirectDirectCosts', 'recurringNonMajorIncidentsDescription', 'recurringIncidentDate'],
+      incidentType: ['incidentClassification', 'otherIncidentClassification', 'threatTechniques', 'otherThreatTechniques', 'indicatorsOfCompromise'],
+      classificationType: ['classificationCriterion', 'countryCodeMaterialityThresholds', 'memberStatesImpactType', 'memberStatesImpactTypeDescription', 'dataLosseMaterialityThresholds', 'dataLossesDescription', 'reputationalImpactType', 'reputationalImpactDescription', 'economicImpactMaterialityThreshold'],
+      impactAssessment: ['hasImpactOnRelevantClients', 'serviceImpact', 'criticalServicesAffected', 'affectedAssets', 'affectedFunctionalAreas', 'isAffectedInfrastructureComponents', 'affectedInfrastructureComponents', 'isImpactOnFinancialInterest'],
+      serviceImpact: ['serviceRestorationDateTime', 'serviceDowntime', 'isTemporaryActionsMeasuresForRecovery', 'descriptionOfTemporaryActionsMeasuresForRecovery'],
+      affectedAssets: ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions', 'valueOfAffectedTransactions', 'numbersActualEstimate'],
+      nombrePourcentage: ['number', 'percentage'],
+    };
+    const SOUS_OBJETS = {
+      racine: { submittingEntity: 'entite', affectedEntity: 'entite', ultimateParentUndertaking: 'entite', primaryContact: 'contact', secondaryContact: 'contact', incident: 'incident', impactAssessment: 'impactAssessment' },
+      incident: { incidentType: 'incidentType', classificationTypes: 'classificationType' },
+      impactAssessment: { serviceImpact: 'serviceImpact', affectedAssets: 'affectedAssets' },
+      affectedAssets: { affectedClients: 'nombrePourcentage', affectedFinancialCounterparts: 'nombrePourcentage', affectedTransactions: 'nombrePourcentage' },
+    };
+    function ordonnerSelonSchema(objet, type) {
+      if (Array.isArray(objet)) return objet.map(o => ordonnerSelonSchema(o, type));
+      if (!objet || typeof objet !== 'object' || !ORDRE_SCHEMA[type]) return objet;
+      const ordre = ORDRE_SCHEMA[type];
+      const cles = [...ordre.filter(k => k in objet), ...Object.keys(objet).filter(k => !ordre.includes(k))];
+      return Object.fromEntries(cles.map(k => [k, SOUS_OBJETS[type]?.[k] ? ordonnerSelonSchema(objet[k], SOUS_OBJETS[type][k]) : objet[k]]));
     }
 
     function retirerChampsVides(valeur) {
@@ -901,12 +937,14 @@ const nowISO = () => new Date().toISOString()
     /**
      * Valide les champs spécifiques aux actions temporaires de récupération.
      */
+    // 3.34 : exigé par le règlement 2025/302 si des actions temporaires sont prises (3.33) ; le guide de
+    // remplissage de l'ACPR demande aussi d'indiquer la raison lorsqu'aucune action n'a été prise
     function validateTemporaryRecoveryActions(report, errors) {
-      if (report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true) {
-        if (!report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery) {
-          errors.push("Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports");
-        }
-      }
+      const service = report.impactAssessment?.serviceImpact;
+      if (isFilled(service?.descriptionOfTemporaryActionsMeasuresForRecovery)) return;
+      errors.push(service?.isTemporaryActionsMeasuresForRecovery === true
+        ? "Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports"
+        : "Reason why no temporary actions/measures were taken is required for intermediate and final reports (ACPR guidance)");
     }
 
     // Valide les champs spécifiques aux rapports finaux
@@ -955,8 +993,7 @@ const nowISO = () => new Date().toISOString()
         errors.push("Recurring incidents: the description and the date of the first occurrence must be provided together for final reports");
       }
 
-      // 3.34 (description des actions temporaires) : exigée seulement si 3.33 = oui, dans tous les rapports
-      // (validateTemporaryRecoveryActions), conformément à l'annexe II du règlement d'exécution 2025/302
+      // 3.34 (actions temporaires ou raison de leur absence) : validateTemporaryRecoveryActions
     }
 
     // Un champ est renseigné s'il n'est ni absent, ni une chaîne vide
@@ -2434,7 +2471,7 @@ export default function DoraIncidentApp() {
                                 title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
                             />
                             <input data-champ="submittingEntity.code"
-                                placeholder="Identification Code"
+                                placeholder="LEI (20 characters)"
                                 value={draft.submittingEntity.code}
                                 onChange={e => {
                                   if (!draft.submittingEntity.isParametersSet) {
@@ -3553,10 +3590,12 @@ export default function DoraIncidentApp() {
                       </label>
                     </div>
 
-                    {draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery && (
+                    {/* 3.34 : toujours affiché ; sans action temporaire, l'ACPR attend la raison (guide de remplissage) */}
                       <div className="mt-4">
                           <p className="block text-sm font-medium mb-2">
-                            Description of Temporary Actions/Measures for Recovery
+                            {draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery
+                              ? 'Description of Temporary Actions/Measures for Recovery'
+                              : 'Reason why no Temporary Actions/Measures were taken'}
                           </p>
                           <textarea data-champ="impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery"
                             id="descriptionOfTemporaryActionsMeasuresForRecovery"
@@ -3564,11 +3603,12 @@ export default function DoraIncidentApp() {
                             onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            placeholder="Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc."
+                            placeholder={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery
+                              ? "Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc. Include the date and time of implementation and the expected date of return to the primary site."
+                              : "Explain why no temporary action or measure has been taken or planned (expected by the ACPR even when no action was taken)."}
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                       </div>
-                    )}
 
                     {draft.incident.incidentType.incidentClassification.includes("cybersecurity-related") && (
                       <div className="mt-4">
@@ -4353,7 +4393,7 @@ export default function DoraIncidentApp() {
                         {/* Code de l'entité - TOUJOURS MODIFIABLE */}
                         <div className="mb-4">
                           <label htmlFor="submittingEntityCode" className="block text-sm font-medium mb-1">
-                            Code de l'entité soumise
+                            LEI de l&apos;entité déclarante (champ 1.3)
                           </label>
                           <input
                             id="submittingEntityCode"
