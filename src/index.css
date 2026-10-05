@@ -259,3 +259,26 @@
 :root {
   --entete: 81px;
 }
+
+/* Barre de défilement discrète : fine, invisible au repos, affichée pendant le défilement
+   (classe defilement-actif posée par l'application, retirée 3 s après le dernier mouvement) */
+.defilement-discret {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.defilement-discret.defilement-actif {
+  scrollbar-color: rgba(100, 116, 139, 0.55) transparent;
+}
+.defilement-discret::-webkit-scrollbar {
+  width: 6px;
+}
+.defilement-discret::-webkit-scrollbar-track {
+  background: transparent;
+}
+.defilement-discret::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+.defilement-discret.defilement-actif::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.55);
+}
