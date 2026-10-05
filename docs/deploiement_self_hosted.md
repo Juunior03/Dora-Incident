@@ -34,7 +34,7 @@ Le script est rejouable : en cas d'erreur (coupure, copier-coller incomplet), co
 relancer en entier.
 
 Retour arrière : fichiers de `supabase/rollback/`, dans l'ordre inverse
-(20261008, 20261007, 20261006, 20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
+(20261009, 20261008, 20261007, 20261006, 20261005, 20261004, 20261003, 20261002, 20261001, 20260930). Le dernier supprime les tables du
 registre et leurs données.
 
 ## 3. Configuration de l'authentification (DSI, fichier `.env` du self-hosted)
