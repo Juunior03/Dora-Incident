@@ -105,19 +105,22 @@ const nowISO = () => new Date().toISOString()
         delete elague.ultimateParentUndertaking; // type prérempli seulement : aucune entreprise mère renseignée
       }
       if (elague.secondaryContact && Object.keys(elague.secondaryContact).length === 0) delete elague.secondaryContact;
+      // Comme dans la maquette « Sample », le type d'entité (1.4) ne figure que sur les entités affectées
+      if (elague.submittingEntity) delete elague.submittingEntity.affectedEntityType;
+      if (elague.ultimateParentUndertaking) delete elague.ultimateParentUndertaking.affectedEntityType;
       return ordonnerSelonSchema(elague, 'racine');
     }
 
-    // Ordre des clés défini par le schéma DORA IR v1.3 de la Banque de France (sans effet sur la validité
-    // du JSON, mais le fichier se lit dans le même ordre que la maquette)
+    // Ordre des clés de la maquette « Sample » de la Banque de France (DORA_IR_final_report_sample_(v1.3).json),
+    // à utiliser pour toute déclaration ; les champs absents de l'exemple sont placés selon le schéma v1.3
     const ORDRE_SCHEMA = {
       racine: ['incidentSubmission', 'reportCurrency', 'submittingEntity', 'affectedEntity', 'ultimateParentUndertaking', 'primaryContact', 'secondaryContact', 'incident', 'impactAssessment', 'reportingToOtherAuthorities', 'reportingToOtherAuthoritiesOther', 'informationDurationServiceDowntimeActualOrEstimate'],
-      entite: ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'],
+      entite: ['entityType', 'name', 'LEI', 'code', 'affectedEntityType'],
       contact: ['name', 'email', 'phone'],
-      incident: ['financialEntityCode', 'detectionDateTime', 'classificationDateTime', 'incidentDescription', 'otherInformation', 'classificationTypes', 'isBusinessContinuityActivated', 'incidentOccurrenceDateTime', 'incidentDuration', 'originatesFromThirdPartyProvider', 'incidentDiscovery', 'competentAuthorityCode', 'incidentType', 'rootCauseHLClassification', 'rootCausesDetailedClassification', 'rootCausesAdditionalClassification', 'rootCausesOther', 'rootCausesInformation', 'rootCauseAddressingDateTime', 'incidentResolutionSummary', 'incidentResolutionDateTime', 'incidentResolutionVsPlannedImplementation', 'assessmentOfRiskToCriticalFunctions', 'informationRelevantToResolutionAuthorities', 'financialRecoveriesAmount', 'grossAmountIndirectDirectCosts', 'recurringNonMajorIncidentsDescription', 'recurringIncidentDate'],
+      incident: ['financialEntityCode', 'detectionDateTime', 'classificationDateTime', 'incidentOccurrenceDateTime', 'incidentDuration', 'incidentDescription', 'incidentDiscovery', 'isBusinessContinuityActivated', 'originatesFromThirdPartyProvider', 'competentAuthorityCode', 'incidentType', 'classificationTypes', 'rootCauseHLClassification', 'rootCausesDetailedClassification', 'rootCausesAdditionalClassification', 'rootCausesOther', 'rootCausesInformation', 'rootCauseAddressingDateTime', 'incidentResolutionSummary', 'incidentResolutionDateTime', 'incidentResolutionVsPlannedImplementation', 'assessmentOfRiskToCriticalFunctions', 'informationRelevantToResolutionAuthorities', 'grossAmountIndirectDirectCosts', 'financialRecoveriesAmount', 'recurringNonMajorIncidentsDescription', 'recurringIncidentDate', 'otherInformation'],
       incidentType: ['incidentClassification', 'otherIncidentClassification', 'threatTechniques', 'otherThreatTechniques', 'indicatorsOfCompromise'],
-      classificationType: ['classificationCriterion', 'countryCodeMaterialityThresholds', 'memberStatesImpactType', 'memberStatesImpactTypeDescription', 'dataLosseMaterialityThresholds', 'dataLossesDescription', 'reputationalImpactType', 'reputationalImpactDescription', 'economicImpactMaterialityThreshold'],
-      impactAssessment: ['hasImpactOnRelevantClients', 'serviceImpact', 'criticalServicesAffected', 'affectedAssets', 'affectedFunctionalAreas', 'isAffectedInfrastructureComponents', 'affectedInfrastructureComponents', 'isImpactOnFinancialInterest'],
+      classificationType: ['classificationCriterion', 'countryCodeMaterialityThresholds', 'memberStatesImpactType', 'memberStatesImpactTypeDescription', 'dataLosseMaterialityThresholds', 'dataLossesDescription', 'economicImpactMaterialityThreshold', 'reputationalImpactType', 'reputationalImpactDescription'],
+      impactAssessment: ['hasImpactOnRelevantClients', 'criticalServicesAffected', 'affectedFunctionalAreas', 'isAffectedInfrastructureComponents', 'affectedInfrastructureComponents', 'isImpactOnFinancialInterest', 'serviceImpact', 'affectedAssets'],
       serviceImpact: ['serviceRestorationDateTime', 'serviceDowntime', 'isTemporaryActionsMeasuresForRecovery', 'descriptionOfTemporaryActionsMeasuresForRecovery'],
       affectedAssets: ['affectedClients', 'affectedFinancialCounterparts', 'affectedTransactions', 'valueOfAffectedTransactions', 'numbersActualEstimate'],
       nombrePourcentage: ['number', 'percentage'],
