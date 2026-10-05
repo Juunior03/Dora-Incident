@@ -1521,6 +1521,18 @@ export default function DoraIncidentApp() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const isReportView = view === 'report';
 
+  // Hauteur de l'en-tête fixe, exposée en variable CSS (--entete) pour placer les éléments fixes en dessous
+  const refEntete = useRef(null);
+  useEffect(() => {
+    const el = refEntete.current;
+    if (!el) return undefined;
+    const maj = () => document.documentElement.style.setProperty('--entete', `${el.offsetHeight}px`);
+    maj();
+    const obs = new ResizeObserver(maj);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   useEffect(() => { setDeverrouillees({}); }, [draft.id, draft.incidentSubmission]);
   const rangActuel = Math.max(0, rangRapport(draft.incidentSubmission));
   const lectureSeuleRapport = isFieldDisabled(role, draft.status);
@@ -2328,7 +2340,9 @@ export default function DoraIncidentApp() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
       <ConfettiCanvas trigger={confettiTrigger} />
-      <header className="max-w-7xl mx-auto flex items-center justify-between mb-6">
+      {/* En-tête fixe : reste visible pendant le défilement ; sa hauteur (--entete) décale les autres éléments fixes */}
+      <div ref={refEntete} className="sticky top-0 z-40 -mx-6 -mt-6 mb-6 px-6 py-3 bg-gray-50 dark:bg-gray-900 shadow-sm border-b border-gray-200/70 dark:border-gray-800">
+      <header className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img src="/logo.svg" alt="DORA" width="56" height="56" className="w-14 h-14 rounded-2xl shadow-sm" />
           <div>
@@ -2424,6 +2438,7 @@ export default function DoraIncidentApp() {
 
         </div>
       </header>
+      </div>
 
       <main className="max-w-7xl mx-auto">
         <AnimatePresence mode="wait">
@@ -2436,7 +2451,7 @@ export default function DoraIncidentApp() {
                 className="grid grid-cols-12 gap-6"
               >
               <aside className="col-span-3">
-                <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
+                <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-[calc(var(--entete)+1.5rem)]">
                   <h3 className="font-medium mb-4">Progress</h3>
                     <ul className="space-y-2 list-none p-0 m-0">
                       {getFilteredSteps(draft).map(({ label, step: stepIndex }, index) => (
@@ -2479,7 +2494,7 @@ export default function DoraIncidentApp() {
               <section className="col-span-9">
                 <div className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow">
                   {cible && step === cible.etape && (
-                    <div role="alert" className="sticky top-0 z-30 mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/40 text-sm text-red-800 dark:text-red-100 border border-red-200 dark:border-red-800 flex items-start justify-between gap-3">
+                    <div role="alert" className="sticky top-[var(--entete)] z-30 mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/40 text-sm text-red-800 dark:text-red-100 border border-red-200 dark:border-red-800 flex items-start justify-between gap-3">
                       <span><strong>À compléter ({cible.numero}) :</strong> {cible.message}</span>
                       <span className="flex gap-2 shrink-0">
                         <button type="button" onClick={() => setStep(3)} className="underline">Retour à Review</button>
@@ -2837,7 +2852,7 @@ export default function DoraIncidentApp() {
                       initiale, le rapport final celles des deux précédents, qui restent modifiables (annexe II du
                       règlement d'exécution 2025/302 : champs 1.x à 3.x obligatoires dans tous les rapports suivants) */}
                   {step === 2 && rangActuel > 0 && (
-                    <nav aria-label="Sections du rapport" className="sticky top-0 z-20 -mx-2 mb-6 px-2 py-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b dark:border-gray-700 flex flex-wrap gap-2 text-sm">
+                    <nav aria-label="Sections du rapport" className="sticky top-[var(--entete)] z-20 -mx-2 mb-6 px-2 py-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b dark:border-gray-700 flex flex-wrap gap-2 text-sm">
                       {sectionsAffichees.map((x, i) => (
                         <button key={x.type} type="button" onClick={() => allerASection(x.type)}
                           className={`px-3 py-1 rounded-full ${x.type === draft.incidentSubmission ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
@@ -2848,7 +2863,7 @@ export default function DoraIncidentApp() {
                   )}
 
                   {step === 2 && (
-                    <div id="section-initial_notification" className="scroll-mt-16">
+                    <div id="section-initial_notification" className="scroll-mt-[calc(var(--entete)+4rem)]">
                       <h2 className="text-2xl font-semibold mb-2">Incident Details</h2>
                       <p className="text-sm opacity-70 mb-4">Description and classification of the incident (initial notification)</p>
                       <BandeauSection {...propsBandeau('initial_notification')} />
@@ -3059,7 +3074,7 @@ export default function DoraIncidentApp() {
                   )}
 
                   {step === 2 && (draft.incidentSubmission === "intermediate_report" || draft.incidentSubmission === "final_report" || (estReclassement && baseReclassement === 'intermediate_report')) && (
-                      <div id="section-intermediate_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
+                      <div id="section-intermediate_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-[calc(var(--entete)+4rem)]">
 
                         <h2 className="text-2xl font-semibold mb-2">Impact Assessment</h2>
                       <p className="text-sm opacity-70 mb-4">Impact, duration and type of the incident (intermediate report)</p>
@@ -3710,7 +3725,7 @@ export default function DoraIncidentApp() {
 
 
                   {step === 2 && estReclassement && (
-                    <div id={`section-${RECLASSEMENT}`} className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
+                    <div id={`section-${RECLASSEMENT}`} className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-[calc(var(--entete)+4rem)]">
                       <h2 className="text-2xl font-semibold mb-2">Reclassification as non-major</h2>
                       <p className="text-sm opacity-70 mb-4">Major incident reclassified as non-major</p>
                       <BandeauSection {...propsBandeau(RECLASSEMENT)} />
@@ -3749,7 +3764,7 @@ export default function DoraIncidentApp() {
                   )}
 
                   {step === 2 && draft.incidentSubmission === "final_report" && (
-                      <div id="section-final_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
+                      <div id="section-final_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-[calc(var(--entete)+4rem)]">
                           <h2 className="text-2xl font-semibold mb-2">Root Causes and Resolution</h2>
                           <p className="text-sm opacity-70 mb-4">Root causes, resolution and costs (final report)</p>
                           <BandeauSection {...propsBandeau('final_report')} />

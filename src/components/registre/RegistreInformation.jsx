@@ -509,7 +509,7 @@ export default function RegistreInformation({ roleRegistre }) {
   return (
     <div className="grid grid-cols-12 gap-6">
       <aside className="col-span-3">
-        <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-6">
+        <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-[calc(var(--entete)+1.5rem)]">
           <h3 className="font-medium mb-1">Registre d'information</h3>
           <p className="text-xs opacity-60 mb-4">Règlement d'exécution (UE) 2024/2956</p>
           <button
