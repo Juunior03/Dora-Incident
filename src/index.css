@@ -255,3 +255,7 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Hauteur de l'en-tête fixe (mise à jour par l'application) */
+:root {
+  --entete: 81px;
+}
