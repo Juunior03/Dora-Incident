@@ -1,5 +1,5 @@
 // Registre d'information DORA : consultation et saisie des modèles B_01.01 à B_99.01
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { supabase } from '../../supabaseClient';
 import { SECTIONS } from './registreConfig';
@@ -482,8 +482,38 @@ EditeurSection.propTypes = {
   onRetourRapport: PropTypes.func,
 };
 
+// Barre de défilement visible pendant le défilement, masquée 3 s après le dernier mouvement
+// (affichée aussi 3 s à l'ouverture, pour signaler que la liste défile)
+function useBarreDiscrete() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let minuterie;
+    const montrer = () => {
+      el.classList.add('defilement-actif');
+      clearTimeout(minuterie);
+      minuterie = setTimeout(() => el.classList.remove('defilement-actif'), 3000);
+    };
+    montrer();
+    el.addEventListener('scroll', montrer, { passive: true });
+    return () => { el.removeEventListener('scroll', montrer); clearTimeout(minuterie); };
+  }, []);
+  return ref;
+}
+
 export default function RegistreInformation({ roleRegistre }) {
-  const [active, setActive] = useState(SECTIONS[0].key);
+  const refPanneau = useBarreDiscrete();
+  // Section ouverte, conservée dans l'adresse (#registre/<section>) pour la retrouver après un rafraîchissement
+  const [active, setActive] = useState(() => {
+    const [segment, cle] = (globalThis.location?.hash ?? '').replace(/^#\/?/, '').split('/');
+    const connues = [RAPPORT, EXPORT, IMPORT, ...SECTIONS.map((x) => x.key)];
+    return segment === 'registre' && connues.includes(cle) ? cle : SECTIONS[0].key;
+  });
+  useEffect(() => {
+    const cible = `#registre/${active}`;
+    if (globalThis.location.hash !== cible) globalThis.history.replaceState(null, '', cible);
+  }, [active]);
   const [compteurs, setCompteurs] = useState({});
   const [anomalieCible, setAnomalieCible] = useState(null);
   const lectureSeule = roleRegistre !== 'gestionnaire';
@@ -510,7 +540,7 @@ export default function RegistreInformation({ roleRegistre }) {
     <div className="grid grid-cols-12 gap-6">
       <aside className="col-span-3">
         {/* Panneau fixe sous l'en-tête, avec sa propre barre de défilement si la liste dépasse l'écran */}
-        <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-[calc(var(--entete)+1.5rem)] max-h-[calc(100vh_-_var(--entete)_-_6.5rem)] overflow-y-auto overscroll-contain">
+        <div ref={refPanneau} className="defilement-discret p-4 rounded-2xl bg-white/80 dark:bg-white/5 shadow sticky top-[calc(var(--entete)+1.5rem)] max-h-[calc(100vh_-_var(--entete)_-_6.5rem)] overflow-y-auto overscroll-contain">
           <h3 className="font-medium mb-1">Registre d'information</h3>
           <p className="text-xs opacity-60 mb-4">Règlement d'exécution (UE) 2024/2956</p>
           <button
