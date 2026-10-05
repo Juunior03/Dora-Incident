@@ -20,6 +20,8 @@ const CORRESPONDANCES = [
   [/^Ultimate parent undertaking: name and LEI/, (m, r) => (r?.ultimateParentUndertaking?.name ? 'ultimateParentUndertaking.LEI' : 'ultimateParentUndertaking.name'), '1.13 / 1.14'],
   [/^Ultimate parent undertaking LEI/, 'ultimateParentUndertaking.LEI', '1.14'],
   [/^Incident Reference code is required|^Incident reference code may only/, 'incident.financialEntityCode', '2.1'],
+  [/^Incident reference code provided by the competent authority is required for a reclassification/, 'incident.competentAuthorityCode', '3.1'],
+  [/^Reasons for reclassifying the incident/, 'incident.otherInformation', '2.10'],
   [/^Incident detection date/, 'incident.detectionDateTime', '2.2'],
   [/^Incident classification date/, 'incident.classificationDateTime', '2.3'],
   [/^Incident description is required/, 'incident.incidentDescription', '2.4'],

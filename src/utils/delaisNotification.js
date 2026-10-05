@@ -159,7 +159,9 @@ export function echeancier(reports, maintenant = new Date(), reportJourOuvre = '
     return { ...e, transmisLe, etat };
   });
 
-  const cloture = Boolean(transmisFinal);
+  // Un reclassement en incident non majeur validé clôt aussi l'incident : plus aucun rapport n'est dû
+  const reclasse = valides('major_incident_reclassified_as_non-major')[0];
+  const cloture = Boolean(transmisFinal || reclasse);
   // Prochaine étape : la première non transmise (une étape « indéterminée » derrière une étape
   // en attente n'est pas encore pertinente)
   const prochaine = cloture ? null : etapes.find((e) => !['respecte', 'tardif', 'transmis'].includes(e.etat)) ?? null;
