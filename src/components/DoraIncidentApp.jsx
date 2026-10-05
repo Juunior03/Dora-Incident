@@ -1653,6 +1653,16 @@ export default function DoraIncidentApp() {
   }, [cible, step, lectureSeuleRapport]);
   useEffect(() => { if (step === 3) setCible(null); }, [step]);
 
+  // Étape Review : enregistrement possible pour le saisisseur sur un rapport non validé
+  const peutEnregistrer = role !== 'validateur' && role !== 'auditeur' && draft.status !== 'validated';
+  // Retour au tableau de bord sans garder le rapport en cours (formulaire remis à neuf)
+  const quitterVersTableau = () => {
+    clearDraft();
+    setErrors([]);
+    setFromContinueButton(false);
+    setView('dashboard');
+  };
+
   const allerASection = (type) => document.getElementById(`section-${type}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   // En arrivant sur l'étape « Incident » d'un rapport intermédiaire ou final : directement à sa section
   useEffect(() => {
@@ -4181,36 +4191,44 @@ export default function DoraIncidentApp() {
                           <pre className="mt-2 max-h-64 overflow-auto text-xs bg-black/5 dark:bg-black/30 p-3 rounded">{JSON.stringify(cleanReportForExport(draft), null, 2)}</pre>
                         </div>
 
-                        <div className="mt-4 flex gap-2">
-                          {role !== 'validateur' && role !== 'auditeur' && draft.status !== 'validated' && (
-                              <button
-                                onClick={async () => {
-                                  const result = await saveReport(true);
-                                  if (result.ok) {
-                                    alert('Saved to Dashboard');
-                                  } else {
-                                    console.error('Erreurs lors de la sauvegarde:', result.errors);
-                                    setErrors(result.errors);
-                                  }
-                                }}
-                                className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                              >
-                                Save to Dashboard
-                              </button>
-                          )}
-
-                        </div>
                       </div>
 
-                      <div className="mt-6 flex justify-between">
+                      <div className="mt-6 flex justify-between gap-2">
                         <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">Back</button>
-                        <button onClick={() => {
-                          setView('dashboard');
-                          setFromContinueButton(false); // Réinitialiser fromContinueButton à false
-                          globalThis.location.reload();
-                        }} className="px-4 py-2 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 transition-colors">
-                          Go to Dashboard
-                        </button>
+                        {peutEnregistrer ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                const message = draft.id
+                                  ? 'Annuler les modifications non enregistrées de ce rapport ?\n\nLa dernière version enregistrée est conservée.'
+                                  : 'Annuler la création de ce rapport ?\n\nLes informations saisies seront perdues.';
+                                if (globalThis.confirm(message)) quitterVersTableau();
+                              }}
+                              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const result = await saveReport(true);
+                                if (result.ok) {
+                                  setReports(await fetchReportsFromSupabase());
+                                  quitterVersTableau();
+                                } else {
+                                  console.error('Erreurs lors de la sauvegarde:', result.errors);
+                                  setErrors(result.errors);
+                                }
+                              }}
+                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
+                              Save and go to Dashboard
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={quitterVersTableau} className="px-4 py-2 rounded-lg bg-indigo-700 text-white hover:bg-indigo-800 transition-colors">
+                            Go to Dashboard
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
