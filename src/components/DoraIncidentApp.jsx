@@ -2330,7 +2330,7 @@ export default function DoraIncidentApp() {
       <ConfettiCanvas trigger={confettiTrigger} />
       <header className="max-w-7xl mx-auto flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-400 flex items-center justify-center text-white font-bold text-lg">DORA</div>
+          <img src="/logo.svg" alt="DORA" width="56" height="56" className="w-14 h-14 rounded-2xl shadow-sm" />
           <div>
             <h1 className="text-xl font-semibold">DORA Incident Reporter</h1>
             <p className="text-sm opacity-70">Complete incident reporting for regulatory compliance</p>
