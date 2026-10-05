@@ -17,6 +17,14 @@ import { champDeLErreur } from '../utils/champsErreurs';
 
 const nowISO = () => new Date().toISOString()
 
+// Onglets de l'application et leur adresse
+const ADRESSE_DES_VUES = { dashboard: 'dashboard', registre: 'registre', settings: 'parametres', report: 'rapport' };
+function lireAdresse() {
+  const [segment, id] = (globalThis.location?.hash ?? '').replace(/^#\/?/, '').split('/');
+  const vue = Object.keys(ADRESSE_DES_VUES).find((v) => ADRESSE_DES_VUES[v] === segment);
+  return { vue, id: id ? decodeURIComponent(id) : null };
+}
+
 // 4e type de déclaration de la maquette : incident majeur reclassé comme non majeur
 const RECLASSEMENT = 'major_incident_reclassified_as_non-major';
 
@@ -1504,10 +1512,15 @@ const RECLASSEMENT = 'major_incident_reclassified_as_non-major';
     };
 
 export default function DoraIncidentApp() {
-  const { user, role, roleRegistre, signOut } = useAuth();
+  const { user, role, roleRegistre, signOut, loading: chargementSession } = useAuth();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  const [view, setView] = useState('dashboard')
+  // Onglet affiché, conservé dans l'adresse (#dashboard, #registre/…, #parametres, #rapport/<id>) pour
+  // qu'un rafraîchissement ramène au même endroit ; un rapport est rechargé une fois la session prête
+  const [view, setView] = useState(() => {
+    const vue = lireAdresse().vue;
+    return vue === 'report' ? 'dashboard' : vue ?? 'dashboard';
+  })
   const [draft, setDraft] = useState(emptyDraft())
   const [reports, setReports] = useState([])
   const [step, setStep] = useState(0)
@@ -1520,6 +1533,38 @@ export default function DoraIncidentApp() {
   const [filteredIncidents, setFilteredIncidents] = useState({});
   const [showUserMenu, setShowUserMenu] = useState(false);
   const isReportView = view === 'report';
+
+  // restaurationLancee : la restauration n'a lieu qu'une fois ; restaurationFaite : l'adresse n'est mise à
+  // jour qu'ensuite (sinon elle serait réécrite avant la fin du chargement du rapport)
+  const restaurationLancee = useRef(false);
+  const restaurationFaite = useRef(false);
+  useEffect(() => {
+    if (restaurationLancee.current || chargementSession || !user) return;
+    restaurationLancee.current = true;
+    const { vue, id } = lireAdresse();
+    const terminer = (vueFinale) => {
+      restaurationFaite.current = true;
+      if (vueFinale) {
+        setView(vueFinale);
+        if (vueFinale !== 'report') globalThis.history.replaceState(null, '', `#${ADRESSE_DES_VUES[vueFinale]}`);
+      }
+    };
+    if (vue === 'registre' && !roleRegistre) return terminer('dashboard');
+    if (vue !== 'report') return terminer(null);
+    if (id) {
+      loadReportIntoDraft(id).then((charge) => terminer(charge ? null : 'dashboard'));
+    } else {
+      // Nouveau rapport pour un saisisseur (un brouillon jamais enregistré ne survit pas au rafraîchissement)
+      terminer(role === 'saisisseur' ? 'report' : 'dashboard');
+    }
+  }, [chargementSession, user, role, roleRegistre]);
+  useEffect(() => {
+    if (!restaurationFaite.current) return;
+    const cible = view === 'report' ? (draft.id ? `rapport/${draft.id}` : 'rapport') : ADRESSE_DES_VUES[view] ?? 'dashboard';
+    const actuelle = globalThis.location.hash.replace(/^#/, '');
+    if (view === 'registre' && actuelle.split('/')[0] === 'registre') return; // la section est gérée par le registre
+    if (actuelle !== cible) globalThis.history.replaceState(null, '', `#${cible}`);
+  }, [view, draft.id]);
 
   // Hauteur de l'en-tête fixe, exposée en variable CSS (--entete) pour placer les éléments fixes en dessous
   const refEntete = useRef(null);
@@ -2129,13 +2174,13 @@ export default function DoraIncidentApp() {
         .eq('id', reportId)
         .single();
 
-      if (handleError(error)) return;
+      if (handleError(error)) return false;
 
       if (data) {
         // **Vérification redondante pour les auditeurs**
         if (role === 'auditeur' && data.status !== 'validated') {
           alert('Accès refusé : ce rapport n\'est pas validé.');
-          return; // <-- Important : ne pas charger le rapport
+          return false; // <-- Important : ne pas charger le rapport
         }
         const mergedDraft = createMergedDraft(data);
         processPhoneNumbers(mergedDraft);
@@ -2143,14 +2188,16 @@ export default function DoraIncidentApp() {
         setDraft(mergedDraft);
         setView('report');
         // Définir l'étape en fonction du type de rapport
-        if (mergedDraft.incidentSubmission === 'intermediate_report' || mergedDraft.incidentSubmission === 'final_report') {
+        if (['intermediate_report', 'final_report', RECLASSEMENT].includes(mergedDraft.incidentSubmission)) {
           setStep(2);
           setFromContinueButton(true);
         } else {
           setStep(0);
           setFromContinueButton(false);
         }
+        return true;
       }
+      return false;
     }
 
 // Chargement des paramètres pour l'utilisateur connecté

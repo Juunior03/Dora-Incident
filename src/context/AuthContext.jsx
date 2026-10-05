@@ -14,6 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [roleRegistre, setRoleRegistre] = useState(null);
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
+  // Utilisateur dont les rôles ont été chargés : tant qu'il diffère de l'utilisateur connecté, la session
+  // n'est pas prête (évite un bref instant où l'utilisateur est connu mais ses droits pas encore lus)
+  const [rolesDe, setRolesDe] = useState(null);
 
   useEffect(() => {
     getCSRFToken();
@@ -67,7 +70,10 @@ export const AuthProvider = ({ children }) => {
           setRoleRegistre(null);
         }
       } finally {
-        if (!cancelled) setRoleLoading(false);
+        if (!cancelled) {
+          setRoleLoading(false);
+          setRolesDe(userId);
+        }
       }
     };
     loadRole();
@@ -115,10 +121,10 @@ export const AuthProvider = ({ children }) => {
     user,
     role,
     roleRegistre,
-    loading: loading || roleLoading,
+    loading: loading || roleLoading || Boolean(user?.id && rolesDe !== user.id),
     signIn,
     signOut,
-  }), [user, role, roleRegistre, loading, roleLoading, signIn, signOut]);
+  }), [user, role, roleRegistre, loading, roleLoading, rolesDe, signIn, signOut]);
 
   return (
     <AuthContext.Provider value={contextValue}>

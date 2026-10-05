@@ -504,7 +504,16 @@ function useBarreDiscrete() {
 
 export default function RegistreInformation({ roleRegistre }) {
   const refPanneau = useBarreDiscrete();
-  const [active, setActive] = useState(SECTIONS[0].key);
+  // Section ouverte, conservée dans l'adresse (#registre/<section>) pour la retrouver après un rafraîchissement
+  const [active, setActive] = useState(() => {
+    const [segment, cle] = (globalThis.location?.hash ?? '').replace(/^#\/?/, '').split('/');
+    const connues = [RAPPORT, EXPORT, IMPORT, ...SECTIONS.map((x) => x.key)];
+    return segment === 'registre' && connues.includes(cle) ? cle : SECTIONS[0].key;
+  });
+  useEffect(() => {
+    const cible = `#registre/${active}`;
+    if (globalThis.location.hash !== cible) globalThis.history.replaceState(null, '', cible);
+  }, [active]);
   const [compteurs, setCompteurs] = useState({});
   const [anomalieCible, setAnomalieCible] = useState(null);
   const lectureSeule = roleRegistre !== 'gestionnaire';
