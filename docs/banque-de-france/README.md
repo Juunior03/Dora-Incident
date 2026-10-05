@@ -83,3 +83,8 @@ Paquet « DORA_IR Maquettes V20260521 » d'eSurfi (schéma v1.3 et exemple de ra
 celui téléchargé le 2 octobre. Le champ 1.3 y est découpé : 1.3a (clé LEI) pour une entité financière qui
 déclare pour elle-même, 1.3b (clé code) pour un prestataire tiers déclarant pour une entité. Le LEI de
 l'entité déclarante est donc exporté dans la clé LEI. Les clés sont écrites dans l'ordre du schéma.
+
+Contenu par type de rapport : l'export ne transmet que les champs du type de rapport et des rapports
+précédents (annexe II : « No » pour les rapports antérieurs). Une notification initiale ne contient donc
+ni bloc impactAssessment ni montants, au lieu des valeurs par défaut du formulaire (0, false). Une entité
+affectée unique sans nom ni LEI est l'entité déclarante : son nom et son LEI sont repris.

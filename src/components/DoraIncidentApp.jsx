@@ -42,6 +42,7 @@ const nowISO = () => new Date().toISOString()
       const clonedReport = structuredClone(report);
       const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = clonedReport;
       delete cleanedReport.validatedAt; // donnée interne, absente du format de l'autorité
+      retirerChampsHorsRapport(cleanedReport);
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -85,6 +86,15 @@ const nowISO = () => new Date().toISOString()
           delete submittingEntity.code;
         }
         cleanedReport.submittingEntity = submittingEntity;
+
+        // Une seule entité affectée, sans nom ni LEI : c'est l'entité déclarante elle-même (champs 1.5 / 1.6).
+        // On reprend son nom et son LEI, comme dans l'exemple officiel où l'entité affectée est toujours identifiée.
+        const affectees = cleanedReport.affectedEntity;
+        const lei = submittingEntity.LEI;
+        if (Array.isArray(affectees) && affectees.length === 1 && !affectees[0]?.name?.trim() && !affectees[0]?.LEI?.trim()
+            && submittingEntity.name && lei) {
+          affectees[0] = { ...affectees[0], name: submittingEntity.name, LEI: lei };
+        }
       }
 
       // Le schéma DORA IR v1.3 refuse les champs vides (chaîne vide hors liste, liste vide) :
@@ -124,6 +134,35 @@ const nowISO = () => new Date().toISOString()
       const ordre = ORDRE_SCHEMA[type];
       const cles = [...ordre.filter(k => k in objet), ...Object.keys(objet).filter(k => !ordre.includes(k))];
       return Object.fromEntries(cles.map(k => [k, SOUS_OBJETS[type]?.[k] ? ordonnerSelonSchema(objet[k], SOUS_OBJETS[type][k]) : objet[k]]));
+    }
+
+    // Champs propres aux rapports suivants (annexe II du règlement d'exécution 2025/302 : « No » pour les
+    // rapports précédents). Le formulaire les initialise (0, false…) sans les afficher : sans ce filtre, une
+    // notification initiale déclarerait par exemple « 0 client affecté » et « 0 € de pertes ».
+    const CHAMPS_DES_RAPPORTS = {
+      intermediate_report: {
+        racine: ['impactAssessment', 'reportingToOtherAuthorities', 'reportingToOtherAuthoritiesOther', 'informationDurationServiceDowntimeActualOrEstimate'],
+        incident: ['incidentOccurrenceDateTime', 'incidentDuration', 'competentAuthorityCode', 'incidentType'],
+        critere: ['memberStatesImpactType', 'memberStatesImpactTypeDescription', 'dataLosseMaterialityThresholds', 'dataLossesDescription', 'reputationalImpactType', 'reputationalImpactDescription'],
+      },
+      final_report: {
+        racine: [],
+        incident: ['rootCauseHLClassification', 'rootCausesDetailedClassification', 'rootCausesAdditionalClassification', 'rootCausesOther', 'rootCausesInformation', 'rootCauseAddressingDateTime', 'incidentResolutionSummary', 'incidentResolutionDateTime', 'incidentResolutionVsPlannedImplementation', 'assessmentOfRiskToCriticalFunctions', 'informationRelevantToResolutionAuthorities', 'financialRecoveriesAmount', 'grossAmountIndirectDirectCosts', 'recurringNonMajorIncidentsDescription', 'recurringIncidentDate'],
+        critere: ['economicImpactMaterialityThreshold'],
+      },
+    };
+    function retirerChampsHorsRapport(rapport) {
+      const ordre = ['initial_notification', 'intermediate_report', 'final_report'];
+      const rang = ordre.indexOf(rapport.incidentSubmission);
+      if (rang < 0) return;
+      for (const type of ordre.slice(rang + 1)) {
+        const { racine, incident, critere } = CHAMPS_DES_RAPPORTS[type];
+        racine.forEach(k => delete rapport[k]);
+        if (rapport.incident) {
+          incident.forEach(k => delete rapport.incident[k]);
+          (rapport.incident.classificationTypes ?? []).forEach(c => critere.forEach(k => delete c[k]));
+        }
+      }
     }
 
     function retirerChampsVides(valeur) {
