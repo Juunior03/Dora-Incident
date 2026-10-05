@@ -82,7 +82,10 @@ le week-end et les jours fériés. Type d'entité « credit_institution » propo
 Paquet « DORA_IR Maquettes V20260521 » d'eSurfi (schéma v1.3 et exemple de rapport final), identique à
 celui téléchargé le 2 octobre. Le champ 1.3 y est découpé : 1.3a (clé LEI) pour une entité financière qui
 déclare pour elle-même, 1.3b (clé code) pour un prestataire tiers déclarant pour une entité. Le LEI de
-l'entité déclarante est donc exporté dans la clé LEI. Les clés sont écrites dans l'ordre du schéma.
+l'entité déclarante est donc exporté dans la clé LEI. Les clés sont écrites dans l'ordre de la maquette « Sample » (que la Banque de France demande
+d'utiliser pour toute déclaration), les champs absents de l'exemple étant placés selon le schéma ;
+le type d'entité (1.4) ne figure que sur les entités affectées, comme dans l'exemple. L'exemple
+officiel repassé par l'export de l'application ressort identique, caractère pour caractère.
 
 Contenu par type de rapport : l'export ne transmet que les champs du type de rapport et des rapports
 précédents (annexe II : « No » pour les rapports antérieurs). Une notification initiale ne contient donc
