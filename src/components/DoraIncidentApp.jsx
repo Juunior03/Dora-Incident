@@ -4486,10 +4486,15 @@ export default function DoraIncidentApp() {
 
                       {role !== 'validateur' && role !== 'auditeur' && (
                           <div className="mt-6 flex justify-end">
-                            <button onClick={() =>{
-                            setView('report');
-                            }}className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
-                              Create or Update Report
+                            {/* Toujours un nouveau rapport vierge (paramètres de l'entité appliqués) ; les rapports
+                                existants s'ouvrent avec leur bouton « Update » */}
+                            <button onClick={() => {
+                              clearDraft();
+                              setErrors([]);
+                              setFromContinueButton(false);
+                              setView('report');
+                            }} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors">
+                              Create New Report
                             </button>
                           </div>
                       )}
