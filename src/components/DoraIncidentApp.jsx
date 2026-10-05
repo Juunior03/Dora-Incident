@@ -14,6 +14,7 @@ import { controlesAcpr } from '../utils/controlesAcpr';
 import { rapportPrecedent, modificationsRapport, LIBELLES_RAPPORTS } from '../utils/comparaisonRapports';
 import ModificationsRapport from './ModificationsRapport';
 import { champDeLErreur } from '../utils/champsErreurs';
+import Parametres from './Parametres';
 
 const nowISO = () => new Date().toISOString()
 
@@ -1562,7 +1563,8 @@ export default function DoraIncidentApp() {
     if (!restaurationFaite.current) return;
     const cible = view === 'report' ? (draft.id ? `rapport/${draft.id}` : 'rapport') : ADRESSE_DES_VUES[view] ?? 'dashboard';
     const actuelle = globalThis.location.hash.replace(/^#/, '');
-    if (view === 'registre' && actuelle.split('/')[0] === 'registre') return; // la section est gérée par le registre
+    // Registre et Paramètres gèrent eux-mêmes leur section (#registre/<section>, #parametres/<rubrique>)
+    if ((view === 'registre' && actuelle.split('/')[0] === 'registre') || (view === 'settings' && actuelle.split('/')[0] === 'parametres')) return;
     if (actuelle !== cible) globalThis.history.replaceState(null, '', `#${cible}`);
   }, [view, draft.id]);
 
@@ -1696,29 +1698,31 @@ export default function DoraIncidentApp() {
     });
 
 
-    async function handleSaveSettings() {
-      if (!user?.id) return;
+    // Enregistrement des paramètres de l'entité déclarante (page Paramètres) ; une erreur est remontée
+    // à la page, qui l'affiche
+    async function handleSaveSettings(formulaire) {
+      if (!user?.id) throw new Error('Utilisateur non connecté');
 
       const settingsToSave = {
-        name: submittingEntitySettings.name,
-        code: submittingEntitySettings.code,
-        affectedEntityType: submittingEntitySettings.affectedEntityType,
+        name: formulaire.name,
+        code: formulaire.code,
+        affectedEntityType: formulaire.affectedEntityType,
         isParametersSet: true
       };
 
-      // Sauvegarde Supabase
-      await saveSettings(user.id, settingsToSave);
+      const enregistre = await saveSettings(user.id, settingsToSave);
 
-      // Mise à jour du state local
       setSubmittingEntitySettings(prev => ({
         ...prev,
-        isLocked: true
+        name: settingsToSave.name,
+        code: settingsToSave.code,
+        affectedEntityType: settingsToSave.affectedEntityType,
+        isLocked: true,
+        updatedAt: enregistre?.updated_at ?? new Date().toISOString()
       }));
 
       // Application propre au draft
       setDraft(prev => applySettingsToDraft(prev, settingsToSave));
-
-      alert("Paramètres enregistrés avec succès.");
     }
 
   const getButtonClasses = (currentView, targetView) => {
@@ -2225,7 +2229,8 @@ export default function DoraIncidentApp() {
         name: settings.name ?? '',
         code: settings.code ?? '',
         affectedEntityType: settings.affected_entity_type ?? [],
-        isLocked: settings.is_parameters_set ?? false
+        isLocked: settings.is_parameters_set ?? false,
+        updatedAt: settings.updated_at ?? null
       };
       setSubmittingEntitySettings(normalized);
 
@@ -2606,14 +2611,10 @@ export default function DoraIncidentApp() {
                                     updateDraft('submittingEntity.name', e.target.value);
                                   }
                                 }}
-                                className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                className={`p-2 rounded-lg border dark:border-gray-600 ${draft.submittingEntity.isParametersSet ? 'bg-gray-100 text-gray-500 dark:bg-gray-700/60 dark:text-gray-400' : 'bg-white dark:bg-gray-800'}`}
                                 readOnly={draft.submittingEntity.isParametersSet}
                                 disabled={isFieldDisabled(role, draft.status)}
-                                style={draft.submittingEntity.isParametersSet ? {
-                                  backgroundColor: '#f3f4f6',
-                                  cursor: 'not-allowed',
-                                  color: '#6b7280'
-                                } : {}}
+                                style={draft.submittingEntity.isParametersSet ? { cursor: 'not-allowed' } : {}}
                                 title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
                             />
                             <input data-champ="submittingEntity.code"
@@ -2624,14 +2625,10 @@ export default function DoraIncidentApp() {
                                     updateDraft('submittingEntity.code', e.target.value);
                                   }
                                 }}
-                                className="p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
+                                className={`p-2 rounded-lg border dark:border-gray-600 ${draft.submittingEntity.isParametersSet ? 'bg-gray-100 text-gray-500 dark:bg-gray-700/60 dark:text-gray-400' : 'bg-white dark:bg-gray-800'}`}
                                 readOnly={draft.submittingEntity.isParametersSet}
                                 disabled={isFieldDisabled(role, draft.status)}
-                                style={draft.submittingEntity.isParametersSet ? {
-                                  backgroundColor: '#f3f4f6',
-                                  cursor: 'not-allowed',
-                                  color: '#6b7280'
-                                } : {}}
+                                style={draft.submittingEntity.isParametersSet ? { cursor: 'not-allowed' } : {}}
                                 title={draft.submittingEntity.isParametersSet ? "Ce champ a été défini dans les paramètres et ne peut plus être modifié" : ""}
                             />
                           </div>
@@ -2734,32 +2731,32 @@ export default function DoraIncidentApp() {
 
                           <div className="space-y-2 mt-2">
                               {draft.affectedEntity.map((ae, idx) => (
-                                <div key={`affected-entity-${idx}`} className="p-3 rounded-lg border bg-white">
+                                <div key={`affected-entity-${idx}`} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800/40">
                                   <div className="flex gap-2">
                                     <input data-champ={`affectedEntity.${idx}.name`}
                                       placeholder="Name"
                                       value={ae.name}
                                       onChange={e => updateAffectedEntity(idx, 'name', e.target.value)}
-                                      className="flex-1 p-2 rounded-lg border"
+                                      className="flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     />
                                     <input data-champ={`affectedEntity.${idx}.code`}
                                       placeholder="Identification Code"
                                       value={ae.code}
                                       onChange={e => updateAffectedEntity(idx, 'code', e.target.value)}
-                                      className="flex-1 p-2 rounded-lg border"
+                                      className="flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     />
                                     <input data-champ={`affectedEntity.${idx}.LEI`}
                                       placeholder="LEI Code"
                                       value={ae.LEI}
                                       onChange={e => updateAffectedEntity(idx, 'LEI', e.target.value)}
-                                      className="flex-1 p-2 rounded-lg border"
+                                      className="flex-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     />
                                     <button
                                       onClick={() => removeAffectedEntity(idx)}
-                                      className="px-3 rounded-lg bg-red-50 text-red-700"
+                                      className="px-3 rounded-lg bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                                       disabled={isFieldDisabled(role, draft.status)}
                                     >
                                       Remove
@@ -4583,99 +4580,16 @@ export default function DoraIncidentApp() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="p-6 rounded-2xl bg-white/90 dark:bg-white/5 shadow"
                   >
-                    <h2 className="text-2xl font-semibold mb-6">Paramètres</h2>
-
-                    {/* Section pour le profil "saisisseur" */}
-                    {role === 'saisisseur' && (
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Configuration de l'entité soumise</h3>
-
-                        {/* Nom de l'entité - TOUJOURS MODIFIABLE */}
-                        <div className="mb-4">
-                          <label htmlFor="submittingEntityName" className="block text-sm font-medium mb-1">
-                            Nom de l'entité soumise
-                          </label>
-                          <input
-                            id="submittingEntityName"
-                            type="text"
-                            value={submittingEntitySettings.name}
-                            onChange={(e) => setSubmittingEntitySettings({ ...submittingEntitySettings, name: e.target.value })}
-                            className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                          />
-                        </div>
-
-                        {/* Code de l'entité - TOUJOURS MODIFIABLE */}
-                        <div className="mb-4">
-                          <label htmlFor="submittingEntityCode" className="block text-sm font-medium mb-1">
-                            LEI de l&apos;entité déclarante (champ 1.3)
-                          </label>
-                          <input
-                            id="submittingEntityCode"
-                            type="text"
-                            value={submittingEntitySettings.code}
-                            onChange={(e) => setSubmittingEntitySettings({ ...submittingEntitySettings, code: e.target.value })}
-                            className="w-full p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800"
-                          />
-                        </div>
-
-                        {/* Types d'entités affectées - TOUJOURS MODIFIABLES */}
-                        <div className="mb-6">
-                          <label htmlFor="affectedEntityTypes" className="block text-sm font-medium mb-2">Types d'entités affectées</label>
-                          <div id="affectedEntityTypes" className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                            {ENTITY_TYPES.map(type => (
-                              <label
-                                key={type.value}
-                                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-white dark:hover:bg-gray-700 p-1 rounded"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={submittingEntitySettings.affectedEntityType?.includes(type.value)}
-                                  onChange={() => {
-                                    const currentValues = submittingEntitySettings.affectedEntityType || [];
-                                    const updatedValues = currentValues.includes(type.value)
-                                      ? currentValues.filter(value => value !== type.value)
-                                      : [...currentValues, type.value];
-                                    setSubmittingEntitySettings({ ...submittingEntitySettings, affectedEntityType: updatedValues });
-                                  }}
-                                  className="rounded"
-                                />
-                                <span>{type.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Boutons d'action */}
-                        <div className="flex justify-end gap-2 mt-6">
-                          <button
-                              onClick={handleSaveSettings}
-                              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                          >
-                              Enregistrer les paramètres
-                          </button>
-
-                          <button
-                            onClick={() => setView('dashboard')}
-                            className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 transition-colors"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Section pour les profils "validateur" ou "auditeur" */}
-                    {['validateur', 'auditeur'].includes(role) && (
-                      <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/30">
-                        <p className="text-sm mb-4">
-                          {role === 'validateur'
-                            ? 'Fonctionnalités spécifiques aux valideurs à venir'
-                            : 'Fonctionnalités spécifiques aux auditeurs à venir'}
-                        </p>
-                      </div>
-                    )}
+                    <Parametres
+                      role={role}
+                      roleRegistre={roleRegistre}
+                      email={user?.email}
+                      reglages={submittingEntitySettings}
+                      typesEntite={ENTITY_TYPES}
+                      onEnregistrer={handleSaveSettings}
+                      onModifierMotDePasse={() => setIsPasswordModalOpen(true)}
+                    />
                   </motion.div>
                 )}
               </>

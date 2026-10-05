@@ -59,6 +59,11 @@ select * from (values
         and coalesce(qual, '') || coalesce(with_check, '') like '%current_registre_role%') = 56
      and not exists (select 1 from pg_policies where schemaname = 'public' and tablename like 'ri\_%'
         and coalesce(qual, '') || coalesce(with_check, '') like '%current_user_role%')),
+  ('Journal d''activité (déclencheurs sur les déclarations et les 14 tables du registre)',
+     (select count(*) from pg_trigger where not tgisinternal
+        and tgname in ('journaliser_rapport', 'journaliser_commentaire', 'journal_ajout', 'journal_modification', 'journal_suppression'))::text || ' / 44', '44 / 44',
+     (select count(*) from pg_trigger where not tgisinternal
+        and tgname in ('journaliser_rapport', 'journaliser_commentaire', 'journal_ajout', 'journal_modification', 'journal_suppression')) = 44),
   ('info : comptes hors domaine @actionlogement.fr',
      coalesce((select string_agg(email, ', ') from public.users where lower(email) !~ '@actionlogement\.fr$'), 'aucun'), 'aucun (sinon à supprimer)',
      true),
