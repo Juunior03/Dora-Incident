@@ -901,12 +901,14 @@ const nowISO = () => new Date().toISOString()
     /**
      * Valide les champs spécifiques aux actions temporaires de récupération.
      */
+    // 3.34 : exigé par le règlement 2025/302 si des actions temporaires sont prises (3.33) ; le guide de
+    // remplissage de l'ACPR demande aussi d'indiquer la raison lorsqu'aucune action n'a été prise
     function validateTemporaryRecoveryActions(report, errors) {
-      if (report.impactAssessment?.serviceImpact?.isTemporaryActionsMeasuresForRecovery === true) {
-        if (!report.impactAssessment?.serviceImpact?.descriptionOfTemporaryActionsMeasuresForRecovery) {
-          errors.push("Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports");
-        }
-      }
+      const service = report.impactAssessment?.serviceImpact;
+      if (isFilled(service?.descriptionOfTemporaryActionsMeasuresForRecovery)) return;
+      errors.push(service?.isTemporaryActionsMeasuresForRecovery === true
+        ? "Description of temporary actions/measures for recovery is required when temporary actions are taken for intermediate and final reports"
+        : "Reason why no temporary actions/measures were taken is required for intermediate and final reports (ACPR guidance)");
     }
 
     // Valide les champs spécifiques aux rapports finaux
@@ -955,8 +957,7 @@ const nowISO = () => new Date().toISOString()
         errors.push("Recurring incidents: the description and the date of the first occurrence must be provided together for final reports");
       }
 
-      // 3.34 (description des actions temporaires) : exigée seulement si 3.33 = oui, dans tous les rapports
-      // (validateTemporaryRecoveryActions), conformément à l'annexe II du règlement d'exécution 2025/302
+      // 3.34 (actions temporaires ou raison de leur absence) : validateTemporaryRecoveryActions
     }
 
     // Un champ est renseigné s'il n'est ni absent, ni une chaîne vide
@@ -3553,10 +3554,12 @@ export default function DoraIncidentApp() {
                       </label>
                     </div>
 
-                    {draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery && (
+                    {/* 3.34 : toujours affiché ; sans action temporaire, l'ACPR attend la raison (guide de remplissage) */}
                       <div className="mt-4">
                           <p className="block text-sm font-medium mb-2">
-                            Description of Temporary Actions/Measures for Recovery
+                            {draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery
+                              ? 'Description of Temporary Actions/Measures for Recovery'
+                              : 'Reason why no Temporary Actions/Measures were taken'}
                           </p>
                           <textarea data-champ="impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery"
                             id="descriptionOfTemporaryActionsMeasuresForRecovery"
@@ -3564,11 +3567,12 @@ export default function DoraIncidentApp() {
                             onChange={e => updateDraft('impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', e.target.value)}
                             rows={2}
                             className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
-                            placeholder="Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc."
+                            placeholder={draft.impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery
+                              ? "Describe the immediate actions taken such as isolation of the incident at the network level, workarounds, USB ports blocked, Disaster Recovery site activation, etc. Include the date and time of implementation and the expected date of return to the primary site."
+                              : "Explain why no temporary action or measure has been taken or planned (expected by the ACPR even when no action was taken)."}
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                       </div>
-                    )}
 
                     {draft.incident.incidentType.incidentClassification.includes("cybersecurity-related") && (
                       <div className="mt-4">

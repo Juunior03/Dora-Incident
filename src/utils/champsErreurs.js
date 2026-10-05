@@ -56,7 +56,7 @@ const CORRESPONDANCES = [
   [/^Information about reporting to other authorities/, 'reportingToOtherAuthorities', '3.31'],
   [/^Specification of 'other' authorities/, 'reportingToOtherAuthoritiesOther', '3.32'],
   [/^Information about temporary actions/, 'impactAssessment.serviceImpact.isTemporaryActionsMeasuresForRecovery', '3.33'],
-  [/^Description of temporary actions/, 'impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', '3.34'],
+  [/^Description of temporary actions|^Reason why no temporary actions/, 'impactAssessment.serviceImpact.descriptionOfTemporaryActionsMeasuresForRecovery', '3.34'],
   [/^Indicators of compromise/, 'incident.incidentType.indicatorsOfCompromise', '3.35'],
   [/^High-level classification of root cause/, 'incident.rootCauseHLClassification', '4.1'],
   [/^Detailed classification of root causes/, 'incident.rootCausesDetailedClassification', '4.2'],
