@@ -17,6 +17,9 @@ import { champDeLErreur } from '../utils/champsErreurs';
 
 const nowISO = () => new Date().toISOString()
 
+// 4e type de déclaration de la maquette : incident majeur reclassé comme non majeur
+const RECLASSEMENT = 'major_incident_reclassified_as_non-major';
+
     function orderAffectedEntityKeys(affectedEntities) {
       const keyOrder = ['entityType', 'name', 'code', 'affectedEntityType', 'LEI'];
       return affectedEntities.map(entity => {
@@ -40,9 +43,9 @@ const nowISO = () => new Date().toISOString()
     function cleanReportForExport(report) {
       // 1. On clone profondément pour ne pas muter le draft original
       const clonedReport = structuredClone(report);
-      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, ...cleanedReport } = clonedReport;
+      const { id, incidentId, savedAt, status, skipIdentity, skipContacts, nextSubmissionType, comments, isParametersSet, reclassificationBase, ...cleanedReport } = clonedReport;
       delete cleanedReport.validatedAt; // donnée interne, absente du format de l'autorité
-      retirerChampsHorsRapport(cleanedReport);
+      retirerChampsHorsRapport(cleanedReport, reclassificationBase);
 
       // Nettoyer les numéros de téléphone
       cleanedReport.primaryContact = cleanPhoneNumber(cleanedReport.primaryContact);
@@ -154,15 +157,18 @@ const nowISO = () => new Date().toISOString()
         critere: ['economicImpactMaterialityThreshold'],
       },
     };
-    function retirerChampsHorsRapport(rapport) {
+    function retirerChampsHorsRapport(rapport, base) {
       const ordre = ['initial_notification', 'intermediate_report', 'final_report'];
-      const rang = ordre.indexOf(rapport.incidentSubmission);
+      // Reclassement : il contient les données du rapport dont il découle (notification initiale ou
+      // rapport intermédiaire), et toujours le code attribué par l'ACPR pour rattacher l'incident
+      const reclassement = rapport.incidentSubmission === RECLASSEMENT;
+      const rang = reclassement ? Math.max(0, ordre.indexOf(base)) : ordre.indexOf(rapport.incidentSubmission);
       if (rang < 0) return;
       for (const type of ordre.slice(rang + 1)) {
         const { racine, incident, critere } = CHAMPS_DES_RAPPORTS[type];
         racine.forEach(k => delete rapport[k]);
         if (rapport.incident) {
-          incident.forEach(k => delete rapport.incident[k]);
+          incident.filter(k => !(reclassement && k === 'competentAuthorityCode')).forEach(k => delete rapport.incident[k]);
           (rapport.incident.classificationTypes ?? []).forEach(c => critere.forEach(k => delete c[k]));
         }
       }
@@ -732,6 +738,20 @@ const nowISO = () => new Date().toISOString()
       // Validations spécifiques aux rapports finaux
       if (report.incidentSubmission === "final_report") {
         validateFinalReportFields(report, errors);
+      }
+
+      // Reclassement en incident non majeur : champs de la notification initiale (et du rapport
+      // intermédiaire s'il y en a eu un), code de l'incident attribué par l'ACPR, et raisons du
+      // reclassement dans « Other information » (champ 2.10, obligatoire dans ce cas)
+      if (report.incidentSubmission === RECLASSEMENT) {
+        if (report.reclassificationBase === 'intermediate_report') {
+          validateIntermediateAndFinalReportFields(report, errors);
+        } else if (!isFilled(report.incident?.competentAuthorityCode)) {
+          errors.push("Incident reference code provided by the competent authority is required for a reclassification");
+        }
+        if (!isFilled(report.incident?.otherInformation)) {
+          errors.push("Reasons for reclassifying the incident as non-major are required (field 2.10, Other information)");
+        }
       }
 
       return errors;
@@ -1341,6 +1361,7 @@ const nowISO = () => new Date().toISOString()
       { type: 'initial_notification', libelle: 'Notification initiale', du: 'de la notification initiale' },
       { type: 'intermediate_report', libelle: 'Rapport intermédiaire', du: 'du rapport intermédiaire' },
       { type: 'final_report', libelle: 'Rapport final', du: 'du rapport final' },
+      { type: RECLASSEMENT, libelle: 'Reclassement en non majeur', du: 'du reclassement' },
     ];
     const rangRapport = (type) => SECTIONS_RAPPORT.findIndex(x => x.type === type);
 
@@ -1351,7 +1372,8 @@ const nowISO = () => new Date().toISOString()
       const horsSection = /^(Type of report|Report currency|Submitting entity|Affected entity|Type of the affected|Ultimate parent|Primary contact|Secondary contact)/;
       const propres = validateReportFields({ ...draft, incidentSubmission: type }).filter(e => !horsSection.test(e));
       if (rang === 0) return propres;
-      const avant = validateReportFields({ ...draft, incidentSubmission: SECTIONS_RAPPORT[rang - 1].type });
+      const typeAvant = type === RECLASSEMENT ? (draft.reclassificationBase || 'initial_notification') : SECTIONS_RAPPORT[rang - 1].type;
+      const avant = validateReportFields({ ...draft, incidentSubmission: typeAvant });
       return propres.filter(e => !avant.includes(e));
     }
 
@@ -1502,7 +1524,14 @@ export default function DoraIncidentApp() {
   useEffect(() => { setDeverrouillees({}); }, [draft.id, draft.incidentSubmission]);
   const rangActuel = Math.max(0, rangRapport(draft.incidentSubmission));
   const lectureSeuleRapport = isFieldDisabled(role, draft.status);
-  const manquantsSection = (type) => (rangRapport(type) < rangActuel || (lectureSeuleRapport && draft.status !== 'validated' && rangRapport(type) === rangActuel)
+  const estReclassement = draft.incidentSubmission === RECLASSEMENT;
+  const baseReclassement = draft.reclassificationBase === 'intermediate_report' ? 'intermediate_report' : 'initial_notification';
+  // Sections affichées : celles des rapports jusqu'au type en cours ; pour un reclassement, celles du
+  // rapport dont il découle, puis la section du reclassement
+  const sectionsAffichees = estReclassement
+    ? [...SECTIONS_RAPPORT.slice(0, rangRapport(baseReclassement) + 1), SECTIONS_RAPPORT[rangRapport(RECLASSEMENT)]]
+    : SECTIONS_RAPPORT.slice(0, rangActuel + 1);
+  const manquantsSection = (type) => sectionsAffichees.some(x => x.type === type) && (rangRapport(type) < rangActuel || (lectureSeuleRapport && draft.status !== 'validated' && rangRapport(type) === rangActuel)
     ? erreursSection(draft, type) : []);
   const sectionVerrouillee = (type) => lectureSeuleRapport
     || (rangRapport(type) < rangActuel && !deverrouillees[type] && manquantsSection(type).length === 0);
@@ -2058,6 +2087,8 @@ export default function DoraIncidentApp() {
         ...data.report_data,
         id: uuidv4(),
         incidentSubmission: nextSubmissionType,
+        // Reclassement : type du rapport dont il découle (détermine les données reprises)
+        reclassificationBase: nextSubmissionType === RECLASSEMENT ? data.report_data.incidentSubmission : null,
         status: 'draft',
         skipIdentity: true,
         skipContacts: true
@@ -2287,7 +2318,7 @@ export default function DoraIncidentApp() {
           };
         }
         incidents[financialEntityCode].reports.push(report);
-        if (report.incidentSubmission === 'final_report' && report.status === 'validated') {
+        if ((report.incidentSubmission === 'final_report' || report.incidentSubmission === RECLASSEMENT) && report.status === 'validated') {
           incidents[financialEntityCode].isClosed = true;
         }
       }
@@ -2471,6 +2502,7 @@ export default function DoraIncidentApp() {
                               <option value="initial_notification">Initial Notification</option>
                               <option value="intermediate_report">Intermediate Report</option>
                               <option value="final_report">Final Report</option>
+                              <option value={RECLASSEMENT} disabled>Major incident reclassified as non-major</option>
                             </select>
                           </div>
                           <div>
@@ -2806,7 +2838,7 @@ export default function DoraIncidentApp() {
                       règlement d'exécution 2025/302 : champs 1.x à 3.x obligatoires dans tous les rapports suivants) */}
                   {step === 2 && rangActuel > 0 && (
                     <nav aria-label="Sections du rapport" className="sticky top-0 z-20 -mx-2 mb-6 px-2 py-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b dark:border-gray-700 flex flex-wrap gap-2 text-sm">
-                      {SECTIONS_RAPPORT.slice(0, rangActuel + 1).map((x, i) => (
+                      {sectionsAffichees.map((x, i) => (
                         <button key={x.type} type="button" onClick={() => allerASection(x.type)}
                           className={`px-3 py-1 rounded-full ${x.type === draft.incidentSubmission ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
                           {i + 1}. {x.libelle}{x.type === draft.incidentSubmission ? (lectureSeuleRapport ? '' : ' (en cours)') : sectionVerrouillee(x.type) && !lectureSeuleRapport ? ' 🔒' : ''}{manquantsSection(x.type).length > 0 ? ' ⚠️' : ''}{modifieesSection(x.type) > 0 ? ` · ✏️ ${modifieesSection(x.type)}` : ''}
@@ -2994,6 +3026,7 @@ export default function DoraIncidentApp() {
                         </div>
 
 
+                        {!estReclassement && (
                         <div className="mt-6">
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-medium">Other Information</h4>
@@ -3016,6 +3049,7 @@ export default function DoraIncidentApp() {
                             disabled={isFieldDisabled(role, draft.status)}
                           />
                         </div>
+                        )}
 
                         {draft.incidentSubmission === 'initial_notification' && <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />}
 
@@ -3024,7 +3058,7 @@ export default function DoraIncidentApp() {
                     </div>
                   )}
 
-                  {step === 2 && (draft.incidentSubmission === "intermediate_report" || draft.incidentSubmission === "final_report") && (
+                  {step === 2 && (draft.incidentSubmission === "intermediate_report" || draft.incidentSubmission === "final_report" || (estReclassement && baseReclassement === 'intermediate_report')) && (
                       <div id="section-intermediate_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
 
                         <h2 className="text-2xl font-semibold mb-2">Impact Assessment</h2>
@@ -3675,6 +3709,45 @@ export default function DoraIncidentApp() {
                   )}
 
 
+                  {step === 2 && estReclassement && (
+                    <div id={`section-${RECLASSEMENT}`} className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
+                      <h2 className="text-2xl font-semibold mb-2">Reclassification as non-major</h2>
+                      <p className="text-sm opacity-70 mb-4">Major incident reclassified as non-major</p>
+                      <BandeauSection {...propsBandeau(RECLASSEMENT)} />
+                      <p className="mb-4 text-sm p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100">
+                        Ce rapport informe l&apos;ACPR que l&apos;incident déclaré comme majeur ne l&apos;est pas, ou ne l&apos;est
+                        plus. Il reprend les informations déjà transmises et clôt l&apos;incident : aucun rapport ne pourra suivre.
+                      </p>
+                      {baseReclassement === 'initial_notification' && (
+                        <div className="mt-4">
+                          <label htmlFor="competentAuthorityCodeReclassement" className="text-sm font-medium">Incident Reference Code provided by the Competent Authority</label>
+                          <input data-champ="incident.competentAuthorityCode"
+                            id="competentAuthorityCodeReclassement"
+                            type="text"
+                            value={draft.incident.competentAuthorityCode}
+                            onChange={e => updateDraft('incident.competentAuthorityCode', e.target.value)}
+                            className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                            placeholder="Code reçu avec l'accusé de réception de la notification initiale (ex. 2026I0001234)"
+                            disabled={isFieldDisabled(role, draft.status)}
+                          />
+                        </div>
+                      )}
+                      <div className="mt-4">
+                        <label htmlFor="raisonsReclassement" className="text-sm font-medium">Reasons for the reclassification (Other Information, field 2.10)</label>
+                        <textarea data-champ="incident.otherInformation"
+                          id="raisonsReclassement"
+                          value={draft.incident.otherInformation}
+                          onChange={e => updateDraft('incident.otherInformation', e.target.value)}
+                          rows={5}
+                          className="mt-1 p-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800 w-full"
+                          placeholder="Explain why the ICT-related incident does not fulfil, and is not expected to fulfil, the criteria to be considered as a major ICT-related incident."
+                          disabled={isFieldDisabled(role, draft.status)}
+                        />
+                      </div>
+                      <StepNavigationButtons onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Next → Review" hideBack={fromContinueButton} />
+                    </div>
+                  )}
+
                   {step === 2 && draft.incidentSubmission === "final_report" && (
                       <div id="section-final_report" className="mt-10 pt-6 border-t dark:border-gray-700 scroll-mt-16">
                           <h2 className="text-2xl font-semibold mb-2">Root Causes and Resolution</h2>
@@ -4164,6 +4237,7 @@ export default function DoraIncidentApp() {
                                         <option value="initial_notification">Initial Notification</option>
                                         <option value="intermediate_report">Intermediate Report</option>
                                         <option value="final_report">Final Report</option>
+                                        <option value={RECLASSEMENT}>Reclassified as non-major</option>
                                       </select>
                                     </div>
 
@@ -4350,7 +4424,7 @@ export default function DoraIncidentApp() {
                                                   )}
                                                   {role === 'saisisseur' && r.status === 'validated' && (
                                                     <>
-                                                      {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && (
+                                                      {r.incidentSubmission === 'initial_notification' && r.nextSubmissionType === 'intermediate_report' && !hasReportOfTypeForIncident(r.incidentId, 'intermediate_report') && !hasReportOfTypeForIncident(r.incidentId, RECLASSEMENT) && (
                                                         <button
                                                           onClick={() => continueReport(r.id, 'intermediate_report')}
                                                           className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
@@ -4358,12 +4432,27 @@ export default function DoraIncidentApp() {
                                                           Déclarer un rapport intermédiaire
                                                         </button>
                                                       )}
-                                                      {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && (
+                                                      {r.incidentSubmission === 'intermediate_report' && r.nextSubmissionType === 'final_report' && !hasReportOfTypeForIncident(r.incidentId, 'final_report') && !hasReportOfTypeForIncident(r.incidentId, RECLASSEMENT) && (
                                                         <button
                                                           onClick={() => continueReport(r.id, 'final_report')}
                                                           className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm"
                                                         >
                                                           Déclarer un rapport final
+                                                        </button>
+                                                      )}
+                                                      {(r.incidentSubmission === 'initial_notification' || r.incidentSubmission === 'intermediate_report')
+                                                        && !hasReportOfTypeForIncident(r.incidentId, RECLASSEMENT)
+                                                        && !hasReportOfTypeForIncident(r.incidentId, 'final_report')
+                                                        && !(r.incidentSubmission === 'initial_notification' && hasReportOfTypeForIncident(r.incidentId, 'intermediate_report')) && (
+                                                        <button
+                                                          onClick={() => {
+                                                            if (globalThis.confirm("Reclasser l'incident en incident non majeur ?\n\nLe rapport de reclassement reprend les informations déjà transmises et clôt l'incident : aucun rapport intermédiaire ou final ne pourra suivre.")) {
+                                                              continueReport(r.id, RECLASSEMENT);
+                                                            }
+                                                          }}
+                                                          className="px-3 py-2 rounded-lg bg-amber-600 text-white text-sm"
+                                                        >
+                                                          Reclasser en non majeur
                                                         </button>
                                                       )}
                                                     </>

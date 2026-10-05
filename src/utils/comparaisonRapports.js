@@ -3,11 +3,18 @@
 // rapport suivant (règlement d'exécution 2025/302, annexe II) ; il doit voir ce qui a changé avant de valider.
 
 export const ORDRE_RAPPORTS = ['initial_notification', 'intermediate_report', 'final_report'];
+export const RECLASSEMENT = 'major_incident_reclassified_as_non-major';
 export const LIBELLES_RAPPORTS = {
   initial_notification: 'notification initiale',
   intermediate_report: 'rapport intermédiaire',
   final_report: 'rapport final',
+  [RECLASSEMENT]: 'reclassement en incident non majeur',
 };
+
+// Rang d'un rapport dans la suite des déclarations ; un reclassement suit le rapport dont il découle
+const rangDe = (r) => (r?.incidentSubmission === RECLASSEMENT
+  ? Math.max(0, ORDRE_RAPPORTS.indexOf(r.reclassificationBase)) + 1
+  : ORDRE_RAPPORTS.indexOf(r?.incidentSubmission));
 
 // type : 'texte' (défaut) | 'liste' | 'date' | 'nombre' | 'booleen' | 'entites' | 'telephone'
 const CHAMPS = [
@@ -114,7 +121,7 @@ function afficher(valeur, type) {
 
 /** Dernier rapport validé de l'incident dont le type précède celui du rapport (null si aucun) */
 export function rapportPrecedent(rapport, rapports) {
-  const rang = ORDRE_RAPPORTS.indexOf(rapport?.incidentSubmission);
+  const rang = rangDe(rapport);
   if (rang <= 0) return null;
   const candidats = (rapports ?? []).filter((r) => r.id !== rapport.id
     && r.incidentId === rapport.incidentId
@@ -134,9 +141,11 @@ export function rapportPrecedent(rapport, rapports) {
  */
 export function modificationsRapport(rapport, precedent) {
   if (!rapport || !precedent) return [];
-  const rang = ORDRE_RAPPORTS.indexOf(rapport.incidentSubmission);
+  const rang = rangDe(rapport);
   return CHAMPS
     .filter((c) => c.section === 'identite' || ORDRE_RAPPORTS.indexOf(c.section) < rang)
+    // Reclassement : le champ 2.10 porte les raisons du reclassement, ce n'est pas une mise à jour
+    .filter((c) => !(rapport.incidentSubmission === RECLASSEMENT && c.chemin === 'incident.otherInformation'))
     .filter((c) => normaliser(lire(rapport, c.chemin), c.type) !== normaliser(lire(precedent, c.chemin), c.type))
     .map((c) => ({
       section: c.section,

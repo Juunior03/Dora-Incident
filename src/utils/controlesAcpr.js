@@ -54,8 +54,12 @@ export function controlesAcpr(rapport) {
       bloquant(`Le LEI de l'${nom} (« ${e.LEI} ») doit être le LEI seul : 20 caractères, sans mention « LEI : » ni autre code.`);
     }
   }
+  const reclassement = type === 'major_incident_reclassified_as_non-major';
+  if (reclassement && !texte(inc.otherInformation)) {
+    bloquant('Reclassement en incident non majeur : expliquez dans « Other information » (2.10) pourquoi l\'incident ne remplit pas, et ne devrait pas remplir, les critères d\'un incident majeur.');
+  }
   const codeAcpr = texte(inc.competentAuthorityCode);
-  if (suivi && !codeAcpr) {
+  if ((suivi || reclassement) && !codeAcpr) {
     bloquant("Le code de l'incident attribué par l'ACPR (reçu par e-mail avec l'accusé de réception de la notification initiale) est obligatoire.");
   } else if (codeAcpr && !CODE_ACPR.test(codeAcpr)) {
     bloquant(`Le code ACPR « ${codeAcpr} » doit être celui de l'accusé de réception : année, lettre I (incident) ou M (menace), puis 7 chiffres (ex. 2026I0001234).`);

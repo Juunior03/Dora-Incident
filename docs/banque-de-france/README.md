@@ -91,3 +91,13 @@ Contenu par type de rapport : l'export ne transmet que les champs du type de rap
 précédents (annexe II : « No » pour les rapports antérieurs). Une notification initiale ne contient donc
 ni bloc impactAssessment ni montants, au lieu des valeurs par défaut du formulaire (0, false). Une entité
 affectée unique sans nom ni LEI est l'entité déclarante : son nom et son LEI sont repris.
+
+## Reclassement en incident non majeur
+
+Quatrième type de déclaration de la maquette (« major_incident_reclassified_as_non-major »). Depuis une
+notification initiale ou un rapport intermédiaire validé, le saisisseur crée le rapport de reclassement
+(bouton « Reclasser en non majeur » du tableau de bord). Conformément au guide de l'ACPR, il reprend les
+informations du rapport dont il découle (notification initiale, et rapport intermédiaire s'il y en a eu
+un), avec le code de l'incident attribué par l'ACPR et les raisons du reclassement dans « Other
+information » (champ 2.10), tous deux exigés. Une fois validé, il clôt l'incident : plus aucun rapport
+ni échéance.
